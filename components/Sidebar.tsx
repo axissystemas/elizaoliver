@@ -32,28 +32,36 @@ interface SidebarProps {
 
 const navItems = [
   { id: 'dashboard', label: 'Painel', icon: LayoutDashboard },
-  { id: 'patients', label: 'Pacientes', icon: Users },
-  { id: 'evaluations', label: 'Avaliações', icon: ClipboardList },
-  { id: 'calendar', label: 'Agenda', icon: Calendar },
-
-  { id: 'protocols', label: 'Protocolos', icon: FileText },
-  { id: 'financial', label: 'Financeiro', icon: CreditCard },
-  { id: 'billing', label: 'Faturamento', icon: FileText },
-  { id: 'inventory', label: 'Estoque', icon: Package },
-  { id: 'users', label: 'Usuários', icon: Users },
+  { id: 'patients', label: 'Pacientes', icon: Users, featureKey: 'mod_patients' },
+  { id: 'evaluations', label: 'Avaliações', icon: ClipboardList, featureKey: 'mod_evaluations' },
+  { id: 'calendar', label: 'Agenda', icon: Calendar, featureKey: 'mod_calendar' },
+  { id: 'protocols', label: 'Protocolos', icon: FileText, featureKey: 'mod_protocols' },
+  { id: 'financial', label: 'Financeiro', icon: CreditCard, featureKey: 'mod_financial' },
+  { id: 'billing', label: 'Faturamento', icon: FileText, featureKey: 'mod_billing' },
+  { id: 'inventory', label: 'Estoque', icon: Package, featureKey: 'mod_inventory' },
+  { id: 'users', label: 'Usuários', icon: Users, featureKey: 'mod_users' },
   { id: 'settings', label: 'Configurações', icon: Settings },
-  { id: 'reports', label: 'Relatórios', icon: BarChart3 },
-  { id: 'audit_logs', label: 'Auditoria', icon: Shield },
+  { id: 'reports', label: 'Relatórios', icon: BarChart3, featureKey: 'mod_reports' },
+  { id: 'audit_logs', label: 'Auditoria', icon: Shield, featureKey: 'mod_audit' },
 ];
 
 export default function Sidebar({ activeView, setActiveView, onNewAppointment, onLogout, user }: SidebarProps) {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const allowedViews = user.permissions || [];
+  const allowedPermissions = user.permissions || [];
+  const entitlements = user.subscription?.entitlements || [];
+
   const filteredNavItems = navItems.filter(item => {
-    if (user.role === 'ADMIN') return true;
-    if (item.id === 'audit_logs') return false;
-    // Check if the base permission (e.g., 'patients') or any sub-permission (e.g., 'patients:view') exists
-    return allowedViews.some(p => p === item.id || p.startsWith(`${item.id}:`));
+    // 1. Permissão por Role (RBAC)
+    const hasPermission = user.role === 'ADMIN' || allowedPermissions.some(p => p === item.id || p.startsWith(`${item.id}:`));
+    if (!hasPermission) return false;
+
+    // 2. Trava de Plano (SaaS)
+    if (item.featureKey) {
+      const isFeatureEnabled = entitlements.includes(item.featureKey);
+      if (!isFeatureEnabled) return false;
+    }
+
+    return true;
   });
 
   return (

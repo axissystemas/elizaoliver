@@ -8,6 +8,17 @@ export interface User {
   password?: string; // Only used for local storage mock
   avatar?: string;
   permissions: string[];
+  organizationId?: string;
+  organization?: {
+    name: string;
+    slug: string;
+  };
+  subscription?: {
+    planCode: string;
+    planName: string;
+    status: string;
+    entitlements: string[];
+  };
 }
 
 export interface Permission {

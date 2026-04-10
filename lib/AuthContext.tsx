@@ -36,7 +36,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const fetchPromise = supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          organization:organizations (
+            name,
+            slug,
+            subscriptions:organization_subscriptions (
+              status,
+              plan:saas_plans (
+                code,
+                name,
+                features:saas_plan_features (
+                  key:feature_key
+                )
+              )
+            )
+          )
+        `)
         .eq('id', userId)
         .single();
 
@@ -56,6 +72,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ? data.permissions
             : (ROLE_PERMISSIONS as any)[role] || [];
         
+        // Pega a primeira assinatura ativa dentro da organização
+        const activeSub = data.organization?.subscriptions?.find((s: any) => s.status === 'active');
+
         const userData: User = {
           id: data.id,
           name: data.name,
@@ -63,6 +82,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: role,
           avatar: data.avatar_url || undefined,
           permissions: finalPermissions,
+          organizationId: data.organization_id,
+          organization: data.organization ? {
+            name: data.organization.name,
+            slug: data.organization.slug
+          } : undefined,
+          subscription: activeSub ? {
+            planCode: activeSub.plan?.code,
+            planName: activeSub.plan?.name,
+            status: activeSub.status,
+            entitlements: activeSub.plan?.features?.map((f: any) => f.key) || []
+          } : undefined
         };
         setUser(userData);
       }

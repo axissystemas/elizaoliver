@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { getInitials } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
+import { useSubscription } from '@/lib/useSubscription';
 import { 
   User as UserIcon, 
   Bell, 
@@ -29,7 +30,9 @@ import {
   Users,
   FileText,
   Activity,
-  AlertCircle
+  AlertCircle,
+  Crown,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, UserRole, ROLE_LABELS, ALL_PERMISSIONS, ROLE_PERMISSIONS } from '@/types/auth';
@@ -111,6 +114,13 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isServicesModalOpen, setIsServicesModalOpen] = useState(false);
   const [isSpecialtiesModalOpen, setIsSpecialtiesModalOpen] = useState(false);
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+  const [isUpgradeViewOpen, setIsUpgradeViewOpen] = useState(false);
+
+  const { plan, planCode, checkQuota, hasFeature } = useSubscription();
+  const [quotas, setQuotas] = useState<Record<string, any>>({});
+  const [availablePlans, setAvailablePlans] = useState<any[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(false);
 
   // Estados para atualização de senha
   const [passwordForm, setPasswordForm] = useState({
@@ -133,6 +143,50 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
     }
     fetchAuditState();
   }, []);
+
+  useEffect(() => {
+    async function fetchQuotas() {
+      const pQuota = await checkQuota('max_patients');
+      const uQuota = await checkQuota('max_active_users');
+      setQuotas({
+        patients: pQuota,
+        users: uQuota
+      });
+    }
+    if (isSubscriptionModalOpen) {
+      fetchQuotas();
+    }
+  }, [isSubscriptionModalOpen, checkQuota]);
+
+  useEffect(() => {
+    async function fetchPlans() {
+      if (!supabase) return;
+      setIsLoadingPlans(true);
+      const { data } = await supabase
+        .from('saas_plans')
+        .select(`
+          *,
+          limits:saas_plan_limits(
+            limit_key, 
+            quota_value,
+            catalog:saas_limit_catalog(description, unit)
+          ),
+          features:saas_plan_features(
+            feature_key,
+            catalog:saas_feature_catalog(description)
+          )
+        `)
+        .neq('code', 'LEGACY')
+        .order('price_monthly', { ascending: true });
+      
+      if (data) setAvailablePlans(data);
+      setIsLoadingPlans(false);
+    }
+    
+    if (isUpgradeViewOpen) {
+      fetchPlans();
+    }
+  }, [isUpgradeViewOpen]);
 
   const canEditClinic = user?.permissions.includes('settings:clinic') || user?.role === 'ADMIN';
   const canDelete = user?.permissions.includes('settings:delete') || user?.role === 'ADMIN';
@@ -445,6 +499,30 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
       ]
     },
     {
+      title: 'Faturamento e Plano',
+      items: [
+        { 
+          icon: Crown, 
+          label: 'Gerenciar Assinatura', 
+          description: `Plano atual: ${plan}`, 
+          color: 'text-amber-600', 
+          bg: 'bg-amber-100',
+          onClick: () => setIsSubscriptionModalOpen(true)
+        },
+        { 
+          icon: CreditCard, 
+          label: 'Métodos de Pagamento', 
+          description: 'Cartões salvos e histórico de faturas.', 
+          color: 'text-emerald-500', 
+          bg: 'bg-emerald-50',
+          onClick: () => {
+            // Placeholder para redirecionamento ao portal do Mercado Pago/Stripe
+            window.open('https://www.mercadopago.com.br/savings/subscriptions', '_blank');
+          }
+        },
+      ]
+    },
+    {
       title: 'Dados e Integrações',
       items: [
         { 
@@ -515,7 +593,10 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
             <h3 className="text-xl font-bold font-headline text-on-surface">{profile.name}</h3>
             <p className="text-on-surface-variant text-sm font-medium">{profile.specialty}</p>
             <div className="flex gap-2 mt-2">
-              <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-lg uppercase tracking-widest">Plano Pro Ativo</span>
+              <span className={`px-3 py-1 ${planCode === 'LEGACY' ? 'bg-amber-100 text-amber-700' : 'bg-primary/10 text-primary'} text-[10px] font-bold rounded-lg uppercase tracking-widest flex items-center gap-1`}>
+                <Crown size={10} />
+                Plano {plan}
+              </span>
               <span className="px-3 py-1 bg-surface-container-high text-outline text-[10px] font-bold rounded-lg uppercase tracking-widest">{profile.license}</span>
             </div>
           </div>
@@ -938,6 +1019,282 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                 <button 
                   onClick={() => setIsDevicesModalOpen(false)}
                   className="w-full mt-4 py-4 rounded-2xl border border-outline-variant/20 font-bold text-outline hover:bg-surface-container-low transition-all"
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      
+      {/* Subscription Modal */}
+      <AnimatePresence>
+        {isSubscriptionModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSubscriptionModalOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white w-full max-w-6xl rounded-[3rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-lowest">
+                <div>
+                  <h3 className="text-2xl font-bold font-headline text-on-surface">
+                    {isUpgradeViewOpen ? 'Planos Disponíveis' : 'Minha Assinatura'}
+                  </h3>
+                  <p className="text-sm text-on-surface-variant font-medium">
+                    {isUpgradeViewOpen ? 'Escolha o plano ideal para a sua clínica profissional.' : 'Gerencie seu plano e visualize o consumo de dados.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isUpgradeViewOpen && (
+                    <button 
+                      onClick={() => setIsUpgradeViewOpen(false)}
+                      className="px-4 py-2 hover:bg-surface-container-low rounded-xl text-sm font-bold text-primary transition-all"
+                    >
+                      Voltar
+                    </button>
+                  )}
+                  <button onClick={() => {
+                    setIsSubscriptionModalOpen(false);
+                    setIsUpgradeViewOpen(false);
+                  }} className="p-2 hover:bg-surface-container-low rounded-full transition-all">
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                {!isUpgradeViewOpen ? (
+                  <>
+                    {/* Current Plan Card */}
+                    <div className="bg-gradient-to-br from-primary/5 to-secondary/5 rounded-3xl p-6 border border-primary/10 relative overflow-hidden">
+                      <div className="relative z-10 flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Crown className="text-amber-500" size={20} />
+                            <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Plano Ativo</span>
+                          </div>
+                          <h4 className="text-4xl font-black font-headline text-on-surface">{plan}</h4>
+                          <p className="text-on-surface-variant mt-2 font-medium">Acesso total e suporte prioritário incluso.</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-bold text-outline uppercase tracking-widest">Renovação</p>
+                          <p className="text-lg font-bold text-on-surface mt-1">Mensal</p>
+                        </div>
+                      </div>
+                      <Zap className="absolute -right-4 -bottom-4 text-primary/5 w-32 h-32 rotate-12" />
+                    </div>
+
+                    {/* Quotas */}
+                    <div className="space-y-6">
+                      <h5 className="text-xs font-bold uppercase tracking-widest text-outline">Consumo do Período</h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Patients Quota */}
+                        <div className="bg-surface-container-low rounded-3xl p-6 border border-outline-variant/5">
+                          <div className="flex justify-between items-end mb-4">
+                            <div>
+                              <p className="text-xs font-bold text-outline uppercase tracking-widest mb-1">Pacientes</p>
+                              <p className="text-2xl font-bold text-on-surface">
+                                {quotas.patients?.usage ?? 0}
+                                <span className="text-sm text-on-surface-variant font-medium ml-1">
+                                  / {quotas.patients?.isUnlimited ? '∞' : quotas.patients?.quota}
+                                </span>
+                              </p>
+                            </div>
+                            <Users className="text-blue-500/30" size={32} />
+                          </div>
+                          <div className="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: quotas.patients?.isUnlimited ? '0%' : `${(quotas.patients?.usage / (quotas.patients?.quota || 1)) * 100}%` }}
+                              className="h-full bg-blue-500 rounded-full"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Users/Agendas Quota */}
+                        <div className="bg-surface-container-low rounded-3xl p-6 border border-outline-variant/5">
+                          <div className="flex justify-between items-end mb-4">
+                            <div>
+                              <p className="text-xs font-bold text-outline uppercase tracking-widest mb-1">Profissionais</p>
+                              <p className="text-2xl font-bold text-on-surface">
+                                {quotas.users?.usage ?? 0}
+                                <span className="text-sm text-on-surface-variant font-medium ml-1">
+                                  / {quotas.users?.isUnlimited ? '∞' : quotas.users?.quota}
+                                </span>
+                              </p>
+                            </div>
+                            <Activity className="text-emerald-500/30" size={32} />
+                          </div>
+                          <div className="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: quotas.users?.isUnlimited ? '0%' : `${(quotas.users?.usage / (quotas.users?.quota || 1)) * 100}%` }}
+                              className="h-full bg-emerald-500 rounded-full"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Included Features */}
+                    <div className="space-y-4">
+                      <h5 className="text-xs font-bold uppercase tracking-widest text-outline">Recursos do seu Plano</h5>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { key: 'mod_patients', label: 'Pacientes Ilimitados' },
+                          { key: 'mod_calendar', label: 'Agenda Inteligente' },
+                          { key: 'mod_financial', label: 'Financeiro Completo' },
+                          { key: 'mod_billing', label: 'Faturamento TISS' },
+                          { key: 'mod_inventory', label: 'Estoque' },
+                          { key: 'mod_reports', label: 'Relatórios Avançados' }
+                        ].map(feat => {
+                          const enabled = hasFeature(feat.key as any);
+                          return (
+                            <div key={feat.key} className={`flex items-center gap-3 p-3 rounded-xl ${enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-surface-container-high text-on-surface-variant/40 opacity-50'}`}>
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${enabled ? 'bg-emerald-100' : 'bg-outline-variant/20'}`}>
+                                {enabled ? <Check size={14} /> : <X size={14} />}
+                              </div>
+                              <span className="text-sm font-bold">{feat.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Upgrade CTA */}
+                    {planCode !== 'PREMIUM' && planCode !== 'LEGACY' && (
+                      <div className="bg-surface-container-highest p-6 rounded-3xl border border-primary/5 flex items-center justify-between">
+                        <div>
+                          <p className="font-bold text-on-surface leading-tight">Precisa de mais poder?</p>
+                          <p className="text-xs text-on-surface-variant font-medium">Libere relatórios e mais agendas agora.</p>
+                        </div>
+                        <button 
+                          onClick={() => setIsUpgradeViewOpen(true)}
+                          className="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all"
+                        >
+                          Fazer Upgrade
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-6">
+                    {isLoadingPlans ? (
+                      <div className="flex flex-col items-center justify-center py-20 gap-4">
+                        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                        <p className="text-sm font-bold text-on-surface-variant">Carregando planos...</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {availablePlans.map((p: any) => {
+                          const isPro = p.code === 'PRO';
+                          const isPremium = p.code === 'PREMIUM';
+                          
+                          return (
+                            <div 
+                              key={p.id} 
+                              className={`flex flex-col p-8 rounded-[2.5rem] relative transition-all duration-500 hover:translate-y-[-8px] ${
+                                isPremium 
+                                  ? 'bg-gradient-to-br from-surface-container-high to-surface-container-highest border-2 border-primary/20 shadow-xl' 
+                                  : 'bg-surface-container-lowest border border-outline-variant/10 shadow-sm'
+                              }`}
+                            >
+                              {isPro && (
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary text-on-primary text-[10px] font-black px-4 py-1.5 rounded-full shadow-lg uppercase tracking-wider whitespace-nowrap z-10">
+                                  Melhor Custo-Benefício
+                                </div>
+                              )}
+                              
+                              {isPremium && (
+                                <div className="absolute top-6 right-6 text-primary/40 opacity-20 pointer-events-none">
+                                  <Zap size={64} strokeWidth={1} />
+                                </div>
+                              )}
+
+                              <div className="mb-6">
+                                <h5 className={`font-black text-xl ${isPremium ? 'text-primary' : 'text-on-surface'}`}>{p.name}</h5>
+                                <p className="text-on-surface-variant text-[11px] mt-2 font-medium leading-relaxed">
+                                  {p.description}
+                                </p>
+                              </div>
+
+                              <div className="mb-8">
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-on-surface-variant text-sm font-bold">R$</span>
+                                  <span className={`text-4xl font-black ${isPremium ? 'text-primary' : 'text-on-surface'}`}>
+                                    {p.price_monthly ? p.price_monthly.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
+                                  </span>
+                                  <span className="text-on-surface-variant text-sm font-bold">/mês</span>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-4 mb-10 flex-1">
+                                {p.features.map((f: any) => (
+                                  <div key={f.feature_key} className="flex items-start gap-3">
+                                    <Check className={`${isPremium ? 'text-primary' : 'text-emerald-500'} flex-shrink-0 mt-0.5`} size={16} />
+                                    <span className="text-[12px] font-bold text-on-surface-variant leading-tight">
+                                      {f.catalog?.description || f.feature_key}
+                                    </span>
+                                  </div>
+                                ))}
+                                {p.limits.map((l: any) => (
+                                  <div key={l.limit_key} className="flex items-start gap-3">
+                                    <Plus className="text-primary/40 flex-shrink-0 mt-0.5" size={14} />
+                                    <span className="text-[12px] font-bold text-on-surface">
+                                      {l.quota_value === null ? 'Ilimitado' : l.quota_value}{l.catalog?.unit ? ` ${l.catalog.unit}` : ''}
+                                      <span className="text-on-surface-variant/60 font-medium ml-1">
+                                        {l.catalog?.description || l.limit_key}
+                                      </span>
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              <button 
+                                onClick={() => {
+                                  if (p.checkout_url) {
+                                    window.open(p.checkout_url, '_blank');
+                                  } else {
+                                    alert('Link de pagamento não configurado para este plano.');
+                                  }
+                                }}
+                                disabled={planCode === p.code || !p.checkout_url}
+                                className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all duration-300 ${
+                                  planCode === p.code
+                                    ? 'bg-outline-variant/10 text-on-surface-variant/40 cursor-default'
+                                    : isPremium
+                                      ? 'bg-primary text-on-primary shadow-lg shadow-primary/20 hover:scale-[1.02] hover:shadow-xl'
+                                      : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest hover:scale-[1.02]'
+                                }`}
+                              >
+                                {planCode === p.code ? 'Seu Plano Atual' : 'Assinar Agora'}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-8 border-t border-outline-variant/10 bg-surface-container-lowest flex justify-end">
+                <button 
+                  onClick={() => {
+                    setIsSubscriptionModalOpen(false);
+                    setIsUpgradeViewOpen(false);
+                  }}
+                  className="px-8 py-3 rounded-xl bg-surface-container-high text-on-surface font-bold hover:bg-surface-container-highest transition-all"
                 >
                   Fechar
                 </button>
