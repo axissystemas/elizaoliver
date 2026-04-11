@@ -10,6 +10,22 @@ export async function POST(request: Request) {
   );
 
   try {
+    // Check for required environment variables
+    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!accessToken || !supabaseUrl || !serviceRoleKey) {
+      console.error('Missing environment variables:', { 
+        hasAccessToken: !!accessToken, 
+        hasSupabaseUrl: !!supabaseUrl, 
+        hasServiceRoleKey: !!serviceRoleKey 
+      });
+      return NextResponse.json({ 
+        error: 'Configuração do servidor incompleta. Verifique se as variáveis de ambiente (MERCADO_PAGO_ACCESS_TOKEN, SUPABASE_SERVICE_ROLE_KEY) foram adicionadas no Vercel.' 
+      }, { status: 500 });
+    }
+
     const { planCode, organizationId, email } = await request.json();
 
     if (!planCode || !organizationId) {
