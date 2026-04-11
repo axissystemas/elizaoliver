@@ -2,13 +2,13 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { updateSubscriptionStatus } from '@/lib/mercadopago';
 
-// Initialize Supabase admin (needed to check ownership and update DB)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
-
 export async function POST(request: Request) {
+  // Initialize Supabase admin inside the handler to avoid build errors if env vars are missing
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  );
+
   try {
     const { organizationId, subscriptionId } = await request.json();
 

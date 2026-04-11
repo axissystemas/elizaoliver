@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getMercadoPagoClient } from '@/lib/mercadopago';
-
-// Initialize Supabase admin to check plan and get org info
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+import { getSubscription } from '@/lib/mercadopago';
 
 export async function POST(request: Request) {
+  // Initialize Supabase admin inside the handler to avoid build errors if env vars are missing
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  );
+
   try {
     const { planCode, organizationId, email } = await request.json();
 
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     // 2. Create subscription (preapproval) in Mercado Pago
-    const mp = getMercadoPagoClient();
+    // We use fetch directly, no need for a complex client object here
     
     // We create a preapproval session
     // Docs: https://www.mercadopago.com.br/developers/pt/reference/subscriptions/_preapproval/post
