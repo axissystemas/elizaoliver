@@ -1326,9 +1326,11 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                                     } else {
                                       alert(data.error || 'Erro ao gerar link de pagamento.');
                                     }
-                                  } catch (error) {
+                                  } catch (error: any) {
                                     console.error('Checkout error:', error);
-                                    alert('Não foi possível iniciar o checkout. Verifique sua conexão.');
+                                    // Tenta pegar a mensagem de erro do objeto ou converte para string
+                                    const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+                                    alert(`Erro no Checkout: ${errorMsg}\n\nVerifique se o token do Mercado Pago e a Service Role Key do Supabase estão configurados no Vercel para este ambiente (Preview/Branch).`);
                                   } finally {
                                     setIsLoadingPlans(false);
                                   }
