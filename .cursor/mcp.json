@@ -10,7 +10,7 @@
         "Authorization:${MP_AUTH_HEADER}"
       ],
       "env": {
-        "MP_AUTH_HEADER": "Bearer TEST-5028254739375344-041109-2b0709e48d177eb72a04f30b4cff7006-1138565894"
+        "MP_AUTH_HEADER": "APP_USR-5028254739375344-041109-fb2d002f76ba6e54a7a4db1d6717d123-1138565894"
       }
     }
   }
