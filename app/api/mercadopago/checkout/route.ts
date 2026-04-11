@@ -72,14 +72,20 @@ export async function POST(request: Request) {
     const result = await response.json();
 
     if (!response.ok) {
-      const errorDetail = result.message || JSON.stringify(result);
-      console.error('Erro Mercado Pago:', result);
-      return NextResponse.json({
-        error: `Erro no Mercado Pago: ${errorDetail}. Verifique se o e-mail do usuário não é o mesmo da conta do Mercado Pago.`
-      }, { status: 500 });
+      console.warn('API de Preapproval falhou, usando link direto como fallback:', result);
+      
+      // Fallback: Se a API falhar, geramos o link de checkout direto que o Mercado Pago aceita para planos
+      // Isso garante que o botão nunca quebre para o usuário.
+      const directUrl = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${plan.mercado_pago_plan_id}`;
+      
+      return NextResponse.json({ 
+        checkoutUrl: directUrl,
+        isFallback: true,
+        apiError: result.message || 'API Fallback'
+      });
     }
 
-    // Retorna o init_point (URL de checkout)
+    // Retorna o init_point oficial se a API funcionou
     return NextResponse.json({ checkoutUrl: result.init_point });
   } catch (error: any) {
     console.error('Checkout API Error:', error);
