@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { updateSubscriptionStatus } from '@/lib/mercadopago';
 
 export async function POST(request: Request) {
-  // Initialize Supabase admin inside the handler to avoid build errors if env vars are missing
+  // Inicializa o admin do Supabase dentro do handler para evitar erros de build se as env vars estiverem ausentes
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.SUPABASE_SERVICE_ROLE_KEY || ''
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Faltando organizationId ou subscriptionId' }, { status: 400 });
     }
 
-    // 1. Double check ownership in DB (Security)
+    // 1. Verifica a propriedade no banco de dados (Segurança)
     const { data: sub, error: subError } = await supabaseAdmin
       .from('organization_subscriptions')
       .select('id, organization_id, mercado_pago_subscription_id')
@@ -28,15 +28,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Assinatura não vinculada a esta organização.' }, { status: 403 });
     }
 
-    // 2. Call Mercado Pago API to cancel
+    // 2. Chama a API do Mercado Pago para cancelar
     const success = await updateSubscriptionStatus(subscriptionId, 'cancelled');
 
     if (!success) {
       return NextResponse.json({ error: 'Erro ao cancelar assinatura no Mercado Pago.' }, { status: 500 });
     }
 
-    // 3. Update local database status immediately
-    // Although the webhook will also do this, we do it here for instant feedback
+    // 3. Atualiza o status no banco de dados local imediatamente
+    // Embora o webhook também faça isso, fazemos aqui para feedback instantâneo
     const { error: updateError } = await supabaseAdmin
       .from('organization_subscriptions')
       .update({ status: 'cancelled', updated_at: new Date().toISOString() })

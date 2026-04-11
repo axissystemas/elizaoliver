@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       console.warn('Assinatura de webhook inválida!', { xSignature, xRequestId, dataId });
       // Recomendado retornar 200 para evitar que o MP continue tentando se for um ataque
       // mas se você preferir 401 para rastrear no seu monitoramento, pode usar.
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 200 });
+      return NextResponse.json({ error: 'Assinatura inválida' }, { status: 200 });
     }
 
     // 2. Buscar detalhes completos da assinatura na API do Mercado Pago
