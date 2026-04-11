@@ -50,8 +50,9 @@ export async function POST(request: Request) {
     }
 
     // 2. Cria a assinatura (preapproval) no Mercado Pago
-    // Se o e-mail estiver faltando, usamos um placeholder para que a API funcione e o usuário possa digitar o e-mail real na tela do MP.
-    const payerEmail = email || `user_${organizationId}@axisgc.com.br`;
+    // Se o e-mail estiver faltando, usamos o seu usuário de teste do Mercado Pago para garantir que a API aceite a requisição.
+    const merchantTestEmail = 'TESTUSER29782873'; // Email do seu print
+    const payerEmail = email || `${merchantTestEmail}@testuser.com`;
 
     const response = await fetch('https://api.mercadopago.com/preapproval', {
       method: 'POST',
