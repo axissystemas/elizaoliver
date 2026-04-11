@@ -1322,7 +1322,7 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                                     const data = await response.json();
                                     
                                     if (data.checkoutUrl) {
-                                      window.location.href = data.checkoutUrl;
+                                      window.open(data.checkoutUrl, '_blank');
                                     } else {
                                       alert(data.error || 'Erro ao gerar link de pagamento.');
                                     }
