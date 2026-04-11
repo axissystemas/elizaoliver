@@ -1088,10 +1088,53 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                         </div>
                         <div className="text-right">
                           <p className="text-xs font-bold text-outline uppercase tracking-widest">Renovação</p>
-                          <p className="text-lg font-bold text-on-surface mt-1">Mensal</p>
+                          <p className="text-lg font-bold text-on-surface mt-1">
+                            {user.subscription?.nextPaymentDate 
+                              ? new Date(user.subscription.nextPaymentDate).toLocaleDateString('pt-BR') 
+                              : 'Mensal'}
+                          </p>
                         </div>
                       </div>
                       <Zap className="absolute -right-4 -bottom-4 text-primary/5 w-32 h-32 rotate-12" />
+                      
+                      {user.subscription?.status === 'active' && user.subscription?.externalId && (
+                        <div className="mt-8 flex justify-end">
+                          <button 
+                            onClick={async () => {
+                              if (!confirm('Tem certeza que deseja cancelar sua assinatura? Você perderá o acesso aos recursos premium no final do ciclo atual.')) return;
+                              
+                              try {
+                                setIsLoadingPlans(true);
+                                const response = await fetch('/api/mercadopago/cancel', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    organizationId: user.organizationId,
+                                    subscriptionId: user.subscription.externalId
+                                  })
+                                });
+                                
+                                const data = await response.json();
+                                if (data.success) {
+                                  alert('Assinatura cancelada com sucesso.');
+                                  window.location.reload();
+                                } else {
+                                  alert(data.error || 'Erro ao cancelar assinatura.');
+                                }
+                              } catch (error) {
+                                console.error('Cancel error:', error);
+                                alert('Não foi possível cancelar a assinatura no momento.');
+                              } finally {
+                                setIsLoadingPlans(false);
+                              }
+                            }}
+                            disabled={isLoadingPlans}
+                            className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40 hover:text-red-500 transition-colors flex items-center gap-2"
+                          >
+                            {isLoadingPlans ? 'Processando...' : 'Cancelar Assinatura'}
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Quotas */}
@@ -1261,22 +1304,45 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                               </div>
                               
                               <button 
-                                onClick={() => {
-                                  if (p.checkout_url) {
-                                    window.open(p.checkout_url, '_blank');
-                                  } else {
-                                    alert('Link de pagamento não configurado para este plano.');
+                                onClick={async () => {
+                                  if (planCode === p.code) return;
+                                  
+                                  try {
+                                    setIsLoadingPlans(true);
+                                    const response = await fetch('/api/mercadopago/checkout', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        planCode: p.code,
+                                        organizationId: user.organizationId,
+                                        email: user.email
+                                      })
+                                    });
+                                    
+                                    const data = await response.json();
+                                    
+                                    if (data.checkoutUrl) {
+                                      window.location.href = data.checkoutUrl;
+                                    } else {
+                                      alert(data.error || 'Erro ao gerar link de pagamento.');
+                                    }
+                                  } catch (error) {
+                                    console.error('Checkout error:', error);
+                                    alert('Não foi possível iniciar o checkout. Verifique sua conexão.');
+                                  } finally {
+                                    setIsLoadingPlans(false);
                                   }
                                 }}
-                                disabled={planCode === p.code || !p.checkout_url}
+                                disabled={planCode === p.code || isLoadingPlans}
                                 className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all duration-300 ${
                                   planCode === p.code
                                     ? 'bg-outline-variant/10 text-on-surface-variant/40 cursor-default'
                                     : isPremium
                                       ? 'bg-primary text-on-primary shadow-lg shadow-primary/20 hover:scale-[1.02] hover:shadow-xl'
                                       : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest hover:scale-[1.02]'
-                                }`}
+                                } flex items-center justify-center gap-2`}
                               >
+                                {isLoadingPlans && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                                 {planCode === p.code ? 'Seu Plano Atual' : 'Assinar Agora'}
                               </button>
                             </div>

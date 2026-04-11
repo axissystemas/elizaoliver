@@ -43,6 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             slug,
             subscriptions:organization_subscriptions (
               status,
+              next_payment_date,
+              mercado_pago_subscription_id,
               plan:saas_plans (
                 code,
                 name,
@@ -91,6 +93,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             planCode: activeSub.plan?.code,
             planName: activeSub.plan?.name,
             status: activeSub.status,
+            nextPaymentDate: activeSub.next_payment_date,
+            externalId: activeSub.mercado_pago_subscription_id,
             entitlements: activeSub.plan?.features?.map((f: any) => f.key) || []
           } : undefined
         };

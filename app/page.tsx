@@ -199,7 +199,22 @@ export default function Home() {
     } else if (connectionStatus === 'online' && notifications[0]?.title === 'Conexão Perdida') {
       addNotification('Conexão Restabelecida', 'O sistema está online novamente.', 'success');
     }
-  }, [activeView, connectionStatus]);
+
+    // Check for subscription success
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('subscription') === 'success') {
+        addNotification(
+          'Assinatura Confirmada!', 
+          'Seu plano foi atualizado com sucesso. Os novos recursos já estão disponíveis.', 
+          'success'
+        );
+        // Limpa a URL para não repetir a notificação no refresh
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, [activeView, connectionStatus, addNotification]);
 
   useEffect(() => {
     localStorage.setItem('axis_notifications_history', JSON.stringify(notifications));
