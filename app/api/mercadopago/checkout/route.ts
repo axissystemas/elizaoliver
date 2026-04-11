@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getSubscription } from '@/lib/mercadopago';
 
+/**
+ * Rota para criação de sessões de checkout do Mercado Pago (Assinaturas)
+ */
 export async function POST(request: Request) {
   // Inicializa o admin do Supabase dentro do handler para evitar erros de build se as env vars estiverem ausentes
   const supabaseAdmin = createClient(
@@ -16,7 +19,7 @@ export async function POST(request: Request) {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!accessToken || !supabaseUrl || !serviceRoleKey) {
-      console.error('Missing environment variables:', {
+      console.error('Variáveis de ambiente ausentes:', {
         hasAccessToken: !!accessToken,
         hasSupabaseUrl: !!supabaseUrl,
         hasServiceRoleKey: !!serviceRoleKey
@@ -50,9 +53,9 @@ export async function POST(request: Request) {
     }
 
     // 2. Cria a assinatura (preapproval) no Mercado Pago
-    // Se o e-mail estiver faltando, usamos o seu usuário de teste do Mercado Pago para garantir que a API aceite a requisição.
-    const merchantTestEmail = 'TESTUSER29782873'; // Email do seu print
-    const payerEmail = email || `${merchantTestEmail}@testuser.com`;
+    // Se o e-mail estiver faltando, usamos um placeholder baseado no ID da organização.
+    // O Mercado Pago permitirá que o cliente preencha o e-mail real se desejar.
+    const payerEmail = email || `cliente_${organizationId.substring(0, 8)}@axisgc.com.br`;
 
     const response = await fetch('https://api.mercadopago.com/preapproval', {
       method: 'POST',
@@ -74,8 +77,8 @@ export async function POST(request: Request) {
     if (!response.ok) {
       console.warn('API de Preapproval falhou, usando link direto como fallback:', result);
       
-      // Fallback: Se a API falhar, geramos o link de checkout direto que o Mercado Pago aceita para planos
-      // Isso garante que o botão nunca quebre para o usuário.
+      // Fallback: Se a API falhar, geramos o link de checkout direto que o Mercado Pago aceita para planos.
+      // Isso garante que o botão nunca quebre para o usuário em produção.
       const directUrl = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${plan.mercado_pago_plan_id}`;
       
       return NextResponse.json({ 
@@ -88,7 +91,7 @@ export async function POST(request: Request) {
     // Retorna o init_point oficial se a API funcionou
     return NextResponse.json({ checkoutUrl: result.init_point });
   } catch (error: any) {
-    console.error('Checkout API Error:', error);
+    console.error('Erro na API de Checkout:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
