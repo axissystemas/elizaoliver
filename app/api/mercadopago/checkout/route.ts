@@ -73,8 +73,11 @@ export async function POST(request: Request) {
     const result = await response.json();
 
     if (!response.ok) {
+      const errorDetail = result.message || JSON.stringify(result);
       console.error('Erro Mercado Pago:', result);
-      return NextResponse.json({ error: 'Erro ao criar assinatura no Mercado Pago', details: result }, { status: 500 });
+      return NextResponse.json({ 
+        error: `Erro no Mercado Pago: ${errorDetail}. Verifique se o e-mail do usuário não é o mesmo da conta do Mercado Pago.` 
+      }, { status: 500 });
     }
 
     // Return the init_point (checkout URL)
