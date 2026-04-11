@@ -65,8 +65,7 @@ export async function POST(request: Request) {
         reason: `Assinatura Axis GC - ${plan.name}`,
         external_reference: organizationId,
         payer_email: email,
-        back_url: `${(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')}/settings?subscription=success`,
-        status: 'pending',
+        back_url: `${(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')}/settings?subscription=success`
       }),
     });
 
