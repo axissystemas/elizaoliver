@@ -326,6 +326,7 @@ export default function Home() {
         setEvaluations((evaluationsData as any[]).map(e => ({
           ...(e.data as any),
           id: e.id,
+          code: e.code,
           patientId: e.patient_id,
           date: e.date
         })));
