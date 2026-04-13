@@ -198,7 +198,7 @@ export default function ConsultationModal({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full h-full md:h-auto md:max-w-lg rounded-none md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+              className="relative bg-white w-full h-full md:h-auto md:max-h-[90vh] md:max-w-xl rounded-none md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
             >
               <div className="p-8 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-low">
                 <div>
@@ -492,39 +492,40 @@ export default function ConsultationModal({
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="pt-4 flex gap-4">
+              {/* Action Buttons Footer */}
+              <div className="p-6 md:p-8 border-t border-outline-variant/10 bg-surface-container-low/30 flex gap-4">
+                <button 
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-4 rounded-2xl border border-outline-variant/20 font-bold text-outline hover:bg-surface-container-low transition-all"
+                >
+                  Cancelar
+                </button>
+                
+                {status === 'idle' ? (
                   <button 
-                    type="button"
-                    onClick={onClose}
-                    className="flex-1 py-4 rounded-2xl border border-outline-variant/20 font-bold text-outline hover:bg-surface-container-low transition-all"
+                    onClick={handleStart}
+                    className="flex-1 py-4 rounded-2xl bg-primary text-white font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
                   >
-                    Cancelar
+                    <Play size={20} /> Iniciar Consulta
                   </button>
-                  
-                  {status === 'idle' ? (
-                    <button 
-                      onClick={handleStart}
-                      className="flex-1 py-4 rounded-2xl bg-primary text-white font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Play size={20} /> Iniciar Consulta
-                    </button>
-                  ) : status === 'running' ? (
-                    <button 
-                      onClick={handleFinish}
-                      className="flex-1 py-4 rounded-2xl bg-amber-500 text-white font-bold shadow-xl shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Square size={20} /> Finalizar Consulta
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={() => handleSave()}
-                      className="flex-1 py-4 rounded-2xl bg-emerald-600 text-white font-bold shadow-xl shadow-emerald-600/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Check size={20} /> Salvar e Concluir (OK)
-                    </button>
-                  )}
-                </div>
+                ) : status === 'running' ? (
+                  <button 
+                    onClick={handleFinish}
+                    className="flex-1 py-4 rounded-2xl bg-amber-500 text-white font-bold shadow-xl shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Square size={20} /> Finalizar Consulta
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => handleSave()}
+                    className="flex-1 py-4 rounded-2xl bg-emerald-600 text-white font-bold shadow-xl shadow-emerald-600/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Check size={20} /> Salvar e Concluir (OK)
+                  </button>
+                )}
               </div>
             </motion.div>
           </>

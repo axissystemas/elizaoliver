@@ -270,6 +270,7 @@ export default function EvaluationsView({
           ['Cirurgias', evaluation.surgeries],
           ['Medicamentos', evaluation.medications],
           ['Alergias', evaluation.allergies],
+          ['Fatores Agravantes / Aliviantes', evaluation.aggravatingRelieving],
           ['Histórico Familiar', evaluation.familyHistory],
         ],
         theme: 'striped',
@@ -292,7 +293,9 @@ export default function EvaluationsView({
           ['Frequência', evaluation.physical.painFrequency],
           ['Pico de Dor', evaluation.physical.painPeakTime],
           ['Migração', evaluation.physical.painMigration ? 'Sim' : 'Não'],
+          ['Agravantes/Aliviantes', evaluation.physical.painAggravatingRelieving],
           ['Mov. Involuntários', evaluation.physical.involuntaryMovements],
+          ['Pele e Observações', evaluation.physical.skin.join(', ')],
         ],
         theme: 'striped',
       });
@@ -307,8 +310,8 @@ export default function EvaluationsView({
         startY: currentY + 5,
         body: [
           ['Sono', `${evaluation.sleep.hours}h | Dificuldade: ${evaluation.sleep.difficulty ? 'Sim' : 'Não'} | Repousante: ${evaluation.sleep.restorative ? 'Sim' : 'Não'}`],
-          ['Apetite', `Nível: ${evaluation.appetite.level} | Preferência: ${evaluation.appetite.preference} | Sabor: ${evaluation.appetite.taste}`],
-          ['Sede', `Frequência: ${evaluation.thirst.frequency ? 'Sim' : 'Não'} | Quantidade: ${evaluation.thirst.quantity}`],
+          ['Apetite', `Nível: ${evaluation.appetite.level} | Preferência: ${evaluation.appetite.preference || 'N/A'} | Sabor: ${evaluation.appetite.taste}`],
+          ['Sede', `Frequência: ${evaluation.thirst.frequency ? 'Sim' : 'Não'} | Preferência: ${evaluation.thirst.preference || 'N/A'} | Quantidade: ${evaluation.thirst.quantity}`],
           ['Evacuação', `Frequência: ${evaluation.evacuation.frequency} | Bristol: ${evaluation.evacuation.bristol}`],
           ['Urina', `Cor: ${evaluation.urine.color} | Frequência: ${evaluation.urine.frequency}`],
         ],
@@ -1104,6 +1107,21 @@ export default function EvaluationsView({
                                 className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
                                 placeholder="Metálico, amargo, doce..."
                               />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Preferência por Comidas</label>
+                              <select 
+                                disabled={isViewMode}
+                                value={formData.appetite?.preference}
+                                onChange={e => setFormData({...formData, appetite: {...formData.appetite!, preference: e.target.value}})}
+                                className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
+                              >
+                                <option value="">Indiferente / Selecione...</option>
+                                <option value="Quentes">Quentes</option>
+                                <option value="Frias">Frias</option>
+                              </select>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4">
