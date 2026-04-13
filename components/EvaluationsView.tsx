@@ -34,6 +34,7 @@ interface Evaluation {
   id: string;
   patientId: string;
   patientName: string;
+  code?: string;
   date: string;
   evaluator: string;
   // Section 1: Identification & Clinical History
@@ -250,7 +251,7 @@ export default function EvaluationsView({
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.text(`Paciente: ${evaluation.patientName}`, pageWidth / 2, 28, { align: 'center' });
-      doc.text(`Data: ${new Date(evaluation.date).toLocaleDateString('pt-BR')} | Avaliador: ${evaluation.evaluator}`, pageWidth / 2, 33, { align: 'center' });
+      doc.text(`Código: ${evaluation.code || 'N/A'} | Data: ${new Date(evaluation.date).toLocaleDateString('pt-BR')} | Avaliador: ${evaluation.evaluator}`, pageWidth / 2, 33, { align: 'center' });
       
       // 1. Histórico e Identificação
       doc.setFontSize(16);
@@ -498,9 +499,12 @@ export default function EvaluationsView({
                   </div>
                   <div>
                     <p className="font-bold text-on-surface">{evaluation.patientName}</p>
-                    <p className="text-[10px] text-outline uppercase tracking-widest font-bold">
-                      {new Date(evaluation.date).toLocaleDateString('pt-BR')}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-black">{evaluation.code || '#EV-0000'}</span>
+                      <p className="text-[10px] text-outline uppercase tracking-widest font-bold">
+                        {new Date(evaluation.date).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

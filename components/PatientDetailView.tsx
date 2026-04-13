@@ -150,6 +150,7 @@ export default function PatientDetailView({
         startY: currentY + 5,
         head: [['Categoria', 'Detalhes']],
         body: [
+          ['Anamnese (Cód)', latestEvaluation?.code || 'N/A'],
           ['Queixa Principal', latestEvaluation?.mainComplaint || 'N/A'],
           ['Sono', latestEvaluation?.sleep ? `${latestEvaluation.sleep.hours}h, ${latestEvaluation.sleep.restorative ? 'Repousante' : 'Não repousante'}` : 'N/A'],
           ['Apetite/Digestão', latestEvaluation?.appetite ? `Apetite ${latestEvaluation.appetite.level}${latestEvaluation.appetite.fullness ? ', Plenitude' : ''}` : 'N/A'],
@@ -301,6 +302,10 @@ export default function PatientDetailView({
                 <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-outline-variant/10">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-outline mb-6">Queixa Principal</h3>
                   <div className="bg-surface-container-low p-6 rounded-2xl border-l-4 border-primary">
+                    <div className="flex justify-between items-center mb-2">
+                       <label className="text-xs font-bold uppercase tracking-widest text-outline">Descrição</label>
+                       <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-black">{latestEvaluation?.code || '#EV-0000'}</span>
+                    </div>
                     <p className="text-on-surface font-medium leading-relaxed">{latestEvaluation?.mainComplaint || "Nenhuma avaliação."}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-6 mt-6">

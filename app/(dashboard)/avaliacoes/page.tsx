@@ -36,6 +36,7 @@ function EvaluationsContent() {
         setEvaluations(evalsData.map(ev => ({
           ...ev.data,
           id: ev.id,
+          code: ev.code,
           patientId: ev.patient_id,
           date: ev.date
         })));
