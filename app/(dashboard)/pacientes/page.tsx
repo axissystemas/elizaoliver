@@ -53,6 +53,7 @@ export default function PatientsPage() {
           maritalStatus: p.marital_status || 'Solteiro(a)',
           avatar: p.avatar_url || '',
           lastVisit: p.last_visit || 'N/A',
+          birthDate: p.birth_date || '',
           hasActivePackage: Array.isArray(p.patient_packages) && (p as any).patient_packages.some((pkg: any) => pkg.status === 'active'),
           // Map insurance data back to the format the modal expects
           insurancePlanId: (p as any).insurance?.plan_id || '',
@@ -87,6 +88,7 @@ export default function PatientsPage() {
         marital_status: data.maritalStatus,
         profession: data.profession,
         status: data.status,
+        birth_date: data.birthDate || null,
         avatar_url: null // Mantendo a decisão técnica de remover avatares para performance
       };
 

@@ -21,7 +21,7 @@ interface Patient {
   lastVisit: string;
   avatar: string;
   cpf?: string;
-  // Insurance data
+  birthDate?: string;
   // Insurance data
   insurerId?: string;
   insurancePlanName?: string;
@@ -57,7 +57,7 @@ export default function PatientModal({ isOpen, onClose, onSave, editingPatient }
     status: 'Ativo' as 'Ativo' | 'Inativo',
     avatar: '',
     cpf: '',
-    // Insurance
+    birthDate: '',
     // Insurance
     insurerId: '',
     insurancePlanName: '',
@@ -92,6 +92,7 @@ export default function PatientModal({ isOpen, onClose, onSave, editingPatient }
         status: editingPatient?.status || 'Ativo' as 'Ativo' | 'Inativo',
         avatar: editingPatient?.avatar || '',
         cpf: editingPatient?.cpf || '',
+        birthDate: (editingPatient as any)?.birth_date || editingPatient?.birth_date || '',
         insurerId: editingPatient?.insurerId || '',
         insurancePlanName: editingPatient?.insurancePlanName || '',
         insuranceSubplan: editingPatient?.insuranceSubplan || '',
@@ -126,6 +127,19 @@ export default function PatientModal({ isOpen, onClose, onSave, editingPatient }
     } finally {
       setIsSavingInsurer(false);
     }
+  };
+
+  const calculateAge = (birthDate: string) => {
+    if (!birthDate) return '';
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age.toString();
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,6 +194,7 @@ export default function PatientModal({ isOpen, onClose, onSave, editingPatient }
         cpf: formData.cpf.replace(/\D/g, ''), // Salva limpo no banco
         insurancePlanId: finalPlanId,
         age: age,
+        birth_date: formData.birthDate || null,
       });
     } catch (error: any) {
       console.error('PatientModal: Error saving patient:', error);
@@ -258,16 +273,29 @@ export default function PatientModal({ isOpen, onClose, onSave, editingPatient }
                     placeholder="000.000.000-00"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-outline uppercase tracking-widest">Data de Nascimento</label>
+                    <input 
+                      required
+                      type="date" 
+                      value={formData.birthDate}
+                      onChange={e => {
+                        const newDate = e.target.value;
+                        const newAge = calculateAge(newDate);
+                        setFormData({...formData, birthDate: newDate, age: newAge});
+                      }}
+                      className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium"
+                    />
+                  </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-outline uppercase tracking-widest">Idade</label>
                     <input 
-                      required
+                      readOnly
                       type="number" 
                       value={formData.age}
-                      onChange={e => setFormData({...formData, age: e.target.value})}
-                      className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium"
-                      placeholder="30"
+                      className="w-full px-5 py-4 bg-surface-container-high rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium cursor-not-allowed opacity-80"
+                      placeholder="--"
                     />
                   </div>
                   <div className="space-y-2">
