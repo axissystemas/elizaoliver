@@ -24,7 +24,10 @@ import {
   FileText,
   X,
   AlertCircle,
-  Check
+  Check,
+  Phone,
+  Mail,
+  CreditCard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import jsPDF from 'jspdf';
@@ -125,7 +128,12 @@ export default function PatientDetailView({
         body: [
           ['Nome', patient.name],
           ['ID', `#TCM-${patient.id.slice(-4)}`],
+          ['CPF', patient.cpf ? patient.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : 'N/A'],
+          ['Data de Nascimento', patient.birth_date ? new Date(patient.birth_date).toLocaleDateString('pt-BR') : 'N/A'],
           ['Idade', `${patient.age} Anos`],
+          ['Gênero', patient.gender || 'N/A'],
+          ['Telefone', patient.phone || 'N/A'],
+          ['E-mail', patient.email || 'N/A'],
           ['Profissão', patient.profession],
           ['Status', patient.status === 'Ativo' ? 'Tratamento Ativo' : 'Inativo'],
           ['Última Visita', patient.lastVisit || 'N/A'],
@@ -152,6 +160,49 @@ export default function PatientDetailView({
         theme: 'striped',
         headStyles: { fillColor: [15, 82, 56] },
       });
+      
+      // Histórico de Consultas
+      currentY = (doc as any).lastAutoTable.finalY + 15;
+      doc.setFontSize(16);
+      doc.text('Histórico de Consultas', 14, currentY);
+      
+      autoTable(doc, {
+        startY: currentY + 5,
+        head: [['Data', 'Horário', 'Duração', 'Notas']],
+        body: consultations.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()).map(c => {
+          const date = new Date(c.startTime);
+          const end = c.endTime ? new Date(c.endTime) : null;
+          const duration = end ? Math.round((end.getTime() - date.getTime()) / 60000) : 0;
+          return [
+            date.toLocaleDateString('pt-BR'),
+            date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            `${duration} min`,
+            c.notes || '-'
+          ];
+        }),
+        theme: 'striped',
+        headStyles: { fillColor: [15, 82, 56] },
+      });
+      
+      // Pacotes de Sessões
+      if (patientPackages.length > 0) {
+        currentY = (doc as any).lastAutoTable.finalY + 15;
+        doc.setFontSize(16);
+        doc.text('Pacotes de Sessões', 14, currentY);
+        
+        autoTable(doc, {
+          startY: currentY + 5,
+          head: [['Data Venda', 'Sessões', 'Valor', 'Status']],
+          body: patientPackages.map(pkg => [
+            new Date(pkg.created_at).toLocaleDateString('pt-BR'),
+            `${pkg.used_sessions} / ${pkg.total_sessions}`,
+            `R$ ${pkg.price.toLocaleString('pt-BR')}`,
+            pkg.status === 'active' ? 'Ativo' : 'Concluído'
+          ]),
+          theme: 'striped',
+          headStyles: { fillColor: [15, 82, 56] },
+        });
+      }
 
       doc.save(`relatorio_${patient.name.toLowerCase().replace(/\s+/g, '_')}.pdf`);
     } catch (error) {
@@ -180,6 +231,30 @@ export default function PatientDetailView({
               </span>
             </div>
             <p className="text-on-surface-variant text-base mt-1 font-medium">ID: #TCM-{patient.id.slice(-4)} • {patient.age} Anos • {patient.profession}</p>
+            
+            <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4">
+              {patient.cpf && (
+                <span className="flex items-center gap-2 text-xs font-bold text-outline">
+                  <CreditCard size={14} /> {patient.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")}
+                </span>
+              )}
+              {patient.birth_date && (
+                <span className="flex items-center gap-2 text-xs font-bold text-outline">
+                  <Calendar size={14} /> Nasc: {new Date(patient.birth_date).toLocaleDateString('pt-BR')}
+                </span>
+              )}
+              {patient.phone && (
+                <a href={`tel:${patient.phone}`} className="flex items-center gap-2 text-xs font-bold text-primary hover:underline">
+                  <Phone size={14} /> {patient.phone}
+                </a>
+              )}
+              {patient.email && (
+                <a href={`mailto:${patient.email}`} className="flex items-center gap-2 text-xs font-bold text-primary hover:underline">
+                  <Mail size={14} /> {patient.email}
+                </a>
+              )}
+            </div>
+
             <div className="flex gap-6 mt-4">
               <span className="flex items-center gap-2 text-xs font-bold text-primary"><HistoryIcon size={14} /> Última: {patient.lastVisit || 'N/A'}</span>
               <span className="flex items-center gap-2 text-xs font-bold text-secondary"><Stethoscope size={14} /> {totalVisits} Visitas</span>
