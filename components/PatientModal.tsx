@@ -273,21 +273,21 @@ export default function PatientModal({ isOpen, onClose, onSave, editingPatient }
                     placeholder="000.000.000-00"
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-outline uppercase tracking-widest">Data de Nascimento</label>
-                    <input 
-                      required
-                      type="date" 
-                      value={formData.birthDate}
-                      onChange={e => {
-                        const newDate = e.target.value;
-                        const newAge = calculateAge(newDate);
-                        setFormData({...formData, birthDate: newDate, age: newAge});
-                      }}
-                      className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Data de Nascimento</label>
+                  <input 
+                    required
+                    type="date" 
+                    value={formData.birthDate}
+                    onChange={e => {
+                      const newDate = e.target.value;
+                      const newAge = calculateAge(newDate);
+                      setFormData({...formData, birthDate: newDate, age: newAge});
+                    }}
+                    className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-outline uppercase tracking-widest">Idade</label>
                     <input 
