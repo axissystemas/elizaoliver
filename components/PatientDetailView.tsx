@@ -34,6 +34,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { User } from '@/types/auth';
 import ConfirmationModal from './ConfirmationModal';
+import { supabase } from '@/lib/supabase';
 
 interface PatientDetailViewProps {
   patient: any;
@@ -68,7 +69,29 @@ export default function PatientDetailView({
   onDeletePackage,
   user
 }: PatientDetailViewProps) {
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(patient?.notes || '');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  React.useEffect(() => {
+    if (patient) {
+      setNotes(patient.notes || '');
+    }
+  }, [patient]);
+
+  const handleSaveNotes = async () => {
+    if (!patient || !supabase) return;
+    setIsSavingNotes(true);
+    try {
+      const { error } = await supabase.from('patients').update({ notes }).eq('id', patient.id);
+      if (error) throw error;
+      alert('Notas de evolução salvas com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar notas de evolução:', error);
+      alert('Falha ao salvar as notas de evolução. Tente novamente.');
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isPackageModalOpen, setIsPackageModalOpen] = useState(false);
   const [isSavingPackage, setIsSavingPackage] = useState(false);
@@ -143,24 +166,45 @@ export default function PatientDetailView({
       });
 
       let currentY = (doc as any).lastAutoTable.finalY + 15;
-      doc.setFontSize(16);
-      doc.text('Anamnese e Histórico Clínico', 14, currentY);
-      
-      autoTable(doc, {
-        startY: currentY + 5,
-        head: [['Categoria', 'Detalhes']],
-        body: [
+      if (latestEvaluation) {
+        const isRad = (latestEvaluation as any).templateType === 'RADIESTESIA';
+        
+        doc.setFontSize(16);
+        doc.setTextColor(0);
+        doc.text(isRad ? 'Análise Radiestésica Recente' : 'Anamnese e Histórico Clínico', 14, currentY);
+        
+        let body: any[] = [
           ['Anamnese (Cód)', latestEvaluation?.code || 'N/A'],
           ['Queixa Principal', latestEvaluation?.mainComplaint || 'N/A'],
-          ['Sono', latestEvaluation?.sleep ? `${latestEvaluation.sleep.hours}h, ${latestEvaluation.sleep.restorative ? 'Repousante' : 'Não repousante'}` : 'N/A'],
-          ['Apetite/Digestão', latestEvaluation?.appetite ? `Apetite ${latestEvaluation.appetite.level}${latestEvaluation.appetite.fullness ? ', Plenitude' : ''}` : 'N/A'],
-          ['Língua', latestEvaluation?.tonguePulse ? `${latestEvaluation.tonguePulse.color}, ${latestEvaluation.tonguePulse.shape}, ${latestEvaluation.tonguePulse.coating}` : 'N/A'],
-          ['Pulso', latestEvaluation?.tonguePulse?.pulse || 'N/A'],
-          ['Hipótese Diagnóstica', latestEvaluation?.syndromeHypothesis || 'N/A']
-        ],
-        theme: 'striped',
-        headStyles: { fillColor: [15, 82, 56] },
-      });
+        ];
+
+        if (isRad) {
+          const rad = latestEvaluation as any;
+          body = [
+            ...body,
+            ['Energia de Saúde', `${rad.healthEnergy?.value}% (${rad.healthEnergy?.category})`],
+            ['Campos (Deseq.)', `M: ${rad.energeticFields?.mental?.imbalance}% | E: ${rad.energeticFields?.emotional?.imbalance}% | S: ${rad.energeticFields?.spiritual?.imbalance}% | F: ${rad.energeticFields?.physical?.imbalance}%`],
+            ['Observações', rad.finalObservations || 'N/A']
+          ];
+        } else {
+          body = [
+            ...body,
+            ['Sono', latestEvaluation?.sleep ? `${latestEvaluation.sleep.hours}h, ${latestEvaluation.sleep.restorative ? 'Repousante' : 'Não repousante'}` : 'N/A'],
+            ['Apetite/Digestão', latestEvaluation?.appetite ? `Apetite ${latestEvaluation.appetite.level}${latestEvaluation.appetite.fullness ? ', Plenitude' : ''}` : 'N/A'],
+            ['Língua', latestEvaluation?.tonguePulse ? `${latestEvaluation.tonguePulse.color}, ${latestEvaluation.tonguePulse.shape}, ${latestEvaluation.tonguePulse.coating}` : 'N/A'],
+            ['Pulso', latestEvaluation?.tonguePulse?.pulse || 'N/A'],
+            ['Hipótese Diagnóstica', latestEvaluation?.syndromeHypothesis || 'N/A']
+          ];
+        }
+
+        autoTable(doc, {
+          startY: currentY + 5,
+          head: [['Categoria', 'Detalhes']],
+          body: body,
+          theme: 'striped',
+          headStyles: { fillColor: isRad ? [79, 70, 229] : [15, 82, 56] },
+        });
+      }
       
       // Histórico de Consultas
       currentY = (doc as any).lastAutoTable.finalY + 15;
@@ -308,44 +352,97 @@ export default function PatientDetailView({
                     </div>
                     <p className="text-on-surface font-medium leading-relaxed">{latestEvaluation?.mainComplaint || "Nenhuma avaliação."}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-6 mt-6">
-                    <div className="bg-surface-container-low p-6 rounded-2xl">
-                      <label className="text-[10px] font-bold text-primary uppercase">Sono</label>
-                      <p className="text-sm font-medium">{latestEvaluation?.sleep ? `${latestEvaluation.sleep.hours}h, ${latestEvaluation.sleep.restorative ? 'Repousante' : 'Não'}` : 'N/A'}</p>
-                    </div>
-                    <div className="bg-surface-container-low p-6 rounded-2xl">
-                      <label className="text-[10px] font-bold text-primary uppercase">Digestão</label>
-                      <p className="text-sm font-medium">{latestEvaluation?.appetite ? `Apetite ${latestEvaluation.appetite.level}` : 'N/A'}</p>
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    {latestEvaluation?.templateType === 'RADIESTESIA' ? (
+                      <>
+                        <div className="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
+                          <label className="text-[10px] font-bold text-indigo-700 uppercase">Energia de Saúde (Bovis)</label>
+                          <div className="flex items-end gap-2 mt-1">
+                            <p className="text-2xl font-black text-indigo-900">{(latestEvaluation as any).healthEnergy?.value} <span className="text-sm font-medium text-indigo-600/60 mix-blend-multiply">UB (Å)</span></p>
+                            <span className="text-[10px] font-bold text-indigo-600 mb-1 uppercase">{(latestEvaluation as any).healthEnergy?.category}</span>
+                          </div>
+                        </div>
+                        <div className="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
+                          <label className="text-[10px] font-bold text-indigo-700 uppercase">Principal Desequilíbrio</label>
+                          <p className="text-sm font-bold text-indigo-900 mt-1">
+                            {(latestEvaluation as any).energeticFields ? 
+                              Object.entries((latestEvaluation as any).energeticFields)
+                                .sort(([,a]: any, [,b]: any) => b.imbalance - a.imbalance)[0][0].toUpperCase() 
+                              : 'N/A'}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="bg-surface-container-low p-6 rounded-2xl">
+                          <label className="text-[10px] font-bold text-primary uppercase">Sono</label>
+                          <p className="text-sm font-medium">{latestEvaluation?.sleep ? `${latestEvaluation.sleep.hours}h, ${latestEvaluation.sleep.restorative ? 'Repousante' : 'Não'}` : 'N/A'}</p>
+                        </div>
+                        <div className="bg-surface-container-low p-6 rounded-2xl">
+                          <label className="text-[10px] font-bold text-primary uppercase">Digestão</label>
+                          <p className="text-sm font-medium">{latestEvaluation?.appetite ? `Apetite ${latestEvaluation.appetite.level}` : 'N/A'}</p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-8">
-                  <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-outline-variant/10">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-outline mb-8">Língua</h3>
-                    <div className="flex gap-2 flex-wrap">
-                      {latestEvaluation?.tonguePulse ? [latestEvaluation.tonguePulse.color, latestEvaluation.tonguePulse.shape].map((t, i) => <span key={i} className="px-4 py-1.5 bg-secondary-container text-on-secondary-container rounded-xl text-xs font-bold">{t}</span>) : 'N/A'}
+                  {latestEvaluation?.templateType === 'RADIESTESIA' ? (
+                    <div className="col-span-2 bg-indigo-50/30 rounded-[2.5rem] p-10 shadow-sm border border-indigo-100/50">
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-indigo-700 mb-8">Campos Energéticos (% Desequilíbrio)</h3>
+                      <div className="flex gap-8 overflow-x-auto pb-2">
+                        {['mental', 'emotional', 'spiritual', 'physical'].map((field) => (
+                          <div key={field} className="flex flex-col items-center gap-2 min-w-[80px]">
+                            <div className="w-12 h-20 bg-indigo-100/50 rounded-full relative flex items-end overflow-hidden">
+                              <div 
+                                className="w-full bg-indigo-500 transition-all duration-1000" 
+                                style={{ height: `${(latestEvaluation as any).energeticFields?.[field]?.imbalance || 0}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-black uppercase text-indigo-900">{field.slice(0, 3)}</span>
+                            <span className="text-[10px] font-bold text-indigo-600">{(latestEvaluation as any).energeticFields?.[field]?.imbalance || 0}%</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-outline-variant/10">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-outline mb-8">Pulso</h3>
-                    <p className="text-sm font-extrabold text-primary">{latestEvaluation?.tonguePulse?.pulse || 'N/A'}</p>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-outline-variant/10">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-outline mb-8">Língua</h3>
+                        <div className="flex gap-2 flex-wrap">
+                          {latestEvaluation?.tonguePulse ? [latestEvaluation.tonguePulse.color, latestEvaluation.tonguePulse.shape].map((t, i) => <span key={i} className="px-4 py-1.5 bg-secondary-container text-on-secondary-container rounded-xl text-xs font-bold">{t}</span>) : 'N/A'}
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-outline-variant/10">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-outline mb-8">Pulso</h3>
+                        <p className="text-sm font-extrabold text-primary">{latestEvaluation?.tonguePulse?.pulse || 'N/A'}</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="col-span-12 lg:col-span-4">
                  <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-outline-variant/10">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-outline mb-8">Tratamento Inicial</h3>
-                  <p className="text-sm font-bold text-on-surface">{latestEvaluation?.initialTreatment || "N/A"}</p>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-outline mb-8">
+                    {latestEvaluation?.templateType === 'RADIESTESIA' ? 'Observações Finais' : 'Tratamento Inicial'}
+                  </h3>
+                  <p className="text-sm font-bold text-on-surface">
+                    {latestEvaluation?.templateType === 'RADIESTESIA' 
+                      ? (latestEvaluation as any).finalObservations 
+                      : latestEvaluation?.initialTreatment || "N/A"}
+                  </p>
                 </div>
               </div>
-            </div>
+         </div>
 
             <section className="bg-white rounded-[3rem] p-10 shadow-sm border border-outline-variant/10">
               <h3 className="text-2xl font-bold font-headline mb-8">Notas de Evolução</h3>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full min-h-[180px] bg-surface-container-low border-none rounded-[2rem] p-8 text-base text-on-surface focus:ring-2 focus:ring-primary/10" placeholder="Evolução do paciente..." />
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} disabled={isSavingNotes} className="w-full min-h-[180px] bg-surface-container-low border-none rounded-[2rem] p-8 text-base text-on-surface focus:ring-2 focus:ring-primary/10 disabled:opacity-50" placeholder="Evolução do paciente..." />
               <div className="flex justify-end mt-4">
-                <button className="p-3 bg-primary text-white rounded-2xl shadow-lg hover:scale-110 transition-all"><SaveIcon size={20} /></button>
+                <button onClick={handleSaveNotes} disabled={isSavingNotes} className="p-3 bg-primary text-white rounded-2xl shadow-lg hover:scale-110 transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center">
+                  {isSavingNotes ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <SaveIcon size={20} />}
+                </button>
               </div>
             </section>
           </motion.div>

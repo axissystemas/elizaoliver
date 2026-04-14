@@ -2,7 +2,8 @@
 ALTER TABLE organization_subscriptions 
 ADD COLUMN IF NOT EXISTS mercado_pago_subscription_id TEXT,
 ADD COLUMN IF NOT EXISTS mercado_pago_customer_id TEXT,
-ADD COLUMN IF NOT EXISTS next_payment_date TIMESTAMPTZ;
+ADD COLUMN IF NOT EXISTS next_payment_date TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Adiciona coluna para ID do plano do Mercado Pago na tabela de planos SaaS
 ALTER TABLE saas_plans 
@@ -35,14 +36,12 @@ BEGIN
   END IF;
 
   -- 2. Mapear status do Mercado Pago para o nosso sistema
-  -- Mercado Pago Pre-Approval Statuses: pending, authorized, paused, cancelled
-  -- Nosso sistema usa: active, paused, cancelled, pending
   v_mapped_status := CASE 
     WHEN p_status = 'authorized' THEN 'active'
     WHEN p_status = 'pending' THEN 'pending'
     WHEN p_status = 'paused' THEN 'paused'
     WHEN p_status = 'cancelled' THEN 'cancelled'
-    ELSE p_status -- Mantém o original para outros casos inesperados
+    ELSE p_status
   END;
 
   -- 3. Upsert na tabela organization_subscriptions
@@ -50,6 +49,7 @@ BEGIN
     organization_id,
     plan_id,
     status,
+    current_period_start,
     mercado_pago_subscription_id,
     mercado_pago_customer_id,
     next_payment_date,
@@ -59,6 +59,7 @@ BEGIN
     p_organization_id,
     v_plan_id,
     v_mapped_status,
+    NOW(),
     p_mercado_pago_subscription_id,
     p_mercado_pago_customer_id,
     p_next_payment_date,
@@ -66,7 +67,7 @@ BEGIN
   )
   ON CONFLICT (organization_id) 
   DO UPDATE SET
-    plan_id = COALESCE(v_plan_id, organization_subscriptions.plan_id), -- Mantém plano atual se não encontrar novo
+    plan_id = COALESCE(v_plan_id, organization_subscriptions.plan_id),
     status = EXCLUDED.status,
     mercado_pago_subscription_id = EXCLUDED.mercado_pago_subscription_id,
     mercado_pago_customer_id = EXCLUDED.mercado_pago_customer_id,
