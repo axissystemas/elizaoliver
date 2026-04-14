@@ -37,6 +37,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { User, UserRole, ROLE_LABELS, ALL_PERMISSIONS, ROLE_PERMISSIONS } from '@/types/auth';
 import ConfirmationModal from './ConfirmationModal';
+import AdminSaaSModal from './AdminSaaSModal';
 
 interface Profile {
   name: string;
@@ -116,6 +117,7 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
   const [isSpecialtiesModalOpen, setIsSpecialtiesModalOpen] = useState(false);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
   const [isUpgradeViewOpen, setIsUpgradeViewOpen] = useState(false);
+  const [isAdminSaaSModalOpen, setIsAdminSaaSModalOpen] = useState(false);
 
   const { plan, planCode, checkQuota, hasFeature } = useSubscription();
   const [quotas, setQuotas] = useState<Record<string, any>>({});
@@ -177,16 +179,17 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
           )
         `)
         .neq('code', 'LEGACY')
+        .neq('code', 'PREMIUM')
         .order('price_monthly', { ascending: true });
       
       if (data) setAvailablePlans(data);
       setIsLoadingPlans(false);
     }
     
-    if (isUpgradeViewOpen) {
+    if (isUpgradeViewOpen || isAdminSaaSModalOpen) {
       fetchPlans();
     }
-  }, [isUpgradeViewOpen]);
+  }, [isUpgradeViewOpen, isAdminSaaSModalOpen]);
 
   const canEditClinic = user?.permissions.includes('settings:clinic') || user?.role === 'ADMIN';
   const canDelete = user?.permissions.includes('settings:delete') || user?.role === 'ADMIN';
@@ -554,18 +557,31 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
   ];
 
   if (user?.role === 'ADMIN') {
+    const adminItems = [
+      { 
+        icon: Shield, 
+        label: 'Gravação de Logs', 
+        description: isAuditingLoading ? 'Carregando...' : (auditEnabled ? 'Ativada (Rastreando)' : 'Desativada (Pausada)'), 
+        color: auditEnabled ? 'text-emerald-500' : 'text-rose-500', 
+        bg: auditEnabled ? 'bg-emerald-50' : 'bg-rose-50',
+        onClick: handleToggleAudit
+      }
+    ];
+
+    if (user?.email === 'suporte@axissystemas.com.br') {
+      adminItems.push({
+        icon: Crown,
+        label: 'Liberação Manual de Planos SaaS',
+        description: 'Forçar ativação de planos para organizações.',
+        color: 'text-purple-500',
+        bg: 'bg-purple-50',
+        onClick: () => setIsAdminSaaSModalOpen(true)
+      });
+    }
+
     sections.push({
-      title: 'Auditoria de Sistema',
-      items: [
-        { 
-          icon: Shield, 
-          label: 'Gravação de Logs', 
-          description: isAuditingLoading ? 'Carregando...' : (auditEnabled ? 'Ativada (Rastreando)' : 'Desativada (Pausada)'), 
-          color: auditEnabled ? 'text-emerald-500' : 'text-rose-500', 
-          bg: auditEnabled ? 'bg-emerald-50' : 'bg-rose-50',
-          onClick: handleToggleAudit
-        }
-      ]
+      title: 'Auditoria e Administração',
+      items: adminItems
     });
   }
 
@@ -1716,6 +1732,14 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
         message={`Tem certeza que deseja excluir a especialidade "${specialtyToDelete?.name}"? Esta ação não pode ser desfeita.`}
         confirmText="Excluir"
         type="danger"
+      />
+
+      {/* Admin SaaS Modal */}
+      <AdminSaaSModal 
+        isOpen={isAdminSaaSModalOpen} 
+        onClose={() => setIsAdminSaaSModalOpen(false)} 
+        user={user} 
+        availablePlans={availablePlans} 
       />
     </div>
   );
