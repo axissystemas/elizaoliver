@@ -115,13 +115,8 @@ export default function Home() {
 
   // Notifications State
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true);
-  const [notifications, setNotifications] = useState<any[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('axis_notifications_history');
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
+  const [notifications, setNotifications] = useState<any[]>([]);
+
   const [activeToasts, setActiveToasts] = useState<any[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [financialTransactions, setFinancialTransactions] = useState<any[]>([]);
@@ -157,6 +152,7 @@ export default function Home() {
 
   useEffect(() => {
     const loadSpecialties = () => {
+      if (typeof window === 'undefined') return;
       const saved = localStorage.getItem('axis_specialties');
       if (saved) {
         setSpecialties(JSON.parse(saved));
@@ -171,6 +167,13 @@ export default function Home() {
         localStorage.setItem('axis_specialties', JSON.stringify(defaults));
       }
     };
+
+    // Load initial data from localStorage
+    const savedNotifications = localStorage.getItem('axis_notifications_history');
+    if (savedNotifications) {
+      setNotifications(JSON.parse(savedNotifications));
+    }
+
 
     loadSpecialties();
     
