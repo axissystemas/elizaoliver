@@ -11,6 +11,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   connectionStatus: 'online' | 'offline' | 'reconnecting';
   refreshConnection: () => Promise<void>;
 }
@@ -298,6 +299,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
+    if (error) throw error;
+  };
+
   const signOut = async () => {
     // 1. Limpa o estado local INSTANTANEAMENTE para destravar a UI
     console.log('[Auth] Iniciando Faxina Completa e Logoff Instantâneo...');
@@ -343,7 +352,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signOut, connectionStatus, refreshConnection }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, signOut, resetPassword, connectionStatus, refreshConnection }}>
       {children}
     </AuthContext.Provider>
   );
