@@ -89,14 +89,14 @@ CREATE TABLE public.organization_limit_overrides (
 -- 4. TABELAS DE NEGÓCIO
 CREATE TABLE public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
-    organization_id UUID REFERENCES public.organizations(id),
-    name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('ADMIN', 'PROFESSIONAL', 'SECRETARY')),
+    name TEXT,
+    email TEXT,
+    role TEXT,
     avatar_url TEXT,
     permissions TEXT[] DEFAULT '{}'::text[],
     created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL
 );
 
 CREATE TABLE public.patients (
