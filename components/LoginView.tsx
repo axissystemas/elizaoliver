@@ -126,7 +126,10 @@ export default function LoginView({ onLogin }: LoginViewProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-outline uppercase tracking-widest ml-1">Senha de Acesso</label>
+            <div className="flex items-center justify-between ml-1 mr-1">
+              <label className="text-xs font-bold text-outline uppercase tracking-widest">Senha de Acesso</label>
+              <ForgotPasswordButton />
+            </div>
             <div className="relative group">
               <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors" size={20} />
               <input 
@@ -171,5 +174,168 @@ export default function LoginView({ onLogin }: LoginViewProps) {
         </form>
       </motion.div>
     </div>
+  );
+}
+
+// ─── Forgot Password ────────────────────────────────────────────────────────
+
+function ForgotPasswordButton() {
+  const { resetPassword } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleOpen = () => {
+    setOpen(true);
+    setStatus('idle');
+    setResetEmail('');
+    setErrorMsg('');
+  };
+
+  const handleClose = () => {
+    if (status === 'loading') return;
+    setOpen(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) return;
+    setStatus('loading');
+    setErrorMsg('');
+    try {
+      await resetPassword(resetEmail.trim());
+      setStatus('success');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Ocorreu um erro. Tente novamente.');
+      setStatus('error');
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        id="btn-forgot-password"
+        onClick={handleOpen}
+        className="text-xs font-semibold text-primary hover:underline underline-offset-2 transition-all"
+      >
+        Esqueci a senha
+      </button>
+
+      {/* Backdrop */}
+      {open && (
+        <motion.div
+          key="backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={handleClose}
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)' }}
+        >
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 16 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm bg-white rounded-[2rem] shadow-2xl p-8 relative"
+          >
+            {/* Icon header */}
+            <div className="flex flex-col items-center mb-6">
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+                style={{ background: 'linear-gradient(135deg, #1a237e 0%, #283593 100%)', boxShadow: '0 8px 24px rgba(26,35,126,0.25)' }}
+              >
+                <Lock size={24} color="white" />
+              </div>
+              <h2 className="text-xl font-bold text-on-surface">Redefinir senha</h2>
+              <p className="text-sm text-on-surface-variant text-center mt-1">
+                Informe seu e-mail e enviaremos um link para você criar uma nova senha.
+              </p>
+            </div>
+
+            {status === 'success' ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center gap-3 py-4"
+              >
+                <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center">
+                  <CheckCircle2 size={36} className="text-emerald-500" />
+                </div>
+                <p className="text-sm font-semibold text-on-surface text-center">
+                  E-mail enviado com sucesso!
+                </p>
+                <p className="text-xs text-on-surface-variant text-center">
+                  Verifique sua caixa de entrada (e também o spam) para o link de redefinição.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="mt-3 w-full py-3 bg-primary text-white rounded-xl font-bold hover:scale-[1.02] active:scale-95 transition-all"
+                >
+                  Fechar
+                </button>
+              </motion.div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="relative group">
+                  <UserIcon
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors"
+                    size={18}
+                  />
+                  <input
+                    required
+                    type="email"
+                    id="reset-email-input"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    disabled={status === 'loading'}
+                    className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium text-sm transition-all disabled:opacity-60"
+                  />
+                </div>
+
+                {status === 'error' && (
+                  <motion.p
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="text-xs font-semibold p-2.5 rounded-lg text-center text-rose-600 bg-rose-50"
+                  >
+                    {errorMsg}
+                  </motion.p>
+                )}
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    disabled={status === 'loading'}
+                    className="flex-1 py-3 rounded-xl border border-outline-variant/20 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-all disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    id="btn-reset-password-submit"
+                    disabled={status === 'loading' || !resetEmail.trim()}
+                    className="flex-1 py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {status === 'loading' ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      'Enviar link'
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </>
   );
 }
