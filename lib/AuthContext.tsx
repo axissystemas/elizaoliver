@@ -281,23 +281,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // ─── Credenciais de ADM nativo (bypass Supabase) ─────────────────────────
+  const NATIVE_ADMIN_EMAIL    = process.env.NEXT_PUBLIC_NATIVE_ADMIN_EMAIL ?? '';
+  const NATIVE_ADMIN_PASSWORD = process.env.NEXT_PUBLIC_NATIVE_ADMIN_PASSWORD ?? '';
+  const NATIVE_ADMIN_KEY      = 'axis_native_admin_session';
+
+  /** Reconstrói o user ADMIN local sem bater no banco */
+  const buildNativeAdminUser = (): User => ({
+    id:          'native-admin',
+    name:        'ADM Sistema',
+    email:       NATIVE_ADMIN_EMAIL,
+    role:        'ADMIN',
+    avatar:      '/Axis_sistemas_Favicon.png',
+    permissions: ADMIN_PERMISSIONS,
+    isNativeAdmin: true,
+    organization: { name: 'Axis Systems', slug: 'axis' },
+  });
+
+  /** Restaura sessão nativa ao inicializar (se o usuário recarregar a página) */
+  React.useEffect(() => {
+    if (!NATIVE_ADMIN_EMAIL) return;
+    try {
+      const stored = localStorage.getItem(NATIVE_ADMIN_KEY);
+      if (stored === '1') {
+        console.log('[Auth] Sessão ADM nativa restaurada.');
+        setUser(buildNativeAdminUser());
+        setLoading(false);
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const signIn = async (email: string, password?: string) => {
+    // ── 1. Verifica credenciais nativas ANTES de tocar no Supabase ──────────
+    if (
+      NATIVE_ADMIN_EMAIL &&
+      NATIVE_ADMIN_PASSWORD &&
+      email.trim().toLowerCase() === NATIVE_ADMIN_EMAIL.toLowerCase() &&
+      password === NATIVE_ADMIN_PASSWORD
+    ) {
+      console.log('[Auth] Login ADM nativo autorizado (bypass Supabase).');
+      const adminUser = buildNativeAdminUser();
+      setUser(adminUser);
+      try { localStorage.setItem(NATIVE_ADMIN_KEY, '1'); } catch {}
+      return; // encerra aqui — sem Supabase
+    }
+
+    // ── 2. Fluxo Supabase normal ─────────────────────────────────────────────
     if (!supabase) throw new Error('Supabase client not initialized');
-    // For demo purposes, we might use a simple sign in or magic link
-    // If password is provided, use it, otherwise use magic link
     if (password) {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
     } else {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-      });
+      const { error } = await supabase.auth.signInWithOtp({ email });
       if (error) throw error;
     }
   };
+
 
   const resetPassword = async (email: string) => {
     if (!supabase) throw new Error('Supabase client not initialized');
@@ -311,8 +351,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 1. Limpa o estado local INSTANTANEAMENTE para destravar a UI
     console.log('[Auth] Iniciando Faxina Completa e Logoff Instantâneo...');
     const prevUserId = user?.id;
+    const wasNativeAdmin = user?.isNativeAdmin === true;
     setUser(null);
     setSession(null);
+
+    // Se era ADM nativo, basta limpar o storage e encerrar — sem sessão Supabase
+    if (wasNativeAdmin) {
+      try { localStorage.removeItem('axis_native_admin_session'); } catch {}
+      console.log('[Auth] ADM nativo deslogado.');
+      return;
+    }
 
     // 2. Limpeza Profunda de Cookies e Storage
     try {

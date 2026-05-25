@@ -17,8 +17,12 @@ export interface User {
     planCode: string;
     planName: string;
     status: string;
+    nextPaymentDate?: string;
+    externalId?: string;
     entitlements: string[];
   };
+  /** Marcado como true quando logado via credenciais nativas do .env (bypass Supabase) */
+  isNativeAdmin?: boolean;
 }
 
 export interface Permission {
