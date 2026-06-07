@@ -374,41 +374,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const isNativeEmailMatch = cleanEmail === NATIVE_ADMIN_EMAIL.toLowerCase() || cleanEmail === 'suporte@axissystemas.com.br';
     const isNativePasswordMatch = password === NATIVE_ADMIN_PASSWORD || password === 'Admin@123';
 
-    // ── 1. Verifica credenciais nativas ANTES de tocar no Supabase ──────────
-    if (
-      isNativeEmailMatch && 
-      isNativePasswordMatch
-    ) {
-      console.log('[Auth] Login ADM nativo autorizado (bypass Supabase).');
-      const adminUser = buildNativeAdminUser(cleanEmail);
-      
-      // Busca a primeira organização para vincular ao ADM nativo
-      if (supabase) {
-        try {
-          const { data } = await supabase.from('organizations').select('id').limit(1);
-          if (data && data.length > 0) {
-            adminUser.organizationId = data[0].id;
-            console.log('[Auth] ADM nativo logado com org ID:', data[0].id);
+    // ── 1. Tenta login normal via Supabase Auth primeiro ──────────────────────
+    if (supabase && password) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          // Se as credenciais forem do ADM nativo e ocorreu um erro de credenciais inválidas ou de conexão,
+          // usamos o fallback do ADM nativo local (bypass)
+          const isCredentialError = error.message.toLowerCase().includes('invalid login credentials') || 
+                                     error.message.toLowerCase().includes('invalid_credentials') ||
+                                     error.status === 400;
+          const isNetworkError = error.message.toLowerCase().includes('fetch') || 
+                                 error.message.toLowerCase().includes('network') || 
+                                 error.message.toLowerCase().includes('database error');
+          
+          if (isNativeEmailMatch && isNativePasswordMatch && (isCredentialError || isNetworkError)) {
+            console.log('[Auth] Login Supabase falhou ou banco offline. Ativando ADM nativo local.');
+            const adminUser = buildNativeAdminUser(cleanEmail);
+            
+            // Busca a primeira organização para vincular ao ADM nativo
+            try {
+              const { data: orgs } = await supabase.from('organizations').select('id').limit(1);
+              if (orgs && orgs.length > 0) {
+                adminUser.organizationId = orgs[0].id;
+                console.log('[Auth] ADM nativo fallback logado com org ID:', orgs[0].id);
+              }
+            } catch (e) {
+              console.warn('[Auth] Erro ao buscar org ID no fallback do login nativo:', e);
+            }
+
+            setUser(adminUser);
+            try { localStorage.setItem(NATIVE_ADMIN_KEY, '1'); } catch {}
+            return;
           }
-        } catch (e) {
-          console.warn('[Auth] Erro ao buscar org ID no login nativo:', e);
+          throw error;
         }
+        return; // Login no Supabase bem-sucedido
+      } catch (err: any) {
+        // Se as credenciais baterem com o ADM nativo, fazemos o fallback local
+        if (isNativeEmailMatch && isNativePasswordMatch) {
+          console.warn('[Auth] Erro de rede/conexão no Supabase. Usando ADM nativo local:', err.message);
+          const adminUser = buildNativeAdminUser(cleanEmail);
+          
+          try {
+            const { data: orgs } = await supabase.from('organizations').select('id').limit(1);
+            if (orgs && orgs.length > 0) {
+              adminUser.organizationId = orgs[0].id;
+            }
+          } catch (e) {}
+
+          setUser(adminUser);
+          try { localStorage.setItem(NATIVE_ADMIN_KEY, '1'); } catch {}
+          return;
+        }
+        throw err;
       }
-
-      setUser(adminUser);
-      try { localStorage.setItem(NATIVE_ADMIN_KEY, '1'); } catch {}
-      return; // encerra aqui — sem Supabase
     }
 
-    // ── 2. Fluxo Supabase normal ─────────────────────────────────────────────
+    // ── 2. Fluxo OTP ou sem senha ────────────────────────────────────────────
     if (!supabase) throw new Error('Supabase client not initialized');
-    if (password) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.auth.signInWithOtp({ email });
-      if (error) throw error;
-    }
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) throw error;
   };
 
 
