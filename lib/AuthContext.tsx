@@ -102,6 +102,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(userData);
       }
     } catch (error: any) {
+      // Se o erro for especificamente que o perfil não existe no banco (PGRST116),
+      // significa que o usuário foi excluído. Deslogamos o usuário por segurança.
+      if (error?.code === 'PGRST116') {
+        console.error('Perfil não encontrado. O usuário foi desativado ou excluído.');
+        setUser(null);
+        setSession(null);
+        if (supabase) {
+          supabase.auth.signOut().catch(() => {});
+        }
+        return;
+      }
+
       console.warn('Profile fetch failed or timed out, using fallback:', error.message);
       
       // Fallback robusto usando metadados da sessão local se o DB estiver inacessível
