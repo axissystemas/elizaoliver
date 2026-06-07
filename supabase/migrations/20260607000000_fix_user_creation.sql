@@ -59,10 +59,11 @@ DECLARE
   v_caller_role TEXT;
   v_caller_org_id UUID;
   v_caller_email TEXT;
+  v_caller_permissions TEXT[];
 BEGIN
   -- Buscar dados do chamador ignorando RLS por estar definida como SECURITY DEFINER
-  SELECT role, organization_id, email 
-  INTO v_caller_role, v_caller_org_id, v_caller_email
+  SELECT role, organization_id, email, permissions 
+  INTO v_caller_role, v_caller_org_id, v_caller_email, v_caller_permissions
   FROM public.profiles 
   WHERE id = admin_id;
 
@@ -71,8 +72,13 @@ BEGIN
     RETURN TRUE;
   END IF;
 
-  -- Administrador da própria clínica pode gerenciar perfis da mesma clínica
-  IF v_caller_role = 'ADMIN' AND v_caller_org_id IS NOT NULL AND v_caller_org_id = target_org_id THEN
+  -- Administrador ou usuário com permissão explícita de gerenciar usuários da mesma clínica
+  IF (
+    v_caller_role = 'ADMIN' OR 
+    'users' = ANY(v_caller_permissions) OR 
+    'users:create' = ANY(v_caller_permissions) OR 
+    'users:edit' = ANY(v_caller_permissions)
+  ) AND v_caller_org_id IS NOT NULL AND v_caller_org_id = target_org_id THEN
     RETURN TRUE;
   END IF;
 
