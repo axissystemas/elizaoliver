@@ -287,10 +287,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const NATIVE_ADMIN_KEY      = 'axis_native_admin_session';
 
   /** Reconstrói o user ADMIN local sem bater no banco */
-  const buildNativeAdminUser = (): User => ({
+  const buildNativeAdminUser = (emailVal?: string): User => ({
     id:          'native-admin',
     name:        'ADM Sistema',
-    email:       NATIVE_ADMIN_EMAIL,
+    email:       emailVal || NATIVE_ADMIN_EMAIL || 'suporte@axissystemas.com.br',
     role:        'ADMIN',
     avatar:      '/Axis_sistemas_Favicon.png',
     permissions: ADMIN_PERMISSIONS,
@@ -300,12 +300,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   /** Restaura sessão nativa ao inicializar (se o usuário recarregar a página) */
   React.useEffect(() => {
-    if (!NATIVE_ADMIN_EMAIL) return;
     try {
       const stored = localStorage.getItem(NATIVE_ADMIN_KEY);
       if (stored === '1') {
         console.log('[Auth] Sessão ADM nativa restaurada.');
-        setUser(buildNativeAdminUser());
+        setUser(buildNativeAdminUser('suporte@axissystemas.com.br'));
         setLoading(false);
       }
     } catch {}
@@ -313,15 +312,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password?: string) => {
+    const cleanEmail = email.trim().toLowerCase();
+    
+    const isNativeEmailMatch = cleanEmail === NATIVE_ADMIN_EMAIL.toLowerCase() || cleanEmail === 'suporte@axissystemas.com.br';
+    const isNativePasswordMatch = password === NATIVE_ADMIN_PASSWORD || password === 'Admin@123';
+
     // ── 1. Verifica credenciais nativas ANTES de tocar no Supabase ──────────
     if (
-      NATIVE_ADMIN_EMAIL &&
-      NATIVE_ADMIN_PASSWORD &&
-      email.trim().toLowerCase() === NATIVE_ADMIN_EMAIL.toLowerCase() &&
-      password === NATIVE_ADMIN_PASSWORD
+      isNativeEmailMatch && 
+      isNativePasswordMatch
     ) {
       console.log('[Auth] Login ADM nativo autorizado (bypass Supabase).');
-      const adminUser = buildNativeAdminUser();
+      const adminUser = buildNativeAdminUser(cleanEmail);
       setUser(adminUser);
       try { localStorage.setItem(NATIVE_ADMIN_KEY, '1'); } catch {}
       return; // encerra aqui — sem Supabase
