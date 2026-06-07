@@ -348,7 +348,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const stored = localStorage.getItem(NATIVE_ADMIN_KEY);
       if (stored === '1') {
         console.log('[Auth] Sessão ADM nativa restaurada.');
-        setUser(buildNativeAdminUser('suporte@axissystemas.com.br'));
+        const adminUser = buildNativeAdminUser('suporte@axissystemas.com.br');
+        
+        // Tenta buscar a primeira organização cadastrada para o ADM nativo herdar
+        if (supabase) {
+          supabase.from('organizations').select('id').limit(1).then(({ data }) => {
+            if (data && data.length > 0) {
+              adminUser.organizationId = data[0].id;
+              setUser({ ...adminUser });
+              console.log('[Auth] ADM nativo restaurado com org ID:', data[0].id);
+            }
+          }).catch(e => console.warn('[Auth] Erro ao restaurar org ID do ADM nativo:', e));
+        }
+
+        setUser(adminUser);
         setLoading(false);
       }
     } catch {}
@@ -368,6 +381,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ) {
       console.log('[Auth] Login ADM nativo autorizado (bypass Supabase).');
       const adminUser = buildNativeAdminUser(cleanEmail);
+      
+      // Busca a primeira organização para vincular ao ADM nativo
+      if (supabase) {
+        try {
+          const { data } = await supabase.from('organizations').select('id').limit(1);
+          if (data && data.length > 0) {
+            adminUser.organizationId = data[0].id;
+            console.log('[Auth] ADM nativo logado com org ID:', data[0].id);
+          }
+        } catch (e) {
+          console.warn('[Auth] Erro ao buscar org ID no login nativo:', e);
+        }
+      }
+
       setUser(adminUser);
       try { localStorage.setItem(NATIVE_ADMIN_KEY, '1'); } catch {}
       return; // encerra aqui — sem Supabase
