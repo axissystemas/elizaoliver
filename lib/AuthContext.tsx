@@ -109,13 +109,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         if (currentSession && currentSession.user.id === userId) {
           const role = (currentSession.user.user_metadata?.role as UserRole) || 'PROFESSIONAL';
+          const isSuperAdmin = currentSession.user.email === 'suporte@axissystemas.com.br';
+          const finalRole = isSuperAdmin ? 'ADMIN' as UserRole : role;
+          
           const fallbackUser: User = {
             id: currentSession.user.id,
             name: currentSession.user.user_metadata?.name || currentSession.user.email?.split('@')[0] || 'Usuário',
             email: currentSession.user.email || '',
-            role: role,
+            role: finalRole,
             avatar: `https://picsum.photos/seed/${currentSession.user.id}/200/200`,
-            permissions: (ROLE_PERMISSIONS as any)[role] || [],
+            permissions: finalRole === 'ADMIN' ? ADMIN_PERMISSIONS : (ROLE_PERMISSIONS as any)[finalRole] || [],
+            subscription: finalRole === 'ADMIN' ? {
+              planCode: 'PREMIUM',
+              planName: 'Plano Premium (Fallback)',
+              status: 'active',
+              entitlements: [
+                'mod_patients', 'mod_evaluations', 'mod_calendar', 'mod_protocols', 
+                'mod_financial', 'mod_reports', 'mod_inventory', 'mod_billing', 
+                'mod_audit', 'mod_users', 'mod_api', 'mod_whitelabel'
+              ]
+            } : undefined
           };
           setUser(fallbackUser);
         }
@@ -296,6 +309,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     permissions: ADMIN_PERMISSIONS,
     isNativeAdmin: true,
     organization: { name: 'Axis Systems', slug: 'axis' },
+    subscription: {
+      planCode: 'PREMIUM',
+      planName: 'Plano Premium (Bypass)',
+      status: 'active',
+      entitlements: [
+        'mod_patients',
+        'mod_evaluations',
+        'mod_calendar',
+        'mod_protocols',
+        'mod_financial',
+        'mod_reports',
+        'mod_inventory',
+        'mod_billing',
+        'mod_audit',
+        'mod_users',
+        'mod_api',
+        'mod_whitelabel'
+      ]
+    }
   });
 
   /** Restaura sessão nativa ao inicializar (se o usuário recarregar a página) */
