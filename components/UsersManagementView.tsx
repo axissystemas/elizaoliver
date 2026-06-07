@@ -200,7 +200,8 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
             data: {
               name: userFormData.name,
               role: userFormData.role,
-              permissions: userFormData.permissions
+              permissions: userFormData.permissions,
+              organization_id: user.organizationId // Pass the admin's organization ID to link them in the database trigger
             }
           }
         });
@@ -222,6 +223,7 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
               email: userFormData.email as string,
               role: userFormData.role as string,
               permissions: userFormData.permissions || [],
+              organization_id: user.organizationId, // Ensure profile is linked to the admin's organization
               avatar_url: `https://picsum.photos/seed/${authData.user.id}/200/200`,
               updated_at: new Date().toISOString()
             });
