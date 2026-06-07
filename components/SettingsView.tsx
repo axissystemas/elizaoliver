@@ -164,26 +164,69 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
     async function fetchPlans() {
       if (!supabase) return;
       setIsLoadingPlans(true);
-      const { data } = await supabase
-        .from('saas_plans')
-        .select(`
-          *,
-          limits:saas_plan_limits(
-            limit_key, 
-            quota_value,
-            catalog:saas_limit_catalog(description, unit)
-          ),
-          features:saas_plan_features(
-            feature_key,
-            catalog:saas_feature_catalog(description)
-          )
-        `)
-        .neq('code', 'LEGACY')
-        .neq('code', 'PREMIUM')
-        .order('price_monthly', { ascending: true });
       
-      if (data) setAvailablePlans(data);
-      setIsLoadingPlans(false);
+      const fallbackPlans = [
+        { 
+          id: '18576633-2526-4ecd-b4b2-2565fbb6531f', 
+          code: 'BASIC', 
+          name: 'Plano Básico', 
+          description: 'Plano de entrada ideal para iniciantes.', 
+          price_monthly: 29.90,
+          price_yearly: 990
+        },
+        { 
+          id: '15f2ae8e-061f-4e05-ba3a-499e846cf82a', 
+          code: 'PRO', 
+          name: 'Plano Profissional', 
+          description: 'O melhor custo-benefício para crescimento.', 
+          price_monthly: 49.90,
+          price_yearly: 1990
+        },
+        { 
+          id: '8ea21034-64d5-4003-bd48-861386b6883b', 
+          code: 'PREMIUM', 
+          name: 'Plano Premium', 
+          description: 'Solução completa para alta demanda.', 
+          price_monthly: 199.90,
+          price_yearly: 3990
+        }
+      ];
+
+      try {
+        let query = supabase
+          .from('saas_plans')
+          .select(`
+            *,
+            limits:saas_plan_limits(
+              limit_key, 
+              quota_value,
+              catalog:saas_limit_catalog(description, unit)
+            ),
+            features:saas_plan_features(
+              feature_key,
+              catalog:saas_feature_catalog(description)
+            )
+          `)
+          .neq('code', 'LEGACY');
+        
+        if (!isAdminSaaSModalOpen) {
+          query = query.neq('code', 'PREMIUM');
+        }
+
+        const { data, error } = await query.order('price_monthly', { ascending: true });
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setAvailablePlans(data);
+        } else {
+          setAvailablePlans(isAdminSaaSModalOpen ? fallbackPlans : fallbackPlans.filter(p => p.code !== 'PREMIUM'));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch plans from Supabase, using fallback:', err);
+        setAvailablePlans(isAdminSaaSModalOpen ? fallbackPlans : fallbackPlans.filter(p => p.code !== 'PREMIUM'));
+      } finally {
+        setIsLoadingPlans(false);
+      }
     }
     
     if (isUpgradeViewOpen || isAdminSaaSModalOpen) {
