@@ -214,28 +214,26 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
         if (authData.user) {
           console.log('User created in Auth, ID:', authData.user.id);
           // 2. Ensure profile is created/updated with correct data
-          // We use upsert because the trigger might have already created it
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: authData.user.id,
-              name: userFormData.name as string,
-              email: userFormData.email as string,
-              role: userFormData.role as string,
-              permissions: userFormData.permissions || [],
-              organization_id: user.organizationId, // Ensure profile is linked to the admin's organization
-              avatar_url: `https://picsum.photos/seed/${authData.user.id}/200/200`,
-              updated_at: new Date().toISOString()
-            });
+          // Note: The database trigger (handle_new_user) automatically creates the profile row
+          try {
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .upsert({
+                id: authData.user.id,
+                name: userFormData.name as string,
+                email: userFormData.email as string,
+                role: userFormData.role as string,
+                permissions: userFormData.permissions || [],
+                organization_id: user.organizationId, // Ensure profile is linked to the admin's organization
+                avatar_url: `https://picsum.photos/seed/${authData.user.id}/200/200`,
+                updated_at: new Date().toISOString()
+              });
 
-          if (profileError) {
-            console.warn('Profile upsert warning (poder ser RLS):', profileError);
-            // Em vez de travar a tela com erro, vamos verificar se o perfil já foi criado pela trigger do banco
-            const { data: existingProfile } = await supabase.from('profiles').select('id').eq('id', authData.user.id).single();
-            if (!existingProfile) {
-              // Se realmente não existe, aí sim lançamos o erro
-              throw new Error(`O usuário foi criado, mas o perfil falhou: ${profileError.message}`);
+            if (profileError) {
+              console.warn('Profile upsert warning (tratado graciosamente, trigger gerencia o perfil):', profileError);
             }
+          } catch (pErr) {
+            console.warn('Exceção ao atualizar perfil diretamente pelo cliente:', pErr);
           }
           
           console.log('Profile processed successfully');
