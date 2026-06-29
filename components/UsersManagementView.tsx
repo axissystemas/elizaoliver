@@ -331,9 +331,13 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
 
       console.log(`Iniciando exclusão do usuário: ${u.id} (${u.name})`);
 
-      // Tenta a RPC com timeout
-      const rpcPromise = (supabase.rpc as any)('delete_user', { id_to_delete: u.id });
-      const { error: rpcError } = await Promise.race([rpcPromise, timeoutPromise]) as any;
+      // Tenta a RPC com timeout e fallback para nome de parâmetro (id_to_delete vs user_id)
+      let rpcRes = await (supabase.rpc as any)('delete_user', { id_to_delete: u.id });
+      if (rpcRes.error && (rpcRes.error.message?.includes('schema cache') || rpcRes.error.code === 'PGRST202')) {
+        console.log('Tentando RPC delete_user com parâmetro alternativa user_id...');
+        rpcRes = await (supabase.rpc as any)('delete_user', { user_id: u.id });
+      }
+      const rpcError = rpcRes.error;
       
       if (rpcError) {
         // Erro 23503 é violação de chave estrangeira (dados vinculados)
