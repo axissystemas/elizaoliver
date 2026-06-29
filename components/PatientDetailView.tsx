@@ -27,7 +27,8 @@ import {
   Check,
   Phone,
   Mail,
-  CreditCard
+  CreditCard,
+  MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import jsPDF from 'jspdf';
@@ -35,6 +36,7 @@ import autoTable from 'jspdf-autotable';
 import { User } from '@/types/auth';
 import ConfirmationModal from './ConfirmationModal';
 import { supabase } from '@/lib/supabase';
+import { openWhatsApp, WhatsAppTemplates } from '@/lib/whatsapp';
 
 interface PatientDetailViewProps {
   patient: any;
@@ -289,9 +291,17 @@ export default function PatientDetailView({
                 </span>
               )}
               {patient.phone && (
-                <a href={`tel:${patient.phone}`} className="flex items-center gap-2 text-xs font-bold text-primary hover:underline">
-                  <Phone size={14} /> {patient.phone}
-                </a>
+                <>
+                  <a href={`tel:${patient.phone}`} className="flex items-center gap-2 text-xs font-bold text-primary hover:underline">
+                    <Phone size={14} /> {patient.phone}
+                  </a>
+                  <button 
+                    onClick={() => openWhatsApp(patient.phone, WhatsAppTemplates.welcome(patient.name))} 
+                    className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-all"
+                  >
+                    <MessageSquare size={12} /> WhatsApp
+                  </button>
+                </>
               )}
               {patient.email && (
                 <a href={`mailto:${patient.email}`} className="flex items-center gap-2 text-xs font-bold text-primary hover:underline">
@@ -306,7 +316,15 @@ export default function PatientDetailView({
             </div>
           </div>
         </div>
-        <div className="flex gap-4 no-print">
+        <div className="flex gap-4 no-print flex-wrap">
+          {patient.phone && (
+            <button 
+              onClick={() => openWhatsApp(patient.phone, WhatsAppTemplates.welcome(patient.name))} 
+              className="px-6 py-3.5 rounded-2xl text-sm font-bold bg-emerald-600 text-white shadow-xl shadow-emerald-600/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+            >
+              <MessageSquare size={18} /> WhatsApp
+            </button>
+          )}
           <button onClick={handleGenerateReport} disabled={isGeneratingReport} className="px-8 py-3.5 rounded-2xl text-sm font-bold bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-all flex items-center gap-2 disabled:opacity-50">
             {isGeneratingReport ? <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <FileText size={18} />} Exportar
           </button>

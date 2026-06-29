@@ -16,10 +16,12 @@ import {
   Edit2,
   ShieldCheck,
   CreditCard,
-  AlertCircle
+  AlertCircle,
+  MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User as UserType } from '@/types/auth';
+import { openWhatsApp, WhatsAppTemplates } from '@/lib/whatsapp';
 
 interface Appointment {
   id: string;
@@ -40,6 +42,7 @@ interface Appointment {
 interface Patient {
   id: string;
   name: string;
+  phone?: string;
 }
 
 interface ConsultationType {
@@ -614,7 +617,30 @@ export default function CalendarView({
                   />
                 </div>
 
-                <div className="flex gap-4 pt-4">
+                {newAppointment.patientId && (() => {
+                  const selectedPatient = patients.find(p => p.id === newAppointment.patientId);
+                  if (!selectedPatient?.phone) return null;
+                  const formattedDate = newAppointment.date ? new Date(newAppointment.date + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const msg = WhatsAppTemplates.appointmentReminder(
+                          selectedPatient.name,
+                          formattedDate,
+                          newAppointment.time || '',
+                          'Axis GC'
+                        );
+                        openWhatsApp(selectedPatient.phone!, msg);
+                      }}
+                      className="w-full py-3.5 rounded-2xl bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 transition-all flex items-center justify-center gap-2 border border-emerald-200"
+                    >
+                      <MessageSquare size={18} /> Enviar Lembrete no WhatsApp
+                    </button>
+                  );
+                })()}
+
+                <div className="flex gap-4 pt-2">
                   {editingAppointment && canDelete && (
                     <button 
                       onClick={() => {

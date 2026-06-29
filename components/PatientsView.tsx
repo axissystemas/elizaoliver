@@ -12,10 +12,12 @@ import {
   ChevronRight,
   UserPlus,
   FileText,
-  Package
+  Package,
+  MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getInitials } from '@/lib/utils';
+import { openWhatsApp, WhatsAppTemplates } from '@/lib/whatsapp';
 
 interface Patient {
   id: string;
@@ -271,6 +273,18 @@ export default function PatientsView({
                     </td>
                     <td className="px-8 py-6 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {patient.phone && (
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              openWhatsApp(patient.phone, WhatsAppTemplates.welcome(patient.name)); 
+                            }}
+                            title="Conversar no WhatsApp"
+                            className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                          >
+                            <MessageSquare size={18} />
+                          </button>
+                        )}
                         <button 
                           onClick={(e) => { e.stopPropagation(); onNewAppointment?.(); }}
                           title="Agendar Consulta"
