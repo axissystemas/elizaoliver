@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { supabase, checkConnection, getSupabase } from './supabase';
+import { supabase, checkConnection, getSupabase, resetSupabaseInstance } from './supabase';
 import { User, UserRole, ADMIN_PERMISSIONS, ROLE_PERMISSIONS } from '@/types/auth';
 import { logAction, setBootstrapMode } from './auditLogService';
 
@@ -390,7 +390,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // ── 1. Tenta login normal via Supabase Auth primeiro ──────────────────────
     if (supabase && password) {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Tempo limite de conexão excedido. Tente novamente.')), 8000)
+        );
+
+        const loginPromise = supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = (await Promise.race([loginPromise, timeoutPromise])) as any;
+
         if (error) {
           // Se as credenciais forem do ADM nativo e ocorreu um erro de credenciais inválidas ou de conexão,
           // usamos o fallback do ADM nativo local (bypass)
@@ -399,7 +405,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                                      error.status === 400;
           const isNetworkError = error.message.toLowerCase().includes('fetch') || 
                                  error.message.toLowerCase().includes('network') || 
-                                 error.message.toLowerCase().includes('database error');
+                                 error.message.toLowerCase().includes('database error') ||
+                                 error.message.toLowerCase().includes('tempo limite');
           
           if (isNativeEmailMatch && isNativePasswordMatch && (isCredentialError || isNetworkError)) {
             console.log('[Auth] Login Supabase falhou ou banco offline. Ativando ADM nativo local.');
@@ -470,43 +477,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Se era ADM nativo, basta limpar o storage e encerrar — sem sessão Supabase
     if (wasNativeAdmin) {
       try { localStorage.removeItem('axis_native_admin_session'); } catch {}
+      resetSupabaseInstance();
       console.log('[Auth] ADM nativo deslogado.');
       return;
     }
 
-    // 2. Limpeza Profunda de Cookies e Storage
-    try {
-      // Limpa Cookies
-      document.cookie.split(";").forEach((c) => {
-        document.cookie = c
-          .replace(/^ +/, "")
-          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      });
-      // Limpa Storages
-      localStorage.clear();
-      sessionStorage.clear();
-      console.log('[Auth] Cookies e Storages limpos com sucesso.');
-    } catch (e) {
-      console.warn('[Auth] Erro ao limpar cookies/storage:', e);
-    }
-    
     try {
       if (supabase) {
         if (prevUserId) {
-          // Log de auditoria (opcional se der erro)
           await logAction({ action: 'LOGOUT', entityType: 'AUTH', userId: prevUserId }).catch(() => {});
         }
-        
-        // 2. Tenta fazer o logoff no servidor em background
-        // Se este comando demorar ou falhar, o usuário já estará "deslogado" localmente
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          console.warn('[Auth] Erro no signOut do servidor (não crítico):', error.message);
-        }
+        await supabase.auth.signOut().catch(() => {});
       }
     } catch (error) {
-      console.error('[Auth] Falha crítica ao deslogar no servidor:', error);
+      console.error('[Auth] Falha no signOut do servidor:', error);
     } finally {
+      try {
+        // Limpa Cookies
+        document.cookie.split(";").forEach((c) => {
+          document.cookie = c
+            .replace(/^ +/, "")
+            .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {}
+      resetSupabaseInstance();
       console.log('[Auth] Logoff local concluído com sucesso.');
     }
   };

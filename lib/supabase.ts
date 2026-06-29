@@ -39,6 +39,13 @@ export const getSupabase = () => {
   return supabaseInstance;
 };
 
+/**
+ * Reseta a instância única do cliente Supabase para garantir limpeza de locks em re-logins.
+ */
+export const resetSupabaseInstance = () => {
+  supabaseInstance = null;
+};
+
 let lastCheckTime = 0;
 let lastCheckResult = true;
 const CHECK_INTERVAL = 30000; // 30 segundos entre checks reais
