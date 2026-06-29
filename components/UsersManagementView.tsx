@@ -18,6 +18,7 @@ import { User, UserRole, ROLE_LABELS, ALL_PERMISSIONS, ROLE_PERMISSIONS, ADMIN_P
 import { getSupabase } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import ConfirmationModal from './ConfirmationModal';
+import { deleteUserAction } from '@/app/actions/adminSaaS';
 import { logAction } from '@/lib/auditLogService';
 
 // Centralized supabase config access
@@ -331,22 +332,26 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
 
       console.log(`Iniciando exclusão do usuário: ${u.id} (${u.name})`);
 
-      // Tenta a RPC com timeout e fallback para nome de parâmetro (id_to_delete vs user_id)
-      let rpcRes = await (supabase.rpc as any)('delete_user', { id_to_delete: u.id });
-      if (rpcRes.error && (rpcRes.error.message?.includes('schema cache') || rpcRes.error.code === 'PGRST202')) {
-        console.log('Tentando RPC delete_user com parâmetro alternativa user_id...');
-        rpcRes = await (supabase.rpc as any)('delete_user', { user_id: u.id });
-      }
-      const rpcError = rpcRes.error;
-      
-      if (rpcError) {
-        // Erro 23503 é violação de chave estrangeira (dados vinculados)
-        if (rpcError.code === '23503' || rpcError.message?.includes('violates foreign key constraint')) {
-          throw new Error('RESTRICTION');
-        }
+      try {
+        // 1. Tenta via Server Action confiável (usa Service Role Key)
+        await deleteUserAction(u.id);
+        console.log('Usuário excluído com sucesso via Server Action.');
+      } catch (saError: any) {
+        console.warn('Server Action deleteUserAction falhou ou indisponível, tentando fallback RPC:', saError);
         
-        console.error('RPC delete_user falhou criticamente:', rpcError);
-        throw new Error(`Falha ao remover usuário do sistema de autenticação: ${rpcError.message || 'Erro desconhecido'}`);
+        // 2. Fallback via RPC Supabase
+        let rpcRes = await (supabase.rpc as any)('delete_user', { id_to_delete: u.id });
+        if (rpcRes.error && (rpcRes.error.message?.includes('schema cache') || rpcRes.error.code === 'PGRST202')) {
+          rpcRes = await (supabase.rpc as any)('delete_user', { user_id: u.id });
+        }
+        const rpcError = rpcRes.error;
+        
+        if (rpcError) {
+          if (rpcError.code === '23503' || rpcError.message?.includes('violates foreign key constraint')) {
+            throw new Error('RESTRICTION');
+          }
+          throw new Error(`Falha ao remover usuário do sistema de autenticação: ${rpcError.message || saError.message || 'Erro desconhecido'}`);
+        }
       }
       
       // Se chegou aqui, a exclusão no Auth (que cascateia para Profile) foi bem-sucedida

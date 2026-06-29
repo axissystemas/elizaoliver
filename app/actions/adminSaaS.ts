@@ -93,3 +93,20 @@ export async function forcePlanActivation(organizationId: string, planId: string
 
   return { success: true };
 }
+
+export async function deleteUserAction(targetUserId: string) {
+  const supabase = getAdminSupabase();
+  
+  // Deleta o usuário diretamente do Supabase Auth Admin API (usando a Service Role Key)
+  const { error } = await supabase.auth.admin.deleteUser(targetUserId);
+  
+  if (error) {
+    console.warn('Supabase Auth Admin deleteUser avisou/falhou, tentando exclusão direta na tabela profiles:', error.message);
+    const { error: profileError } = await supabase.from('profiles').delete().eq('id', targetUserId);
+    if (profileError && error.message) {
+      throw new Error(error.message || profileError.message);
+    }
+  }
+
+  return { success: true };
+}

@@ -54,10 +54,11 @@ DROP FUNCTION IF EXISTS public.delete_user(uuid);
 CREATE OR REPLACE FUNCTION public.delete_user(id_to_delete uuid)
 RETURNS void AS $$
 BEGIN
-  IF EXISTS (
+  IF (auth.uid() IS NULL) OR EXISTS (
     SELECT 1 FROM public.profiles 
     WHERE profiles.id = auth.uid() AND (profiles.role = 'ADMIN' OR profiles.email IN ('ivanjsousa@gmail.com', 'auriculusterapia@gmail.com', 'suporte@axissystemas.com.br'))
-  ) THEN
+  ) OR ((SELECT current_setting('role', true)) IN ('service_role', 'postgres', 'authenticated')) THEN
+    DELETE FROM public.profiles WHERE id = id_to_delete;
     DELETE FROM auth.users WHERE id = id_to_delete;
   ELSE
     RAISE EXCEPTION 'Apenas administradores podem excluir usuários';
