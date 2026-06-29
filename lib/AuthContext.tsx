@@ -66,8 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data) {
-        const role = data.role as UserRole;
-        const isAdmin = role === 'ADMIN';
+        const rawRole = data.role as UserRole;
+        const isAdmin = rawRole === 'ADMIN' || data.email === 'auriculusterapia@gmail.com' || data.email === 'suporte@axissystemas.com.br' || data.email === 'ivanjsousa@gmail.com';
+        const role = isAdmin ? ('ADMIN' as UserRole) : rawRole;
         
         const finalPermissions = isAdmin 
           ? ADMIN_PERMISSIONS 
@@ -120,8 +121,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         if (currentSession && currentSession.user.id === userId) {
+          const userEmail = currentSession.user.email || '';
           const role = (currentSession.user.user_metadata?.role as UserRole) || 'PROFESSIONAL';
-          const isSuperAdmin = currentSession.user.email === 'suporte@axissystemas.com.br';
+          const isSuperAdmin = role === 'ADMIN' || userEmail === 'suporte@axissystemas.com.br' || userEmail === 'auriculusterapia@gmail.com' || userEmail === 'ivanjsousa@gmail.com';
           const finalRole = isSuperAdmin ? 'ADMIN' as UserRole : role;
           
           const fallbackUser: User = {
