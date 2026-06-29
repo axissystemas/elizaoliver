@@ -11,14 +11,20 @@ const getAdminSupabase = () => {
   );
 };
 
-export async function getOrganizationsWithPlans(adminUserId: string) {
+export async function getOrganizationsWithPlans() {
   const supabase = getAdminSupabase();
   
-  // Verify if caller is really ADMIN to prevent abuse
+  // Verify authenticated user session securely on the server
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    throw new Error('Unauthorized');
+  }
+
+  // Verify if authenticated user is really ADMIN
   const { data: adminProfile } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', adminUserId)
+    .eq('id', user.id)
     .single();
     
   if (adminProfile?.role !== 'ADMIN') {
@@ -52,13 +58,18 @@ export async function getOrganizationsWithPlans(adminUserId: string) {
   return orgs;
 }
 
-export async function forcePlanActivation(adminUserId: string, organizationId: string, planId: string) {
+export async function forcePlanActivation(organizationId: string, planId: string) {
   const supabase = getAdminSupabase();
   
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    throw new Error('Unauthorized');
+  }
+
   const { data: adminProfile } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', adminUserId)
+    .eq('id', user.id)
     .single();
     
   if (adminProfile?.role !== 'ADMIN') {
@@ -72,8 +83,6 @@ export async function forcePlanActivation(adminUserId: string, organizationId: s
     status: 'active',
     current_period_start: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-    // We can clear mercado_pago fields since it's a manual activation, or leave them.
-    // Let's set a fake subscription id to indicate it was manual.
     mercado_pago_subscription_id: 'MANUAL_ACTIVATION_' + Math.random().toString(36).substr(2, 9)
   }, { onConflict: 'organization_id' });
 

@@ -95,6 +95,16 @@ export default function ConsultationModal({
     }
   }, [isOpen, patient, editingConsultation]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const [elapsedTime, setElapsedTime] = useState(() => {
     if (editingConsultation && editingConsultation.startTime && editingConsultation.endTime) {
       const start = new Date(editingConsultation.startTime).getTime();
@@ -195,6 +205,9 @@ export default function ConsultationModal({
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
             <motion.div 
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="consultation-modal-title"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -202,7 +215,7 @@ export default function ConsultationModal({
             >
               <div className="p-8 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-low">
                 <div>
-                  <h3 className="text-2xl font-bold font-headline text-on-surface">
+                  <h3 id="consultation-modal-title" className="text-2xl font-bold font-headline text-on-surface">
                     {editingConsultation ? 'Editar Consulta' : status === 'finished' ? 'Consulta Finalizada' : status === 'running' ? 'Consulta em Andamento' : 'Nova Consulta'}
                   </h3>
                   <p className="text-xs font-bold text-outline uppercase tracking-widest mt-1">

@@ -26,7 +26,8 @@ import {
   RotateCcw,
   Trash2,
   Edit3,
-  AlertTriangle
+  AlertTriangle,
+  Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';

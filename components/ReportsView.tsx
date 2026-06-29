@@ -10,9 +10,6 @@ import {
   Package, FileText, ChevronDown, Filter, FileSpreadsheet, File
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
 import { User as UserType } from '@/types/auth';
 
 const COLORS = ['#172554', '#0EA5E9', '#F2994A', '#EB5757', '#9B51E0', '#27AE60'];
@@ -151,9 +148,12 @@ export default function ReportsView({
 
   // ── Export Functions ───────────────────────────────────────────────────────
   
-  const handleExportXLSX = () => {
+  // ── Export Functions (Dynamic XLSX) ─────────────────────────────────────────
+  
+  const handleExportXLSX = async () => {
     setIsExporting(true);
     try {
+      const XLSX = await import('xlsx');
       const wb = XLSX.utils.book_new();
       
       // Resumo
@@ -192,165 +192,122 @@ export default function ReportsView({
     } catch (error) {
       console.error('Export error:', error);
     } finally {
-      setIsExporting(true);
-      setTimeout(() => setIsExporting(false), 2000);
+      setTimeout(() => setIsExporting(false), 1000);
     }
   };
 
-  // ── Specialized Export Functions ───────────────────────────────────────────
+  // ── Specialized Export Functions (Dynamic XLSX Only) ──────────────────────
 
-  const exportCashFlow = (format: 'pdf' | 'xlsx') => {
+  const exportCashFlow = async () => {
     setIsExporting(true);
-    // Combine and sort ALL transactions by date
-    const all = [
-      ...filteredData.appointments.filter(a => a.paymentStatus === 'pago').map(a => ({
-        date: a.date, type: 'ENTRADA', description: `Sessão: ${a.patientName || 'Paciente'}`, amount: a.price || 0, category: a.type || 'Consulta'
-      })),
-      ...filteredData.transactions.map(t => ({
-        date: t.date, type: t.type === 'INCOME' ? 'ENTRADA' : 'SAÍDA', description: t.description, amount: t.amount, category: t.category
-      }))
-    ].sort((a, b) => {
-      const db = new Date(b.date + (b.date.length === 10 ? 'T12:00:00' : ''));
-      const da = new Date(a.date + (a.date.length === 10 ? 'T12:00:00' : ''));
-      return da.getTime() - db.getTime();
-    });
+    try {
+      const XLSX = await import('xlsx');
+      const all = [
+        ...filteredData.appointments.filter(a => a.paymentStatus === 'pago').map(a => ({
+          date: a.date, type: 'ENTRADA', description: `Sessão: ${a.patientName || 'Paciente'}`, amount: a.price || 0, category: a.type || 'Consulta'
+        })),
+        ...filteredData.transactions.map(t => ({
+          date: t.date, type: t.type === 'INCOME' ? 'ENTRADA' : 'SAÍDA', description: t.description, amount: t.amount, category: t.category
+        }))
+      ].sort((a, b) => {
+        const db = new Date(b.date + (b.date.length === 10 ? 'T12:00:00' : ''));
+        const da = new Date(a.date + (a.date.length === 10 ? 'T12:00:00' : ''));
+        return da.getTime() - db.getTime();
+      });
 
-    let runningBalance = 0;
-    const reportData = all.map(item => {
-      runningBalance += item.type === 'ENTRADA' ? item.amount : -item.amount;
-      return { ...item, balance: runningBalance };
-    });
+      let runningBalance = 0;
+      const reportData = all.map(item => {
+        runningBalance += item.type === 'ENTRADA' ? item.amount : -item.amount;
+        return { ...item, balance: runningBalance };
+      });
 
-    if (format === 'xlsx') {
       const ws = XLSX.utils.json_to_sheet(reportData.map(i => ({
         Data: i.date, Tipo: i.type, Descrição: i.description, Categoria: i.category, Valor: i.amount, 'Saldo Prog.': i.balance
       })));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Fluxo de Caixa');
       XLSX.writeFile(wb, `fluxo_de_caixa_${new Date().toISOString().split('T')[0]}.xlsx`);
-    } else {
-      const doc = new jsPDF();
-      doc.text('Fluxo de Caixa Detalhado', 14, 20);
-      autoTable(doc, {
-        startY: 30,
-        head: [['Data', 'Tipo', 'Descrição', 'Valor', 'Saldo']],
-        body: reportData.map(i => [i.date, i.type, i.description, i.amount.toFixed(2), i.balance.toFixed(2)]),
-        headStyles: { fillColor: [15, 82, 56] }
-      });
-      doc.save(`fluxo_de_caixa_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error exporting CashFlow XLSX:', error);
+    } finally {
+      setIsExporting(false);
     }
-    setIsExporting(false);
   };
 
-  const exportProfitLoss = (format: 'pdf' | 'xlsx') => {
+  const exportProfitLoss = async () => {
     setIsExporting(true);
-    const data = [
-      ['Indicador', 'Valor'],
-      ['(+) Receitas Totais', metrics.revenue],
-      ['(-) Despesas Totais', metrics.expenses],
-      ['(=) Resultado Líquido', metrics.profit],
-      ['Margem de Lucro', `${((metrics.profit / (metrics.revenue || 1)) * 100).toFixed(1)}%`],
-      ['Ponto de Equilíbrio (Est)', metrics.expenses]
-    ];
-    if (format === 'xlsx') {
+    try {
+      const XLSX = await import('xlsx');
+      const data = [
+        ['Indicador', 'Valor'],
+        ['(+) Receitas Totais', metrics.revenue],
+        ['(-) Despesas Totais', metrics.expenses],
+        ['(=) Resultado Líquido', metrics.profit],
+        ['Margem de Lucro', `${((metrics.profit / (metrics.revenue || 1)) * 100).toFixed(1)}%`],
+        ['Ponto de Equilíbrio (Est)', metrics.expenses]
+      ];
       const ws = XLSX.utils.aoa_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'DRE - Lucro e Prejuízo');
       XLSX.writeFile(wb, `demonstrativo_resultado_${new Date().toISOString().split('T')[0]}.xlsx`);
-    } else {
-      const doc = new jsPDF();
-      doc.text('Demonstrativo de Resultado (Lucro/Prejuízo)', 14, 20);
-      autoTable(doc, { startY: 30, body: data, theme: 'striped', headStyles: { fillColor: [15, 82, 56] } });
-      doc.save(`dre_resultado_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error exporting ProfitLoss XLSX:', error);
+    } finally {
+      setIsExporting(false);
     }
-    setIsExporting(false);
   };
 
-  const exportServiceRevenue = (format: 'pdf' | 'xlsx') => {
+  const exportServiceRevenue = async () => {
     setIsExporting(true);
-    // Group by specialty (type)
-    const stats: Record<string, { name: string, count: number, total: number }> = {};
-    filteredData.appointments.forEach(a => {
-      const key = a.type || 'Outros';
-      if (!stats[key]) stats[key] = { name: key, count: 0, total: 0 };
-      stats[key].count++;
-      stats[key].total += (a.price || 0);
-    });
-    const reportData = Object.values(stats).sort((a,b) => b.total - a.total);
+    try {
+      const XLSX = await import('xlsx');
+      const stats: Record<string, { name: string, count: number, total: number }> = {};
+      filteredData.appointments.forEach(a => {
+        const key = a.type || 'Outros';
+        if (!stats[key]) stats[key] = { name: key, count: 0, total: 0 };
+        stats[key].count++;
+        stats[key].total += (a.price || 0);
+      });
+      const reportData = Object.values(stats).sort((a,b) => b.total - a.total);
 
-    if (format === 'xlsx') {
       const ws = XLSX.utils.json_to_sheet(reportData.map(i => ({ Serviço: i.name, 'Qtd Atendimentos': i.count, 'Total Faturado': i.total })));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Faturamento por Serviço');
       XLSX.writeFile(wb, `faturamento_servicos_${new Date().toISOString().split('T')[0]}.xlsx`);
-    } else {
-      const doc = new jsPDF();
-      doc.text('Faturamento por Especialidade / Serviço', 14, 20);
-      autoTable(doc, {
-        startY: 30,
-        head: [['Serviço', 'Atendimentos', 'Total']],
-        body: reportData.map(i => [i.name, i.count.toString(), i.total.toFixed(2)]),
-        headStyles: { fillColor: [15, 82, 56] }
-      });
-      doc.save(`servicos_ranking_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error exporting ServiceRevenue XLSX:', error);
+    } finally {
+      setIsExporting(false);
     }
-    setIsExporting(false);
   };
 
-  const exportInventoryAssets = (format: 'pdf' | 'xlsx') => {
+  const exportInventoryAssets = async () => {
     setIsExporting(true);
-    const reportData = inventoryItems.map(i => ({
-      name: i.name,
-      quantity: i.quantity,
-      unit_cost: i.unit_cost || 0,
-      total_value: (i.quantity || 0) * (i.unit_cost || 0)
-    }));
-    const totalAsset = reportData.reduce((s, i) => s + i.total_value, 0);
+    try {
+      const XLSX = await import('xlsx');
+      const reportData = inventoryItems.map(i => ({
+        name: i.name,
+        quantity: i.quantity,
+        unit_cost: i.unit_cost || 0,
+        total_value: (i.quantity || 0) * (i.unit_cost || 0)
+      }));
+      const totalAsset = reportData.reduce((s, i) => s + i.total_value, 0);
 
-    if (format === 'xlsx') {
       const data = [...reportData.map(i => ({ Item: i.name, Qtd: i.quantity, 'Custo Unit.': i.unit_cost, 'Valor Total': i.total_value })), { Item: 'TOTAL GERAL', 'Valor Total': totalAsset }];
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Estoque e Ativos');
       XLSX.writeFile(wb, `inventario_custo_medio_${new Date().toISOString().split('T')[0]}.xlsx`);
-    } else {
-      const doc = new jsPDF();
-      doc.text('Gestão de Estoque e Ativos (Custo Médio)', 14, 20);
-      autoTable(doc, {
-        startY: 30,
-        head: [['Item', 'Qtd', 'Custo Unit.', 'Valor Total']],
-        body: [...reportData.map(i => [i.name, i.quantity.toString(), i.unit_cost.toFixed(2), i.total_value.toFixed(2)]), ['TOTAL', '', '', totalAsset.toFixed(2)]],
-        headStyles: { fillColor: [15, 82, 56] }
-      });
-      doc.save(`estoque_ativos_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error exporting InventoryAssets XLSX:', error);
+    } finally {
+      setIsExporting(false);
     }
-    setIsExporting(false);
   };
 
-  const handleExportGeneralPDF = () => {
-    setIsExporting(true);
-    const doc = new jsPDF();
-    doc.setFontSize(22);
-    doc.setTextColor(15, 82, 56);
-    doc.text('Relatório Geral de Desempenho - Axis GC', 105, 20, { align: 'center' });
-    
-    autoTable(doc, {
-      startY: 30,
-      head: [['Indicador', 'Resultado']],
-      body: [
-        ['Receita Total', metrics.revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],
-        ['A Receber (Proj.)', metrics.pendingRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],
-        ['Despesa Total', metrics.expenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],
-        ['Lucro Líquido', metrics.profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],
-        ['Atendimentos', metrics.appointmentsCount.toString()],
-        ['Novos Pacientes', metrics.newPatients.toString()],
-        ['Ticket Médio', metrics.avgTicket.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],
-      ],
-      theme: 'striped',
-      headStyles: { fillColor: [15, 82, 56] }
-    });
-    doc.save(`relatorio_geral_${new Date().toISOString().split('T')[0]}.pdf`);
-    setIsExporting(false);
+  const handleExportGeneralPDF = async () => {
+    // Redireciona para exportação XLSX rápida conforme configuração
+    await handleExportXLSX();
   };
 
   return (
@@ -603,32 +560,28 @@ export default function ReportsView({
           <ReportDownloadCard 
             title="Fluxo de Caixa"
             desc="Entradas, saídas e saldo progressivo dia a dia."
-            onPdf={() => exportCashFlow('pdf')}
-            onXlsx={() => exportCashFlow('xlsx')}
+            onXlsx={exportCashFlow}
             icon={TrendingUp}
             color="emerald"
           />
           <ReportDownloadCard 
             title="Lucro ou Prejuízo"
             desc="Comparativo direto (DRE) entre ganhos e gastos."
-            onPdf={() => exportProfitLoss('pdf')}
-            onXlsx={() => exportProfitLoss('xlsx')}
+            onXlsx={exportProfitLoss}
             icon={BarChart3}
             color="indigo"
           />
           <ReportDownloadCard 
             title="Faturamento por Serviço"
             desc="Ranking de rentabilidade por especialidade."
-            onPdf={() => exportServiceRevenue('pdf')}
-            onXlsx={() => exportServiceRevenue('xlsx')}
+            onXlsx={exportServiceRevenue}
             icon={Users}
             color="amber"
           />
           <ReportDownloadCard 
             title="Estoque & Custo Médio"
             desc="Valor patrimonial e consumo de materiais."
-            onPdf={() => exportInventoryAssets('pdf')}
-            onXlsx={() => exportInventoryAssets('xlsx')}
+            onXlsx={exportInventoryAssets}
             icon={Package}
             color="rose"
           />
@@ -662,7 +615,7 @@ function KPICard({ title, value, subtitle, icon: Icon, color }: any) {
   );
 }
 
-function ReportDownloadCard({ title, desc, onPdf, onXlsx, icon: Icon, color }: any) {
+function ReportDownloadCard({ title, desc, onXlsx, icon: Icon, color }: any) {
   const colorMap: Record<string, string> = {
     primary: 'bg-primary/5 text-primary',
     emerald: 'bg-emerald-50 text-emerald-700',
@@ -686,16 +639,10 @@ function ReportDownloadCard({ title, desc, onPdf, onXlsx, icon: Icon, color }: a
       
       <div className="flex gap-2">
         <button 
-          onClick={onPdf}
-          className="flex-1 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-[10px] font-bold hover:bg-rose-50 hover:text-rose-600 transition-all border border-outline-variant/5 flex items-center justify-center gap-1.5"
-        >
-          <File size={14} /> PDF
-        </button>
-        <button 
           onClick={onXlsx}
-          className="flex-1 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-[10px] font-bold hover:bg-emerald-50 hover:text-emerald-700 transition-all border border-outline-variant/5 flex items-center justify-center gap-1.5"
+          className="w-full py-2.5 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition-all border border-emerald-200 flex items-center justify-center gap-2"
         >
-          <FileSpreadsheet size={14} /> XLSX
+          <FileSpreadsheet size={16} /> Exportar Planilha (XLSX)
         </button>
       </div>
     </motion.div>

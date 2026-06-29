@@ -510,7 +510,7 @@ export default function PatientDetailView({
                     <div className="space-y-2">
                       <h4 className="text-[10px] font-bold text-outline uppercase tracking-widest">Notas da Sessão</h4>
                       <p className="text-sm text-on-surface italic font-medium opacity-90 leading-relaxed">
-                        "{c.notes}"
+                        &quot;{c.notes}&quot;
                       </p>
                     </div>
                   )}
