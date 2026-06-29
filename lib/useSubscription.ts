@@ -33,8 +33,9 @@ export function useSubscription() {
   const { user } = useAuth();
   
   const hasFeature = useCallback((featureKey: FeatureKey): boolean => {
-    if (!user || !user.subscription) return false;
-    if (user.role === 'ADMIN' && !user.organizationId) return true; // Para admins globais se existirem
+    if (!user) return false;
+    if (user.role === 'ADMIN') return true; // Admins sempre têm acesso a todas as funcionalidades
+    if (!user.subscription || !user.subscription.entitlements || user.subscription.entitlements.length === 0) return true; // Fallback se não houver trava
     return user.subscription.entitlements.includes(featureKey);
   }, [user]);
 

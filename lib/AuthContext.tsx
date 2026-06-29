@@ -79,6 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Pega a primeira assinatura ativa dentro da organização
         const activeSub = data.organization?.subscriptions?.find((s: any) => s.status === 'active');
 
+        const allModulesEntitlements = [
+          'mod_patients', 'mod_evaluations', 'mod_calendar', 'mod_protocols', 
+          'mod_financial', 'mod_reports', 'mod_inventory', 'mod_billing', 
+          'mod_audit', 'mod_users', 'mod_api', 'mod_whitelabel'
+        ];
+
         const userData: User = {
           id: data.id,
           name: data.name,
@@ -97,8 +103,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             status: activeSub.status,
             nextPaymentDate: activeSub.next_payment_date,
             externalId: activeSub.mercado_pago_subscription_id,
-            entitlements: activeSub.plan?.features?.map((f: any) => f.key) || []
-          } : undefined
+            entitlements: role === 'ADMIN' ? allModulesEntitlements : (activeSub.plan?.features?.map((f: any) => f.key) || [])
+          } : (role === 'ADMIN' ? {
+            planCode: 'PREMIUM',
+            planName: 'Plano Premium (Admin)',
+            status: 'active',
+            entitlements: allModulesEntitlements
+          } : undefined)
         };
         setUser(userData);
       }

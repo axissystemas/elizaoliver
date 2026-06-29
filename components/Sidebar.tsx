@@ -55,9 +55,9 @@ export default function Sidebar({ activeView, setActiveView, onNewAppointment, o
     const hasPermission = user.role === 'ADMIN' || allowedPermissions.some(p => p === item.id || p.startsWith(`${item.id}:`));
     if (!hasPermission) return false;
 
-    // 2. Trava de Plano (SaaS)
+    // 2. Trava de Plano (SaaS) - Administradores sempre têm acesso a todas as funcionalidades
     if (item.featureKey) {
-      const isFeatureEnabled = entitlements.includes(item.featureKey);
+      const isFeatureEnabled = user.role === 'ADMIN' || entitlements.length === 0 || entitlements.includes(item.featureKey);
       if (!isFeatureEnabled) return false;
     }
 
