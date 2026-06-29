@@ -2,6 +2,50 @@
  * Módulo de utilitários para integração com WhatsApp (wa.me)
  */
 
+export interface WhatsAppSettings {
+  clinicName: string;
+  reminderTemplate: string;
+  confirmationTemplate: string;
+  welcomeTemplate: string;
+}
+
+export const DEFAULT_WHATSAPP_SETTINGS: WhatsAppSettings = {
+  clinicName: 'Axis GC',
+  reminderTemplate: 'Olá {paciente}, tudo bem? 🌿\n\nLembramos da sua consulta agendada na *{clinica}* para o dia *{data}* às *{horario}*.\n\nPor favor, responda confirmando sua presença. Qualquer dúvida, estamos à disposição!',
+  confirmationTemplate: 'Olá {paciente}! Sua consulta na *{clinica}* está confirmada para *{data}* às *{horario}*.\n\nTe esperamos lá! ✨',
+  welcomeTemplate: 'Olá {paciente}! Seja bem-vindo(a) à *{clinica}*. Como podemos te ajudar hoje?'
+};
+
+export function getWhatsAppSettings(): WhatsAppSettings {
+  if (typeof window === 'undefined') return DEFAULT_WHATSAPP_SETTINGS;
+  try {
+    const saved = localStorage.getItem('auriculocare_whatsapp_settings');
+    let settings = DEFAULT_WHATSAPP_SETTINGS;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      settings = { ...DEFAULT_WHATSAPP_SETTINGS, ...parsed };
+    }
+    // Sincronizar nome da clínica se houver um salvo nas configurações gerais da clínica
+    const savedClinic = localStorage.getItem('auriculocare_clinic');
+    if (savedClinic) {
+      const clinicObj = JSON.parse(savedClinic);
+      if (clinicObj?.name && settings.clinicName === 'Axis GC') {
+        settings.clinicName = clinicObj.name;
+      }
+    }
+    return settings;
+  } catch (e) {
+    console.error('Erro ao ler configurações do WhatsApp:', e);
+  }
+  return DEFAULT_WHATSAPP_SETTINGS;
+}
+
+export function saveWhatsAppSettings(settings: WhatsAppSettings): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('auriculocare_whatsapp_settings', JSON.stringify(settings));
+  }
+}
+
 /**
  * Formata um número de telefone para o padrão internacional do WhatsApp (ex: 5511999999999)
  */
@@ -49,18 +93,35 @@ export function openWhatsApp(phone: string, message?: string): void {
 }
 
 /**
- * Modelos de mensagens padrão
+ * Modelos de mensagens padrão com suporte a substituição dinâmica
  */
 export const WhatsAppTemplates = {
-  appointmentReminder: (patientName: string, date: string, time: string, clinicName: string = 'Axis GC'): string => {
-    return `Olá ${patientName}, tudo bem? 🌿\n\nLembramos da sua consulta agendada na *${clinicName}* para o dia *${date}* às *${time}*.\n\nPor favor, responda confirmando sua presença. Qualquer dúvida, estamos à disposição!`;
+  appointmentReminder: (patientName: string, date: string, time: string, clinicName?: string): string => {
+    const settings = getWhatsAppSettings();
+    const finalClinic = clinicName && clinicName !== 'Axis GC' ? clinicName : settings.clinicName;
+    return settings.reminderTemplate
+      .replace(/\{paciente\}/g, patientName)
+      .replace(/\{data\}/g, date)
+      .replace(/\{horario\}/g, time)
+      .replace(/\{clinica\}/g, finalClinic);
   },
   
-  appointmentConfirmation: (patientName: string, date: string, time: string, clinicName: string = 'Axis GC'): string => {
-    return `Olá ${patientName}! Sua consulta na *${clinicName}* está confirmada para *${date}* às *${time}*.\n\nTe esperamos lá! ✨`;
+  appointmentConfirmation: (patientName: string, date: string, time: string, clinicName?: string): string => {
+    const settings = getWhatsAppSettings();
+    const finalClinic = clinicName && clinicName !== 'Axis GC' ? clinicName : settings.clinicName;
+    return settings.confirmationTemplate
+      .replace(/\{paciente\}/g, patientName)
+      .replace(/\{data\}/g, date)
+      .replace(/\{horario\}/g, time)
+      .replace(/\{clinica\}/g, finalClinic);
   },
   
-  welcome: (patientName: string, clinicName: string = 'Axis GC'): string => {
-    return `Olá ${patientName}! Seja bem-vindo(a) à *${clinicName}*. Como podemos te ajudar hoje?`;
+  welcome: (patientName: string, clinicName?: string): string => {
+    const settings = getWhatsAppSettings();
+    const finalClinic = clinicName && clinicName !== 'Axis GC' ? clinicName : settings.clinicName;
+    return settings.welcomeTemplate
+      .replace(/\{paciente\}/g, patientName)
+      .replace(/\{clinica\}/g, finalClinic);
   }
 };
+

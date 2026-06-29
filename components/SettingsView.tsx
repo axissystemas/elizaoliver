@@ -32,12 +32,14 @@ import {
   Activity,
   AlertCircle,
   Crown,
-  Zap
+  Zap,
+  MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, UserRole, ROLE_LABELS, ALL_PERMISSIONS, ROLE_PERMISSIONS } from '@/types/auth';
 import ConfirmationModal from './ConfirmationModal';
 import AdminSaaSModal from './AdminSaaSModal';
+import { getWhatsAppSettings, saveWhatsAppSettings, WhatsAppSettings, DEFAULT_WHATSAPP_SETTINGS } from '@/lib/whatsapp';
 
 interface Profile {
   name: string;
@@ -118,6 +120,9 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
   const [isUpgradeViewOpen, setIsUpgradeViewOpen] = useState(false);
   const [isAdminSaaSModalOpen, setIsAdminSaaSModalOpen] = useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [whatsAppSettings, setWhatsAppSettings] = useState<WhatsAppSettings>(() => getWhatsAppSettings());
+  const [whatsAppSavedFeedback, setWhatsAppSavedFeedback] = useState(false);
 
   const { plan, planCode, checkQuota, hasFeature } = useSubscription();
   const [quotas, setQuotas] = useState<Record<string, any>>({});
@@ -571,6 +576,17 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
     {
       title: 'Dados e Integrações',
       items: [
+        { 
+          icon: MessageSquare, 
+          label: 'Configuração do WhatsApp', 
+          description: 'Personalize mensagens automáticas, lembretes e nome da clínica.', 
+          color: 'text-emerald-600', 
+          bg: 'bg-emerald-50',
+          onClick: () => {
+            setWhatsAppSettings(getWhatsAppSettings());
+            setIsWhatsAppModalOpen(true);
+          }
+        },
         { 
           icon: Database, 
           label: 'Backup e Exportação', 
@@ -1776,6 +1792,145 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
         confirmText="Excluir"
         type="danger"
       />
+
+      {/* WhatsApp Settings Modal */}
+      <AnimatePresence>
+        {isWhatsAppModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsWhatsAppModalOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              <div className="p-8 border-b border-outline-variant/10 flex justify-between items-center bg-emerald-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
+                    <MessageSquare size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold font-headline text-on-surface">Configurações do WhatsApp</h3>
+                    <p className="text-xs font-medium text-on-surface-variant">Personalize os modelos de mensagens pré-formatadas</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsWhatsAppModalOpen(false)} className="p-2 hover:bg-surface-container-low rounded-full transition-all">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6 overflow-y-auto flex-1">
+                {whatsAppSavedFeedback && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    className="p-4 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 text-sm font-bold flex items-center gap-2"
+                  >
+                    <Check size={18} /> Configurações do WhatsApp salvas com sucesso!
+                  </motion.div>
+                )}
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Nome da Clínica nas Mensagens</label>
+                  <input 
+                    type="text" 
+                    value={whatsAppSettings.clinicName}
+                    onChange={e => setWhatsAppSettings({...whatsAppSettings, clinicName: e.target.value})}
+                    placeholder="Ex: Axis GC"
+                    className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-emerald-500/20 outline-none font-medium"
+                  />
+                  <p className="text-[11px] text-outline">Substitui a variável <code className="bg-slate-100 px-1 rounded font-mono text-slate-700">{'{clinica}'}</code> nos modelos abaixo.</p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/60 space-y-2">
+                  <p className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    💡 Tags Dinâmicas Disponíveis:
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="px-2.5 py-1 bg-white rounded-lg border border-slate-300 font-mono text-slate-700 shadow-sm"><code className="font-bold">{'{paciente}'}</code>: Nome do paciente</span>
+                    <span className="px-2.5 py-1 bg-white rounded-lg border border-slate-300 font-mono text-slate-700 shadow-sm"><code className="font-bold">{'{data}'}</code>: Data da consulta</span>
+                    <span className="px-2.5 py-1 bg-white rounded-lg border border-slate-300 font-mono text-slate-700 shadow-sm"><code className="font-bold">{'{horario}'}</code>: Horário</span>
+                    <span className="px-2.5 py-1 bg-white rounded-lg border border-slate-300 font-mono text-slate-700 shadow-sm"><code className="font-bold">{'{clinica}'}</code>: Nome da clínica</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-2">
+                  <h4 className="text-sm font-bold text-outline uppercase tracking-widest">Modelos de Texto</h4>
+                  
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700">1. Lembrete de Consulta</label>
+                    <textarea 
+                      rows={4}
+                      value={whatsAppSettings.reminderTemplate}
+                      onChange={e => setWhatsAppSettings({...whatsAppSettings, reminderTemplate: e.target.value})}
+                      className="w-full p-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-emerald-500/20 outline-none text-sm font-medium resize-y"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700">2. Confirmação de Agendamento</label>
+                    <textarea 
+                      rows={3}
+                      value={whatsAppSettings.confirmationTemplate}
+                      onChange={e => setWhatsAppSettings({...whatsAppSettings, confirmationTemplate: e.target.value})}
+                      className="w-full p-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-emerald-500/20 outline-none text-sm font-medium resize-y"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700">3. Mensagem de Boas-Vindas</label>
+                    <textarea 
+                      rows={3}
+                      value={whatsAppSettings.welcomeTemplate}
+                      onChange={e => setWhatsAppSettings({...whatsAppSettings, welcomeTemplate: e.target.value})}
+                      className="w-full p-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-emerald-500/20 outline-none text-sm font-medium resize-y"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-outline-variant/10 bg-slate-50 flex items-center justify-between gap-4">
+                <button 
+                  type="button"
+                  onClick={() => setWhatsAppSettings(DEFAULT_WHATSAPP_SETTINGS)}
+                  className="px-4 py-3 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200/60 transition-all"
+                >
+                  Restaurar Padrão
+                </button>
+                <div className="flex gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setIsWhatsAppModalOpen(false)}
+                    className="px-5 py-3 rounded-xl text-sm font-bold text-outline hover:bg-surface-container-low transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      saveWhatsAppSettings(whatsAppSettings);
+                      setWhatsAppSavedFeedback(true);
+                      setTimeout(() => {
+                        setWhatsAppSavedFeedback(false);
+                        setIsWhatsAppModalOpen(false);
+                      }, 1200);
+                    }}
+                    className="px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    <Save size={18} /> Salvar Alterações
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Admin SaaS Modal */}
       <AdminSaaSModal 
