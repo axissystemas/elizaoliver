@@ -101,9 +101,45 @@ export const supabase = new Proxy({} as any, {
   get(target, prop) {
     const client = getSupabase();
     if (!client) return undefined;
+
+    // Intercepta chamadas para 'from' para sanitizar automaticamente o ID 'native-admin'
+    // evitando erros de restrição de tipo UUID no PostgreSQL.
+    if (prop === 'from') {
+      return (relation: string) => {
+        const builder = client.from(relation);
+        return new Proxy(builder, {
+          get(targetBuilder, builderProp) {
+            const builderValue = (targetBuilder as any)[builderProp];
+            if (typeof builderValue === 'function') {
+              if (['insert', 'update', 'upsert'].includes(builderProp as string)) {
+                return (values: any, ...args: any[]) => {
+                  const sanitize = (val: any): any => {
+                    if (val === 'native-admin') return null;
+                    if (Array.isArray(val)) return val.map(sanitize);
+                    if (val !== null && typeof val === 'object') {
+                      const newObj: any = {};
+                      for (const k of Object.keys(val)) {
+                        newObj[k] = sanitize(val[k]);
+                      }
+                      return newObj;
+                    }
+                    return val;
+                  };
+                  const sanitizedValues = sanitize(values);
+                  return builderValue.call(targetBuilder, sanitizedValues, ...args);
+                };
+              }
+              return builderValue.bind(targetBuilder);
+            }
+            return builderValue;
+          }
+        });
+      };
+    }
+
     const value = (client as any)[prop];
 
-    // Se o valor for uma função e pertencer diretamente ao cliente (como from, rpc)
+    // Se o valor for uma função e pertencer diretamente ao cliente (como rpc)
     // fazemos o bind. Se for um sub-objeto (como auth, storage) retornamos o objeto original.
     if (typeof value === 'function') {
       return value.bind(client);
