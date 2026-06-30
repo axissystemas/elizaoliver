@@ -34,6 +34,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { User } from '@/types/auth';
 import { BillingItem, BillingBatch, Insurer, InsurancePlan, InsurancePrice, BillingItemStatus, Procedure, MedicalSupply } from '@/types/billing';
 import { supabase } from '@/lib/supabase';
+import { generateTissXml } from '@/lib/tiss/xmlGenerator';
+import { parseReconciliationXml } from '@/lib/tiss/reconciliationParser';
 
 interface BillingViewProps {
   user: User;
@@ -448,6 +450,68 @@ export default function BillingView({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // ─── TISS XML Integration Handlers ──────────────────────────────────────────
+  const handleExportXml = () => {
+    if (!selectedBatch) return;
+    try {
+      const batchItems = billingItems.filter(i => i.batch_id === selectedBatch.id);
+      const xml = generateTissXml(selectedBatch, batchItems);
+      
+      const blob = new Blob([xml], { type: 'application/xml;charset=iso-8859-1' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `LOTE_TISS_${selectedBatch.id.substring(0, 8)}_${selectedBatch.competence}.xml`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Erro ao exportar XML TISS:', err);
+      alert('Erro ao exportar XML TISS: ' + err.message);
+    }
+  };
+
+  const handleImportReconciliationXml = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedBatch) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        const parsedItems = parseReconciliationXml(text);
+        
+        if (parsedItems.length === 0) {
+          alert('Nenhuma guia encontrada no arquivo XML de retorno ou formato inválido.');
+          return;
+        }
+
+        const batchItems = billingItems.filter(i => i.batch_id === selectedBatch.id);
+        const nextValues = { ...reconcileValues };
+        let matchedCount = 0;
+
+        parsedItems.forEach((parsed) => {
+          const matchedItem = batchItems.find(i => i.guia_number === parsed.guiaNumber);
+          if (matchedItem) {
+            nextValues[matchedItem.id] = {
+              paid: parsed.paidValue,
+              glossed: parsed.glossedValue
+            };
+            matchedCount++;
+          }
+        });
+
+        setReconcileValues(nextValues);
+        alert(`Leitura concluída! ${matchedCount} guias do lote foram encontradas e atualizadas no painel.`);
+      } catch (err: any) {
+        console.error(err);
+        alert('Erro ao ler arquivo XML: ' + err.message);
+      }
+    };
+    reader.readAsText(file, 'ISO-8859-1');
   };
 
   // ─── Phase 3: Reconciliation Handlers ───────────────────────────────────────
@@ -1490,19 +1554,38 @@ export default function BillingView({
                 </div>
                 <div className="flex items-center gap-3">
                   {!isReconciling ? (
-                    <button
-                      onClick={() => {
-                        const batchItems = billingItems.filter(i => i.batch_id === selectedBatch.id);
-                        initReconcileValues(batchItems);
-                        setIsReconciling(true);
-                      }}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-bold rounded-xl hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20"
-                    >
-                      <BarChart3 size={18} />
-                      Conciliar Lote
-                    </button>
+                    <>
+                      <button
+                        onClick={() => {
+                          const batchItems = billingItems.filter(i => i.batch_id === selectedBatch.id);
+                          initReconcileValues(batchItems);
+                          setIsReconciling(true);
+                        }}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-bold rounded-xl hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20"
+                      >
+                        <BarChart3 size={18} />
+                        Conciliar Lote
+                      </button>
+                      <button
+                        onClick={handleExportXml}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-white border border-outline-variant text-on-surface font-bold rounded-xl hover:bg-surface-container-low transition-all"
+                      >
+                        <ArrowUpRight size={18} className="text-primary" />
+                        Exportar XML TISS
+                      </button>
+                    </>
                   ) : (
                     <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200 text-blue-700 font-bold rounded-xl hover:bg-blue-100 transition-all cursor-pointer">
+                        <ArrowUpRight size={16} className="rotate-180 text-blue-600" />
+                        Ler Retorno XML
+                        <input
+                          type="file"
+                          accept=".xml"
+                          className="hidden"
+                          onChange={handleImportReconciliationXml}
+                        />
+                      </label>
                       <button
                         onClick={handleSettleBatch}
                         className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 font-bold rounded-xl hover:bg-emerald-100 transition-all border border-emerald-200"

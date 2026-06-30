@@ -384,8 +384,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password?: string) => {
     const cleanEmail = email.trim().toLowerCase();
     
-    const isNativeEmailMatch = cleanEmail === NATIVE_ADMIN_EMAIL.toLowerCase() || cleanEmail === 'suporte@axissystemas.com.br';
-    const isNativePasswordMatch = password === NATIVE_ADMIN_PASSWORD || password === 'Admin@123';
+    const isNativeEmailMatch = NATIVE_ADMIN_EMAIL !== '' && cleanEmail === NATIVE_ADMIN_EMAIL.toLowerCase();
+    const isNativePasswordMatch = NATIVE_ADMIN_PASSWORD !== '' && password === NATIVE_ADMIN_PASSWORD;
 
     // ── 1. Tenta login normal via Supabase Auth primeiro ──────────────────────
     if (supabase && password) {

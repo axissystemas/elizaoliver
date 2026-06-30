@@ -4,8 +4,8 @@ import { test, expect } from '@playwright/test';
 test.describe.configure({ mode: 'serial' });
 
 const TEST_USER = {
-  email: 'admin@axisgc.com.br',
-  password: 'Navicom!f!0'
+  email: process.env.NEXT_PUBLIC_NATIVE_ADMIN_EMAIL || '',
+  password: process.env.NEXT_PUBLIC_NATIVE_ADMIN_PASSWORD || ''
 };
 
 const NEW_PATIENT = {
@@ -18,6 +18,12 @@ const NEW_PATIENT = {
 };
 
 test.beforeEach(async ({ page }) => {
+  // Listen for dialogs (alerts, conforms) and print their messages
+  page.on('dialog', async dialog => {
+    console.log(`[ALERT/DIALOG]: ${dialog.message()}`);
+    await dialog.dismiss();
+  });
+
   // Login flow
   await page.goto('/');
   await page.fill('input[type="email"]', TEST_USER.email);
@@ -26,7 +32,7 @@ test.beforeEach(async ({ page }) => {
   
   // Wait for dashboard to load completely
   await page.waitForLoadState('networkidle');
-  await expect(page.getByText('Painel de Controle').first()).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('Painel').first()).toBeVisible({ timeout: 15000 });
 });
 
 test('deve criar um novo paciente e verificar na lista', async ({ page }) => {
@@ -40,7 +46,8 @@ test('deve criar um novo paciente e verificar na lista', async ({ page }) => {
 
   // Fill form
   await page.fill('input[placeholder="Ex: Maria Silva"]', NEW_PATIENT.name);
-  await page.fill('input[placeholder="30"]', NEW_PATIENT.age);
+  await page.fill('input[placeholder="000.000.000-00"]', '123.456.789-09');
+  await page.fill('input[type="date"]', '1996-06-25');
   await page.fill('input[placeholder="(11) 99999-9999"]', NEW_PATIENT.phone);
   await page.fill('input[placeholder="email@exemplo.com"]', NEW_PATIENT.email);
   await page.fill('input[placeholder*="Rua das Flores"]', NEW_PATIENT.address);
@@ -59,17 +66,19 @@ test('deve criar um novo paciente e verificar na lista', async ({ page }) => {
 
 test('deve editar um paciente existente', async ({ page }) => {
   // Navigate to patients view
-  await page.click('button:has-text("Pacientes")');
+  await page.locator('aside').getByText('Pacientes').click();
   
   // Search for an existing patient to edit
-  await page.fill('input[placeholder*="Buscar por nome"]', 'Isabella');
+  await page.fill('input[placeholder*="Buscar por nome"]', 'Julio Ramos');
   
   const editButton = page.locator('button[title="Editar Ficha"]').first();
   await editButton.click();
   
   await expect(page.getByRole('heading', { name: 'Editar Paciente' })).toBeVisible();
 
-  // Change occupation
+  // Fill in required fields if empty, then change occupation
+  await page.fill('input[placeholder="000.000.000-00"]', '123.456.789-09');
+  await page.fill('input[type="date"]', '1996-06-25');
   const newProfession = `Profissão ${Date.now()}`;
   await page.fill('input[placeholder="Ex: Designer"]', newProfession);
 
@@ -85,13 +94,18 @@ test('deve editar um paciente existente', async ({ page }) => {
 
 test('deve excluir um paciente', async ({ page }) => {
   // Navigate to patients view
-  await page.click('button:has-text("Pacientes")');
+  await page.locator('aside').getByText('Pacientes').click();
   
   // Create a temp patient to delete
   const deleteTargetName = `Excluir_${Date.now()}`;
   await page.click('button:has-text("Cadastrar Paciente")');
   await page.fill('input[placeholder="Ex: Maria Silva"]', deleteTargetName);
-  await page.fill('input[placeholder="30"]', '40');
+  await page.fill('input[placeholder="000.000.000-00"]', '987.654.321-09');
+  await page.fill('input[type="date"]', '1986-06-25');
+  await page.fill('input[placeholder="(11) 99999-9999"]', '(11) 99999-9999');
+  await page.fill('input[placeholder="email@exemplo.com"]', `delete.${Date.now()}@exemplo.com`);
+  await page.fill('input[placeholder*="Rua das Flores"]', 'Rua de Teste');
+  await page.fill('input[placeholder="Ex: Designer"]', 'Testador');
   await page.click('button:has-text("Salvar Cadastro")');
   await expect(page.getByRole('heading', { name: 'Novo Cadastro' })).not.toBeVisible({ timeout: 10000 });
 
@@ -103,12 +117,6 @@ test('deve excluir um paciente', async ({ page }) => {
   const deleteButton = page.locator('button[title="Excluir"]').first();
   await deleteButton.click();
 
-  // Handle confirmation modal if any (Wait, the code has a ConfirmationModal)
-  // But PatientsView.tsx calls handleDelete immediately? 
-  // Wait, let's check app/page.tsx: handleDeletePatient has a confirm? 
-  // No, PatientsView.tsx calls onDeletePatient(id) if provided.
-  // Actually, I saw ConfirmationModal in app/page.tsx.
-  
   // Let's assume there's a confirmation
   const confirmButton = page.getByRole('button', { name: 'Excluir' }).last();
   if (await confirmButton.isVisible()) {
@@ -119,3 +127,4 @@ test('deve excluir um paciente', async ({ page }) => {
   await page.fill('input[placeholder*="Buscar por nome"]', deleteTargetName);
   await expect(page.getByText(deleteTargetName)).not.toBeVisible();
 });
+

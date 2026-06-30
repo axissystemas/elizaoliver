@@ -506,7 +506,7 @@ export default function Home() {
           .from('patients')
           .insert([{
             ...patientData,
-            created_by: user.id
+            created_by: user.id === 'native-admin' ? null : user.id
           }])
           .select();
 
