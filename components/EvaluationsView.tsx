@@ -25,7 +25,11 @@ import {
   Pencil,
   AlertCircle,
   Zap,
-  Sparkles
+  Sparkles,
+  Camera,
+  Upload,
+  Maximize2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
@@ -86,7 +90,7 @@ const MTC_DEFAULT_FORM_DATA: Partial<MTCEvaluation> = {
   },
   emotions: { predominant: [], stress: '', anxiety: false, currentStatus: '' },
   thermoregulation: { feeling: 'Normal', spontaneousSweat: false, nightSweat: false, odor: false },
-  tonguePulse: { color: 'Normal', coating: 'Branca', humidity: 'Normal', shape: 'Normal', pulse: '' }
+  tonguePulse: { color: 'Normal', coating: 'Branca', humidity: 'Normal', shape: 'Normal', pulse: '', photoUrl: '' }
 };
 
 const RADIESTESIA_DEFAULT_FORM_DATA: Partial<RadiesthesiaEvaluation> = {
@@ -312,7 +316,8 @@ const DIAGNOSTICO_OURO_DEFAULT_FORM_DATA: Partial<DiagnosticoOuroEvaluation> = {
     coatingTexture: '',
     coatingColor: '',
     coatingLocation: '',
-    observations: ''
+    observations: '',
+    photoUrl: ''
   },
   diagnosticoFinal: {
     syndromes: '',
@@ -380,7 +385,46 @@ export default function EvaluationsView({
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [activeTemplates, setActiveTemplates] = useState<EvaluationTemplate[]>(() => DEFAULT_SYSTEM_TEMPLATES.filter(t => t.isActive));
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const processAndCompressImage = (file: File, callback: (base64: string) => void) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          callback(dataUrl);
+        }
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     async function loadActiveTemplates() {
@@ -640,6 +684,25 @@ export default function EvaluationsView({
           headStyles: { fillColor: [180, 130, 20] },
           styles: { fontSize: 8 }
         });
+
+        if (ouro.lingua?.photoUrl) {
+          let photoY = (doc as any).lastAutoTable.finalY + 8;
+          if (photoY + 55 > doc.internal.pageSize.getHeight() - 15) {
+            doc.addPage();
+            photoY = 20;
+          }
+          doc.setFontSize(10);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(180, 130, 20);
+          doc.text('FOTO DA LÍNGUA DO PACIENTE:', 14, photoY);
+          try {
+            doc.setDrawColor(180, 130, 20);
+            doc.rect(14, photoY + 3, 64, 48);
+            doc.addImage(ouro.lingua.photoUrl, 'JPEG', 14.5, photoY + 3.5, 63, 47);
+          } catch (err) {
+            console.error('Erro ao adicionar foto da língua ao PDF:', err);
+          }
+        }
       } else if (templateType === 'MTC') {
         const mtc = evaluation as MTCEvaluation;
         // Header MTC
@@ -735,6 +798,25 @@ export default function EvaluationsView({
           ],
           theme: 'striped',
         });
+
+        if (mtc.tonguePulse?.photoUrl) {
+          let photoY = (doc as any).lastAutoTable.finalY + 8;
+          if (photoY + 55 > doc.internal.pageSize.getHeight() - 15) {
+            doc.addPage();
+            photoY = 20;
+          }
+          doc.setFontSize(10);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(15, 82, 56);
+          doc.text('FOTO DA LÍNGUA DO PACIENTE:', 14, photoY);
+          try {
+            doc.setDrawColor(15, 82, 56);
+            doc.rect(14, photoY + 3, 64, 48);
+            doc.addImage(mtc.tonguePulse.photoUrl, 'JPEG', 14.5, photoY + 3.5, 63, 47);
+          } catch (err) {
+            console.error('Erro ao adicionar foto da língua ao PDF:', err);
+          }
+        }
 
         // 5. Conclusão
         currentY = (doc as any).lastAutoTable.finalY + 15;
@@ -2617,6 +2699,125 @@ export default function EvaluationsView({
                                   />
                                 </div>
                               </div>
+
+                              {/* Foto da Língua */}
+                              <div className="mt-4 pt-4 border-t border-outline-variant/10 space-y-3">
+                                <div className="flex justify-between items-center">
+                                  <label className="text-xs font-bold text-amber-900 uppercase tracking-widest flex items-center gap-1.5">
+                                    <Camera size={16} className="text-amber-600" /> Foto da Língua do Paciente
+                                  </label>
+                                  {((formData as DiagnosticoOuroEvaluation).lingua?.photoUrl) && (
+                                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                      <Check size={12} /> Foto Anexada
+                                    </span>
+                                  )}
+                                </div>
+
+                                <input
+                                  type="file"
+                                  ref={cameraInputRef}
+                                  accept="image/*"
+                                  capture="environment"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      processAndCompressImage(file, (base64) => {
+                                        updateNestedField(['lingua', 'photoUrl'], base64);
+                                      });
+                                    }
+                                  }}
+                                />
+                                <input
+                                  type="file"
+                                  ref={fileInputRef}
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      processAndCompressImage(file, (base64) => {
+                                        updateNestedField(['lingua', 'photoUrl'], base64);
+                                      });
+                                    }
+                                  }}
+                                />
+
+                                {(formData as DiagnosticoOuroEvaluation).lingua?.photoUrl ? (
+                                  <div className="flex flex-col sm:flex-row items-center gap-4 p-4 bg-white rounded-2xl border border-amber-200/60 shadow-sm">
+                                    <div
+                                      className="relative group cursor-pointer overflow-hidden rounded-xl border border-outline-variant/20 shrink-0 w-36 h-28 bg-slate-50 flex items-center justify-center"
+                                      onClick={() => setPreviewPhotoUrl((formData as DiagnosticoOuroEvaluation).lingua?.photoUrl || null)}
+                                    >
+                                      <img
+                                        src={(formData as DiagnosticoOuroEvaluation).lingua?.photoUrl}
+                                        alt="Foto da Língua"
+                                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                      />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-1 text-xs font-semibold">
+                                        <Maximize2 size={16} /> Ver
+                                      </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-2 w-full">
+                                      <p className="text-xs text-on-surface-variant font-medium">Foto salva na ficha. Ela será incluída automaticamente no PDF impresso/exportado.</p>
+                                      {!isViewMode && (
+                                        <div className="flex flex-wrap gap-2 pt-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => cameraInputRef.current?.click()}
+                                            className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
+                                          >
+                                            <Camera size={14} /> Tirar outra foto (Câmera)
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="px-3 py-1.5 bg-surface-container-low hover:bg-surface-container text-on-surface border border-outline-variant/20 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
+                                          >
+                                            <Upload size={14} /> Escolher do Computador
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => updateNestedField(['lingua', 'photoUrl'], '')}
+                                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
+                                          >
+                                            <Trash2 size={14} /> Remover
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="p-6 bg-white rounded-2xl border-2 border-dashed border-amber-200/80 text-center space-y-3">
+                                    <div className="w-10 h-10 bg-amber-50 text-amber-700 rounded-full flex items-center justify-center mx-auto">
+                                      <ImageIcon size={20} />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-bold text-on-surface">Nenhuma foto da língua incluída</p>
+                                      <p className="text-[11px] text-on-surface-variant mt-0.5">Tire uma foto na hora com a câmera do celular ou carregue um arquivo do seu computador.</p>
+                                    </div>
+                                    {!isViewMode && (
+                                      <div className="flex flex-wrap justify-center gap-3 pt-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => cameraInputRef.current?.click()}
+                                          className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-amber-600/20 transition-all"
+                                        >
+                                          <Camera size={16} /> Tirar Foto (Câmera)
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => fileInputRef.current?.click()}
+                                          className="px-4 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-xl text-xs font-bold flex items-center gap-2 border border-outline-variant/20 transition-all"
+                                        >
+                                          <Upload size={16} /> Carregar do Computador
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
                             {/* SÍNDROME E CONDUTA */}
@@ -2805,6 +3006,33 @@ export default function EvaluationsView({
                   Excluir
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Photo Zoom Modal */}
+      <AnimatePresence>
+        {previewPhotoUrl && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md" onClick={() => setPreviewPhotoUrl(null)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative max-w-4xl max-h-[90vh] bg-white rounded-3xl overflow-hidden p-3 shadow-2xl flex flex-col items-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setPreviewPhotoUrl(null)}
+                className="absolute top-4 right-4 p-2.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-all z-10"
+              >
+                <X size={20} />
+              </button>
+              <img
+                src={previewPhotoUrl}
+                alt="Foto da Língua Ampliada"
+                className="max-w-full max-h-[82vh] object-contain rounded-2xl"
+              />
             </motion.div>
           </div>
         )}

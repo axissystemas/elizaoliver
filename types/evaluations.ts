@@ -189,6 +189,7 @@ export interface DiagnosticoOuroEvaluation extends BaseEvaluation {
     coatingColor: string;
     coatingLocation: string;
     observations: string;
+    photoUrl?: string;
   };
   diagnosticoFinal: {
     syndromes: string;
@@ -298,6 +299,7 @@ export interface MTCEvaluation extends BaseEvaluation {
     humidity: string;
     shape: string;
     pulse: string;
+    photoUrl?: string;
   };
   seasonsWorsening: string;
   timeWorsening: string;
