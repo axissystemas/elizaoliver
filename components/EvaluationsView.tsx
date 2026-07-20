@@ -352,7 +352,8 @@ const DIAGNOSTICO_OURO_STEPS = [
   { id: 'p3', label: 'Pág 3: Micção & Evacuação', icon: Droplets },
   { id: 'p4', label: 'Pág 4: Diarreias, Emoção, Sono', icon: Moon },
   { id: 'p5', label: 'Pág 5: Ginecologia, Homem & Shen', icon: Eye },
-  { id: 'p6', label: 'Pág 6: Pulso, Língua & Síndromes', icon: Activity },
+  { id: 'p6', label: 'Pág 6: Pulso & Língua', icon: Activity },
+  { id: 'p7', label: 'Pág 7: Resumo & Síndromes', icon: Check },
 ];
 
 import { User as UserType } from '@/types/auth';
@@ -657,15 +658,15 @@ export default function EvaluationsView({
           styles: { fontSize: 8 }
         });
 
-        // Página 6: Pulso, Língua, Síndromes e Tratamento
+        // Página 6: Pulso & Língua
         doc.addPage();
         doc.setFontSize(16);
         doc.setTextColor(180, 130, 20);
-        doc.text('Página 6: Pulso, Língua, Síndromes & Tratamento', pageWidth / 2, 20, { align: 'center' });
+        doc.text('Página 6: Pulso & Língua', pageWidth / 2, 20, { align: 'center' });
 
         autoTable(doc, {
           startY: 27,
-          head: [['Parâmetro MTC', 'Diagnóstico & Conduta']],
+          head: [['Parâmetro MTC', 'Diagnóstico de Pulso e Língua']],
           body: [
             ['Pulso Direito', ouro.pulso?.rightPulse || '-'],
             ['Pulso Esquerdo', ouro.pulso?.leftPulse || '-'],
@@ -675,11 +676,6 @@ export default function EvaluationsView({
             ['LÍNGUA - Corpo (Vitalidade, Cor, Forma, Mov)', `Vitalidade: ${ouro.lingua?.vitality || '-'} | Cor: ${ouro.lingua?.color || '-'} | Forma: ${ouro.lingua?.shape || '-'} | Mov: ${ouro.lingua?.movement || '-'}`],
             ['LÍNGUA - Saburra (Textura, Cor, Localização)', `Textura: ${ouro.lingua?.coatingTexture || '-'} | Cor: ${ouro.lingua?.coatingColor || '-'} | Local: ${ouro.lingua?.coatingLocation || '-'}`],
             ['Obs Língua', ouro.lingua?.observations || '-'],
-            ['SÍNDROME(S) MTC IDENTIFICADAS', ouro.diagnosticoFinal?.syndromes || '-'],
-            ['TRATAMENTOS PROPOSTOS', ouro.diagnosticoFinal?.treatments || '-'],
-            ['TÉCNICAS UTILIZADAS', ouro.diagnosticoFinal?.techniques || '-'],
-            ['PONTOS UTILIZADOS', ouro.diagnosticoFinal?.points || '-'],
-            ['OBSERVAÇÕES FINAIS', ouro.diagnosticoFinal?.observations || '-'],
           ],
           theme: 'striped',
           headStyles: { fillColor: [180, 130, 20] },
@@ -704,6 +700,27 @@ export default function EvaluationsView({
             console.error('Erro ao adicionar foto da língua ao PDF:', err);
           }
         }
+
+        // Página 7: Síndromes MTC & Conduta Terapêutica
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.setTextColor(180, 130, 20);
+        doc.text('Página 7: Síndromes MTC & Conduta Terapêutica', pageWidth / 2, 20, { align: 'center' });
+
+        autoTable(doc, {
+          startY: 27,
+          head: [['Conclusão Diagnóstica', 'Síndromes e Conduta']],
+          body: [
+            ['SÍNDROME(S) MTC IDENTIFICADAS', ouro.diagnosticoFinal?.syndromes || '-'],
+            ['TRATAMENTOS PROPOSTOS', ouro.diagnosticoFinal?.treatments || '-'],
+            ['TÉCNICAS UTILIZADAS', ouro.diagnosticoFinal?.techniques || '-'],
+            ['PONTOS UTILIZADOS', ouro.diagnosticoFinal?.points || '-'],
+            ['OBSERVAÇÕES FINAIS', ouro.diagnosticoFinal?.observations || '-'],
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: [180, 130, 20] },
+          styles: { fontSize: 8 }
+        });
       } else if (templateType === 'MTC') {
         const mtc = evaluation as MTCEvaluation;
         // Header MTC
@@ -2818,6 +2835,95 @@ export default function EvaluationsView({
                                     )}
                                   </div>
                                 )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* PÁGINA 7 */}
+                        {currentStep === 6 && (
+                          <div className="space-y-8">
+                            <div className="bg-amber-100/70 border border-amber-300/60 p-4 rounded-2xl flex items-center justify-between text-amber-900 text-sm">
+                              <div className="flex items-center gap-3">
+                                <Check className="text-amber-700 shrink-0" size={20} />
+                                <span className="font-bold">Página 7: Resumo Consolidado dos Achados, Síndromes MTC & Conduta Terapêutica</span>
+                              </div>
+                              <span className="text-xs bg-amber-200/80 text-amber-900 font-bold px-3 py-1 rounded-full">Passo Final</span>
+                            </div>
+
+                            {/* RESUMO DOS ACHADOS CLÍNICOS (PÁGINAS 1 A 6) */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/50 border border-outline-variant/15 space-y-6">
+                              <div className="flex justify-between items-center border-b border-outline-variant/10 pb-4">
+                                <div>
+                                  <h4 className="text-base font-bold text-on-surface flex items-center gap-2">
+                                    <ClipboardList size={18} className="text-amber-700" /> RESUMO GERAL DAS PÁGINAS ANTERIORES
+                                  </h4>
+                                  <p className="text-xs text-on-surface-variant mt-0.5">Consulte todos os dados coletados antes de fechar a síndrome diagnóstica.</p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* CARD PÁG 1 */}
+                                <div className="p-4 bg-white rounded-xl border border-outline-variant/10 shadow-sm space-y-2 text-xs">
+                                  <p className="font-bold text-amber-900 uppercase tracking-widest text-[10px]">1. Queixa Principal & Dor</p>
+                                  <p><span className="font-bold text-outline">Queixa:</span> {(formData as DiagnosticoOuroEvaluation).mainComplaint || 'Não informada'}</p>
+                                  <p><span className="font-bold text-outline">Início / Local:</span> {(formData as DiagnosticoOuroEvaluation).mainComplaintStart || '-'} | {(formData as DiagnosticoOuroEvaluation).mainComplaintLocation || '-'}</p>
+                                  <p><span className="font-bold text-outline">Intensidade:</span> {(formData as DiagnosticoOuroEvaluation).mainComplaintIntensity || 0}/10 | <span className="font-bold text-outline">Freq:</span> {(formData as DiagnosticoOuroEvaluation).mainComplaintFrequency || '-'}</p>
+                                  <p><span className="font-bold text-outline">Dor (Característ.):</span> {(formData as DiagnosticoOuroEvaluation).pain?.characteristics || '-'}</p>
+                                </div>
+
+                                {/* CARD PÁG 2 */}
+                                <div className="p-4 bg-white rounded-xl border border-outline-variant/10 shadow-sm space-y-2 text-xs">
+                                  <p className="font-bold text-amber-900 uppercase tracking-widest text-[10px]">2. Frio/Calor, Suor, Sede & Fome</p>
+                                  <p><span className="font-bold text-outline">Sensação Temp:</span> {(formData as DiagnosticoOuroEvaluation).frioCalor?.tempPreference || 'Normal'} | <span className="font-bold text-outline">Bebidas:</span> {(formData as DiagnosticoOuroEvaluation).frioCalor?.drinkTempPreference || '-'}</p>
+                                  <p><span className="font-bold text-outline">Análise Frio:</span> {((formData as DiagnosticoOuroEvaluation).frioCalor?.frioAnalysis || []).join('; ') || 'Nenhum'}</p>
+                                  <p><span className="font-bold text-outline">Análise Calor:</span> {((formData as DiagnosticoOuroEvaluation).frioCalor?.calorAnalysis || []).join('; ') || 'Nenhum'}</p>
+                                  <p><span className="font-bold text-outline">Suor / Sede / Fome:</span> {(formData as DiagnosticoOuroEvaluation).suor?.normal ? 'Suor Normal' : 'Suor Alterado'} | {(formData as DiagnosticoOuroEvaluation).sede?.normal ? 'Sede Normal' : 'Sede Alterada'} | {(formData as DiagnosticoOuroEvaluation).fome?.normal ? 'Fome Normal' : 'Fome Alterada'}</p>
+                                </div>
+
+                                {/* CARD PÁG 3 */}
+                                <div className="p-4 bg-white rounded-xl border border-outline-variant/10 shadow-sm space-y-2 text-xs">
+                                  <p className="font-bold text-amber-900 uppercase tracking-widest text-[10px]">3. Micção & Evacuação</p>
+                                  <p><span className="font-bold text-outline">Micção:</span> {(formData as DiagnosticoOuroEvaluation).miccao?.normal ? 'Normal' : 'Alterada'} | <span className="font-bold text-outline">Cor:</span> {((formData as DiagnosticoOuroEvaluation).miccao?.color || []).join(', ') || '-'}</p>
+                                  <p><span className="font-bold text-outline">Evacuação:</span> Cor: {(formData as DiagnosticoOuroEvaluation).evacuacao?.color || '-'} | Vol: {(formData as DiagnosticoOuroEvaluation).evacuacao?.volume || '-'}</p>
+                                  <p><span className="font-bold text-outline">Textura Fezes:</span> {((formData as DiagnosticoOuroEvaluation).evacuacao?.shapeTexture || []).join('; ') || 'Normal'}</p>
+                                  <p><span className="font-bold text-outline">Constipação:</span> {((formData as DiagnosticoOuroEvaluation).evacuacao?.constipation || []).join('; ') || 'Ausente'}</p>
+                                </div>
+
+                                {/* CARD PÁG 4 */}
+                                <div className="p-4 bg-white rounded-xl border border-outline-variant/10 shadow-sm space-y-2 text-xs">
+                                  <p className="font-bold text-amber-900 uppercase tracking-widest text-[10px]">4. Diarreia, Emoção & Sono</p>
+                                  <p><span className="font-bold text-outline">Diarreia Aguda:</span> {((formData as DiagnosticoOuroEvaluation).diarreia?.acute || []).join('; ') || 'Nenhuma'}</p>
+                                  <p><span className="font-bold text-outline">Diarreia Crônica:</span> {((formData as DiagnosticoOuroEvaluation).diarreia?.chronic || []).join('; ') || 'Nenhuma'}</p>
+                                  <p><span className="font-bold text-outline">Emoção Predominante:</span> {(formData as DiagnosticoOuroEvaluation).emocao?.predominant || '-'}</p>
+                                  <p><span className="font-bold text-outline">Insônia / Sonolência:</span> {(formData as DiagnosticoOuroEvaluation).insonia?.normal ? 'Sono Normal' : ((formData as DiagnosticoOuroEvaluation).insonia?.types || []).join('; ') || 'Alterado'}</p>
+                                </div>
+
+                                {/* CARD PÁG 5 */}
+                                <div className="p-4 bg-white rounded-xl border border-outline-variant/10 shadow-sm space-y-2 text-xs">
+                                  <p className="font-bold text-amber-900 uppercase tracking-widest text-[10px]">5. Ginecologia, Homem & Shen</p>
+                                  <p><span className="font-bold text-outline">Ciclo Menstrual:</span> Duração: {(formData as DiagnosticoOuroEvaluation).menstruacao?.cycleDuration || '-'} | Fluxo: {(formData as DiagnosticoOuroEvaluation).menstruacao?.flowDuration || '-'}</p>
+                                  <p><span className="font-bold text-outline">Saúde Masculina:</span> Fertilidade: {(formData as DiagnosticoOuroEvaluation).homem?.fertility || '-'} | Libido: {(formData as DiagnosticoOuroEvaluation).homem?.libido || '-'}</p>
+                                  <p><span className="font-bold text-outline">Shen (Coloração Facial):</span> {(formData as DiagnosticoOuroEvaluation).shenInspecao?.facialColor || '-'}</p>
+                                  <p><span className="font-bold text-outline">Inspeção Regional:</span> Lábios: {(formData as DiagnosticoOuroEvaluation).shenInspecao?.lips || '-'}, Olhos: {(formData as DiagnosticoOuroEvaluation).shenInspecao?.eyes || '-'}, Pele: {(formData as DiagnosticoOuroEvaluation).shenInspecao?.skin || '-'}</p>
+                                </div>
+
+                                {/* CARD PÁG 6 */}
+                                <div className="p-4 bg-white rounded-xl border border-outline-variant/10 shadow-sm space-y-2 text-xs">
+                                  <p className="font-bold text-amber-900 uppercase tracking-widest text-[10px]">6. Pulso & Língua</p>
+                                  <p><span className="font-bold text-outline">Pulso Dir / Esq:</span> {(formData as DiagnosticoOuroEvaluation).pulso?.rightPulse || '-'} / {(formData as DiagnosticoOuroEvaluation).pulso?.leftPulse || '-'}</p>
+                                  <p><span className="font-bold text-outline">Tipo Pulso / BPM:</span> {(formData as DiagnosticoOuroEvaluation).pulso?.pulseType || '-'} | {(formData as DiagnosticoOuroEvaluation).pulso?.bpm || '-'}</p>
+                                  <p><span className="font-bold text-outline">Língua:</span> Vitalidade: {(formData as DiagnosticoOuroEvaluation).lingua?.vitality || '-'} | Cor: {(formData as DiagnosticoOuroEvaluation).lingua?.color || '-'} | Forma: {(formData as DiagnosticoOuroEvaluation).lingua?.shape || '-'}</p>
+                                  <p><span className="font-bold text-outline">Saburra:</span> {(formData as DiagnosticoOuroEvaluation).lingua?.coatingTexture || '-'}</p>
+                                  {(formData as DiagnosticoOuroEvaluation).lingua?.photoUrl && (
+                                    <div className="flex items-center gap-2 pt-1 border-t border-outline-variant/10 mt-2">
+                                      <div className="w-10 h-8 rounded overflow-hidden border cursor-pointer shrink-0" onClick={() => setPreviewPhotoUrl((formData as DiagnosticoOuroEvaluation).lingua?.photoUrl || null)}>
+                                        <img src={(formData as DiagnosticoOuroEvaluation).lingua?.photoUrl} alt="Foto da Língua" className="w-full h-full object-cover" />
+                                      </div>
+                                      <span className="text-[10px] text-emerald-700 font-bold">Foto da Língua Anexada (clique p/ ver)</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
