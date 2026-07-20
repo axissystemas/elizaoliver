@@ -67,8 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data) {
         const rawRole = data.role as UserRole;
-        const isAdmin = rawRole === 'ADMIN' || data.email === 'auriculusterapia@gmail.com' || data.email === 'suporte@axissystemas.com.br' || data.email === 'ivanjsousa@gmail.com';
-        const role = isAdmin ? ('ADMIN' as UserRole) : rawRole;
+        const isAdmin = rawRole === 'ADMIN';
+        const role = rawRole;
         
         const finalPermissions = isAdmin 
           ? ADMIN_PERMISSIONS 
@@ -364,15 +364,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const adminUser = buildNativeAdminUser('suporte@axissystemas.com.br');
         
         // Tenta buscar a primeira organização cadastrada para o ADM nativo herdar
-        if (supabase) {
-          supabase.from('organizations').select('id').limit(1).then(({ data }) => {
-            if (data && data.length > 0) {
-              adminUser.organizationId = data[0].id;
-              setUser({ ...adminUser });
-              console.log('[Auth] ADM nativo restaurado com org ID:', data[0].id);
-            }
-          }).catch(e => console.warn('[Auth] Erro ao restaurar org ID do ADM nativo:', e));
-        }
+
 
         setUser(adminUser);
         setLoading(false);

@@ -549,12 +549,12 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION public.admin_get_all_organizations()
 RETURNS jsonb AS $$
 DECLARE
-  v_email TEXT;
+  v_role TEXT;
   v_result jsonb;
 BEGIN
-  SELECT email INTO v_email FROM public.profiles WHERE id = auth.uid();
-  IF v_email != 'suporte@axissystemas.com.br' THEN
-    RAISE EXCEPTION 'Acesso negado. Apenas o Super Administrator pode usar esta função.';
+  SELECT role INTO v_role FROM public.profiles WHERE id = auth.uid();
+  IF v_role IS NULL OR v_role != 'ADMIN' THEN
+    RAISE EXCEPTION 'Acesso negado. Apenas administradores podem executar esta função.';
   END IF;
 
   SELECT jsonb_agg(
