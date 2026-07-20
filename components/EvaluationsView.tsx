@@ -385,6 +385,7 @@ export default function EvaluationsView({
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [activeTemplates, setActiveTemplates] = useState<EvaluationTemplate[]>(() => DEFAULT_SYSTEM_TEMPLATES.filter(t => t.isActive));
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
