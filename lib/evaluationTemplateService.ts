@@ -3,7 +3,25 @@ import { EvaluationTemplate, DEFAULT_SYSTEM_TEMPLATES } from '@/types/evaluation
 
 const STORAGE_KEY = 'axis_evaluation_templates';
 
+function mergeSystemTemplates(loaded: EvaluationTemplate[]): EvaluationTemplate[] {
+  const result = [...loaded];
+  for (const sysTpl of DEFAULT_SYSTEM_TEMPLATES) {
+    const idx = result.findIndex(t => t.code === sysTpl.code || t.id === sysTpl.id);
+    if (idx === -1) {
+      result.unshift(sysTpl);
+    } else {
+      result[idx].isSystem = true;
+      if (result[idx].isActive === undefined) {
+        result[idx].isActive = sysTpl.isActive;
+      }
+    }
+  }
+  return result;
+}
+
 export async function getEvaluationTemplates(): Promise<EvaluationTemplate[]> {
+  let loadedTemplates: EvaluationTemplate[] = [];
+
   try {
     if (supabase) {
       const { data, error } = await (supabase as any)
@@ -12,7 +30,7 @@ export async function getEvaluationTemplates(): Promise<EvaluationTemplate[]> {
         .order('is_system', { ascending: false });
 
       if (!error && data && data.length > 0) {
-        return data.map((t: any) => ({
+        loadedTemplates = data.map((t: any) => ({
           id: t.id,
           organization_id: t.organization_id,
           name: t.name,
@@ -20,8 +38,8 @@ export async function getEvaluationTemplates(): Promise<EvaluationTemplate[]> {
           description: t.description || '',
           icon: t.icon || 'FileText',
           colorTheme: (t.color_theme as any) || 'emerald',
-          isActive: t.is_active ?? true,
-          isSystem: t.is_system ?? false,
+          isActive: t.is_active ?? (t.code === 'MTC'),
+          isSystem: t.is_system ?? (t.code === 'MTC' || t.code === 'RADIESTESIA'),
           steps: Array.isArray(t.steps) ? t.steps : []
         }));
       }
@@ -30,17 +48,20 @@ export async function getEvaluationTemplates(): Promise<EvaluationTemplate[]> {
     console.warn('[EvaluationTemplateService] Supabase offline, usando fallback local:', err);
   }
 
-  // Fallback LocalStorage
-  if (typeof window !== 'undefined') {
+  if (loadedTemplates.length === 0 && typeof window !== 'undefined') {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        loadedTemplates = JSON.parse(saved);
       } catch (e) {}
     }
   }
 
-  return DEFAULT_SYSTEM_TEMPLATES;
+  if (loadedTemplates.length === 0) {
+    loadedTemplates = DEFAULT_SYSTEM_TEMPLATES;
+  }
+
+  return mergeSystemTemplates(loadedTemplates);
 }
 
 export async function saveEvaluationTemplates(templates: EvaluationTemplate[]): Promise<boolean> {

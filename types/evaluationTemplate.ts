@@ -33,6 +33,17 @@ export interface EvaluationTemplate {
 
 export const DEFAULT_SYSTEM_TEMPLATES: EvaluationTemplate[] = [
   {
+    id: 'system-diagnostico-ouro',
+    name: 'Diagnóstico de Ouro MTC',
+    code: 'DIAGNOSTICO_OURO',
+    description: 'Ficha de Anamnese completa de 6 páginas da Medicina Chinesa.',
+    icon: 'FileText',
+    colorTheme: 'amber',
+    isActive: true,
+    isSystem: true,
+    steps: []
+  },
+  {
     id: 'system-mtc',
     name: 'Avaliação MTC',
     code: 'MTC',
@@ -55,3 +66,4 @@ export const DEFAULT_SYSTEM_TEMPLATES: EvaluationTemplate[] = [
     steps: []
   }
 ];
+

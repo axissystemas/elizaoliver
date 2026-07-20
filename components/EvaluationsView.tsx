@@ -24,7 +24,8 @@ import {
   Trash2,
   Pencil,
   AlertCircle,
-  Zap
+  Zap,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
@@ -37,7 +38,8 @@ import {
   Evaluation,
   EvaluationType,
   MTCEvaluation,
-  RadiesthesiaEvaluation
+  RadiesthesiaEvaluation,
+  DiagnosticoOuroEvaluation
 } from '@/types/evaluations';
 
 interface Patient {
@@ -141,6 +143,186 @@ const RADIESTESIA_DEFAULT_FORM_DATA: Partial<RadiesthesiaEvaluation> = {
   finalObservations: '',
 };
 
+const DIAGNOSTICO_OURO_DEFAULT_FORM_DATA: Partial<DiagnosticoOuroEvaluation> = {
+  templateType: 'DIAGNOSTICO_OURO',
+  date: new Date().toISOString().split('T')[0],
+  evaluator: 'Especialista MTC',
+  mainComplaint: '',
+  mainComplaintStart: '',
+  mainComplaintLocation: '',
+  mainComplaintAssociatedFacts: '',
+  mainComplaintCharacteristics: '',
+  mainComplaintIntensity: 0,
+  mainComplaintFrequency: '',
+  mainComplaintAccompanyingSymptoms: '',
+  mainComplaintWorseningBetter: '',
+  pain: {
+    start: '',
+    location: '',
+    associatedFacts: '',
+    characteristics: '',
+    intensity: 0,
+    frequency: '',
+    accompanyingSymptoms: '',
+    worseningBetter: ''
+  },
+  observationsP1: '',
+  treatmentsDone: '',
+  habitsAndAddictions: '',
+  foodIntolerance: '',
+  surgeriesChronological: '',
+  tastePreference: '',
+  pathologicalHistory: '',
+  familyHistory: '',
+  frioCalor: {
+    tempPreference: 'Normal',
+    seasonPreference: '',
+    drinkTempPreference: '',
+    frioAnalysis: [],
+    calorAnalysis: [],
+    observations: ''
+  },
+  suor: {
+    normal: true,
+    anidrose: [],
+    hiperidrose: [],
+    bodyRegions: [],
+    observations: ''
+  },
+  sede: {
+    normal: true,
+    absence: false,
+    noPolydipsia: [],
+    withPolydipsia: [],
+    observations: ''
+  },
+  fome: {
+    normal: true,
+    anorexia: [],
+    hyperphagia: [],
+    noHyperphagia: false,
+    observations: ''
+  },
+  miccao: {
+    normal: true,
+    frequency: '',
+    polaciuria: [],
+    disuria: [],
+    color: [],
+    volumePoliuria: [],
+    volumeOliguria: [],
+    accompanyingSensations: [],
+    observations: ''
+  },
+  evacuacao: {
+    normal: true,
+    color: 'Amarelo Escuro',
+    volume: '',
+    smell: '',
+    buoyancy: 'Flutuar ou Semiflutuar',
+    accompanyingSensations: '',
+    shapeTexture: [],
+    frequency: '1 vez/dia',
+    constipation: []
+  },
+  diarreia: {
+    acute: [],
+    chronic: [],
+    observations: ''
+  },
+  emocao: {
+    predominant: '',
+    intensePeriod: '',
+    observations: ''
+  },
+  insonia: {
+    normal: true,
+    types: []
+  },
+  sonolencia: {
+    types: [],
+    observations: ''
+  },
+  menstruacao: {
+    cycleDuration: '',
+    flowDuration: '',
+    symptoms: [],
+    pregnanciesAbortions: '',
+    sexualFrequency: '',
+    libido: '',
+    menarcheAge: '',
+    menopause: ''
+  },
+  ginecologiaDetalhada: {
+    regularity: {
+      normal: true,
+      advancedCycle: [],
+      delayedCycle: [],
+      irregularCycle: []
+    },
+    volume: {
+      normal: true,
+      hypoligomenorrhea: [],
+      hypermenorrhea: []
+    },
+    dismenorreia: {
+      deficiency: [],
+      excess: []
+    },
+    amenorreia: {
+      deficiency: [],
+      excess: []
+    }
+  },
+  homem: {
+    fertility: '',
+    sexualFrequency: '',
+    libido: '',
+    observations: ''
+  },
+  shenInspecao: {
+    facialColor: '',
+    physicalConstitution: '',
+    lips: '',
+    eyes: '',
+    skin: '',
+    hair: '',
+    nails: '',
+    gums: '',
+    teeth: '',
+    throat: '',
+    limbs: '',
+    thorax: '',
+    observations: ''
+  },
+  pulso: {
+    rightPulse: '',
+    leftPulse: '',
+    pulseType: '',
+    depth: 'Intermediário',
+    speed: 'Intermediário',
+    bpm: '',
+    observations: ''
+  },
+  lingua: {
+    vitality: '',
+    color: '',
+    shape: '',
+    movement: '',
+    coatingTexture: '',
+    coatingColor: '',
+    coatingLocation: '',
+    observations: ''
+  },
+  diagnosticoFinal: {
+    syndromes: '',
+    treatments: '',
+    techniques: '',
+    points: '',
+    observations: ''
+  }
+};
+
 const MTC_STEPS = [
   { id: 'history', label: 'Histórico', icon: FileText },
   { id: 'physical', label: 'Exame Físico', icon: Activity },
@@ -157,6 +339,15 @@ const RADIESTESIA_STEPS = [
   { id: 'meridians', label: 'Meridianos', icon: Zap },
   { id: 'treatments', label: 'Tratamento', icon: Check },
   { id: 'conclusion', label: 'Observações', icon: FileText },
+];
+
+const DIAGNOSTICO_OURO_STEPS = [
+  { id: 'p1', label: 'Pág 1: Queixa & Dor', icon: FileText },
+  { id: 'p2', label: 'Pág 2: Frio/Calor, Suor, Sede, Fome', icon: Thermometer },
+  { id: 'p3', label: 'Pág 3: Micção & Evacuação', icon: Droplets },
+  { id: 'p4', label: 'Pág 4: Diarreias, Emoção, Sono', icon: Moon },
+  { id: 'p5', label: 'Pág 5: Ginecologia, Homem & Shen', icon: Eye },
+  { id: 'p6', label: 'Pág 6: Pulso, Língua & Síndromes', icon: Activity },
 ];
 
 import { User as UserType } from '@/types/auth';
@@ -183,9 +374,9 @@ export default function EvaluationsView({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [evaluationToDelete, setEvaluationToDelete] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<Evaluation>>(MTC_DEFAULT_FORM_DATA);
+  const [formData, setFormData] = useState<Partial<Evaluation>>(DIAGNOSTICO_OURO_DEFAULT_FORM_DATA);
   const [showTemplateSelection, setShowTemplateSelection] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<EvaluationType>('MTC');
+  const [selectedTemplate, setSelectedTemplate] = useState<EvaluationType>('DIAGNOSTICO_OURO');
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -204,6 +395,52 @@ export default function EvaluationsView({
   const canDelete = user?.permissions.includes('evaluations:delete') || user?.role === 'ADMIN';
   const canView = user?.permissions.includes('evaluations:view') || user?.role === 'ADMIN';
 
+  const getSteps = (template: EvaluationType) => {
+    if (template === 'RADIESTESIA') return RADIESTESIA_STEPS;
+    if (template === 'DIAGNOSTICO_OURO') return DIAGNOSTICO_OURO_STEPS;
+    return MTC_STEPS;
+  };
+
+  const getTemplateLabel = (template: EvaluationType) => {
+    if (template === 'RADIESTESIA') return 'Radiestesia';
+    if (template === 'DIAGNOSTICO_OURO') return 'Diagnóstico de Ouro MTC';
+    return 'Medicina Tradicional Chinesa';
+  };
+
+  const toggleArrayItem = (path: string[], item: string) => {
+    if (isViewMode) return;
+    setFormData(prev => {
+      const newFormData = JSON.parse(JSON.stringify(prev));
+      let current = newFormData;
+      for (let i = 0; i < path.length - 1; i++) {
+        if (!current[path[i]]) current[path[i]] = {};
+        current = current[path[i]];
+      }
+      const lastKey = path[path.length - 1];
+      const arr: string[] = Array.isArray(current[lastKey]) ? current[lastKey] : [];
+      if (arr.includes(item)) {
+        current[lastKey] = arr.filter((x: string) => x !== item);
+      } else {
+        current[lastKey] = [...arr, item];
+      }
+      return newFormData;
+    });
+  };
+
+  const updateNestedField = (path: string[], value: any) => {
+    if (isViewMode) return;
+    setFormData(prev => {
+      const newFormData = JSON.parse(JSON.stringify(prev));
+      let current = newFormData;
+      for (let i = 0; i < path.length - 1; i++) {
+        if (!current[path[i]]) current[path[i]] = {};
+        current = current[path[i]];
+      }
+      current[path[path.length - 1]] = value;
+      return newFormData;
+    });
+  };
+
   const handleExportEvaluation = (evaluation: Evaluation) => {
     setIsGeneratingPDF(true);
     try {
@@ -211,18 +448,210 @@ export default function EvaluationsView({
       const pageWidth = doc.internal.pageSize.getWidth();
       const templateType = (evaluation as any).templateType || 'MTC';
 
-      // Header
-      doc.setFontSize(22);
-      doc.setTextColor(15, 82, 56); // Primary color
-      doc.text(templateType === 'MTC' ? 'Avaliação Clínica MTC' : 'Avaliação Radiestésica', pageWidth / 2, 20, { align: 'center' });
+      if (templateType === 'DIAGNOSTICO_OURO') {
+        const ouro = evaluation as DiagnosticoOuroEvaluation;
+        
+        // Header Página 1
+        doc.setFontSize(18);
+        doc.setTextColor(180, 130, 20); // Gold / Amber theme
+        doc.text('SÉ - DIAGNÓSTICO DE OURO DA MEDICINA CHINESA', pageWidth / 2, 18, { align: 'center' });
+        doc.setFontSize(12);
+        doc.setTextColor(80);
+        doc.text(`Paciente: ${ouro.patientName || 'N/A'} | Data: ${new Date(ouro.date).toLocaleDateString('pt-BR')} | Avaliador: ${ouro.evaluator}`, pageWidth / 2, 24, { align: 'center' });
+        doc.setFontSize(14);
+        doc.setTextColor(0);
+        doc.text('Página 1: Queixa Principal, Dor & Antecedentes', 14, 32);
 
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text(`Paciente: ${evaluation.patientName}`, pageWidth / 2, 28, { align: 'center' });
-      doc.text(`Código: ${evaluation.code || 'N/A'} | Data: ${new Date(evaluation.date).toLocaleDateString('pt-BR')} | Avaliador: ${evaluation.evaluator}`, pageWidth / 2, 33, { align: 'center' });
+        autoTable(doc, {
+          startY: 36,
+          head: [['Campo / Seção', 'Informações Registradas']],
+          body: [
+            ['Queixa Principal', ouro.mainComplaint || '-'],
+            ['Início / Localização', `Início: ${ouro.mainComplaintStart || '-'} | Local: ${ouro.mainComplaintLocation || '-'}`],
+            ['Fatos Associados / Característ.', `Fatos: ${ouro.mainComplaintAssociatedFacts || '-'} | Característ.: ${ouro.mainComplaintCharacteristics || '-'}`],
+            ['Intensidade / Frequência', `Intensidade: ${ouro.mainComplaintIntensity}/10 | Frequência: ${ouro.mainComplaintFrequency || '-'}`],
+            ['Sintomas Acompanhantes', ouro.mainComplaintAccompanyingSymptoms || '-'],
+            ['Melhora e Piora', ouro.mainComplaintWorseningBetter || '-'],
+            ['DOR - Início / Localização', `Início: ${ouro.pain?.start || '-'} | Local: ${ouro.pain?.location || '-'}`],
+            ['DOR - Característ. (Pressão)', `Suporta pressão: ${ouro.pain?.characteristics || '-'}`],
+            ['DOR - Intensidade / Frequência', `Intensidade: ${ouro.pain?.intensity}/10 | Freq: ${ouro.pain?.frequency || '-'}`],
+            ['DOR - Sintomas & Melhora/Piora', `Sintomas: ${ouro.pain?.accompanyingSymptoms || '-'} | Melhora/Piora: ${ouro.pain?.worseningBetter || '-'}`],
+            ['Observações Página 1', ouro.observationsP1 || '-'],
+            ['Tratamentos Realizados', ouro.treatmentsDone || '-'],
+            ['Hábitos e Vícios', ouro.habitsAndAddictions || '-'],
+            ['Intolerância Alimentar', ouro.foodIntolerance || '-'],
+            ['Cirurgias (Cronológico)', ouro.surgeriesChronological || '-'],
+            ['Desejo/Aversão Sabores', ouro.tastePreference || '-'],
+            ['Antecedentes Patológicos', ouro.pathologicalHistory || '-'],
+            ['Antecedentes Familiares', ouro.familyHistory || '-'],
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: [180, 130, 20] },
+          styles: { fontSize: 8 }
+        });
 
-      if (templateType === 'MTC') {
+        // Página 2: Frio/Calor, Suor, Sede, Fome
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.setTextColor(180, 130, 20);
+        doc.text('Página 2: Frio/Calor, Suor, Sede e Fome', pageWidth / 2, 20, { align: 'center' });
+
+        autoTable(doc, {
+          startY: 27,
+          head: [['Seção', 'Achados Clínicos MTC']],
+          body: [
+            ['Frio / Calor - Sensação', `Sensação: ${ouro.frioCalor?.tempPreference || '-'} | Estação: ${ouro.frioCalor?.seasonPreference || '-'} | Bebidas: ${ouro.frioCalor?.drinkTempPreference || '-'}`],
+            ['Análise do Frio', (ouro.frioCalor?.frioAnalysis || []).join('; ') || 'Nenhum'],
+            ['Análise do Calor', (ouro.frioCalor?.calorAnalysis || []).join('; ') || 'Nenhum'],
+            ['Obs Frio/Calor', ouro.frioCalor?.observations || '-'],
+            ['SUOR - Transpiração', ouro.suor?.normal ? 'Transpira normalmente' : 'Alterada'],
+            ['Anidrose', (ouro.suor?.anidrose || []).join('; ') || 'Nenhuma'],
+            ['Hiperidrose', (ouro.suor?.hiperidrose || []).join('; ') || 'Nenhuma'],
+            ['Regiões do Corpo', (ouro.suor?.bodyRegions || []).join('; ') || 'Nenhuma'],
+            ['Obs Suor', ouro.suor?.observations || '-'],
+            ['SEDE - Avaliação', ouro.sede?.normal ? 'Sede Normal' : ouro.sede?.absence ? 'Ausência de Sede' : 'Alterada'],
+            ['Sede sem Polidipsia', (ouro.sede?.noPolydipsia || []).join('; ') || 'Nenhum'],
+            ['Sede com Polidipsia', (ouro.sede?.withPolydipsia || []).join('; ') || 'Nenhum'],
+            ['Obs Sede', ouro.sede?.observations || '-'],
+            ['FOME - Apetite', ouro.fome?.normal ? 'Apetite Normal' : 'Alterado'],
+            ['Anorexia', (ouro.fome?.anorexia || []).join('; ') || 'Nenhum'],
+            ['Fome c/ Polifagia', (ouro.fome?.hyperphagia || []).join('; ') || 'Nenhum'],
+            ['Fome s/ Polifagia', ouro.fome?.noHyperphagia ? 'Sim (Deficiência Yin Estômago)' : 'Não'],
+            ['Obs Fome', ouro.fome?.observations || '-'],
+          ],
+          theme: 'striped',
+          headStyles: { fillColor: [180, 130, 20] },
+          styles: { fontSize: 8 }
+        });
+
+        // Página 3: Micção e Evacuação
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.setTextColor(180, 130, 20);
+        doc.text('Página 3: Micção e Evacuação', pageWidth / 2, 20, { align: 'center' });
+
+        autoTable(doc, {
+          startY: 27,
+          head: [['Função Orgânica', 'Detalhes MTC']],
+          body: [
+            ['Micção - Estado', ouro.miccao?.normal ? 'Normal' : 'Alterada'],
+            ['Frequência Urinária', ouro.miccao?.frequency || '-'],
+            ['Polaciúria', (ouro.miccao?.polaciuria || []).join('; ') || 'Nenhuma'],
+            ['Disúria', (ouro.miccao?.disuria || []).join('; ') || 'Nenhuma'],
+            ['Cor da Urina', (ouro.miccao?.color || []).join('; ') || '-'],
+            ['Poliúria', (ouro.miccao?.volumePoliuria || []).join('; ') || 'Nenhuma'],
+            ['Oligúria', (ouro.miccao?.volumeOliguria || []).join('; ') || 'Nenhuma'],
+            ['Sensações Acompanhantes', (ouro.miccao?.accompanyingSensations || []).join('; ') || 'Nenhuma'],
+            ['Obs Micção', ouro.miccao?.observations || '-'],
+            ['EVACUAÇÃO - Estado', ouro.evacuacao?.normal ? 'Normal' : 'Alterada'],
+            ['Cor / Volume / Odor', `Cor: ${ouro.evacuacao?.color || '-'} | Vol: ${ouro.evacuacao?.volume || '-'} | Odor: ${ouro.evacuacao?.smell || '-'}`],
+            ['Flutuação', ouro.evacuacao?.buoyancy || '-'],
+            ['Forma e Textura', (ouro.evacuacao?.shapeTexture || []).join('; ') || 'Normal'],
+            ['Frequência Evacuação', ouro.evacuacao?.frequency || '-'],
+            ['Constipação', (ouro.evacuacao?.constipation || []).join('; ') || 'Nenhuma'],
+            ['Sensações/Sintomas Evacuação', ouro.evacuacao?.accompanyingSensations || '-'],
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: [180, 130, 20] },
+          styles: { fontSize: 8 }
+        });
+
+        // Página 4: Diarreias, Emoções, Sono e Ginecologia Inicial
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.setTextColor(180, 130, 20);
+        doc.text('Página 4: Diarreias, Emoção, Sono & Ginecologia Inicial', pageWidth / 2, 20, { align: 'center' });
+
+        autoTable(doc, {
+          startY: 27,
+          head: [['Área de Avaliação', 'Dados Clínicos']],
+          body: [
+            ['Diarreia Aguda', (ouro.diarreia?.acute || []).join('; ') || 'Nenhuma'],
+            ['Diarreia Crônica', (ouro.diarreia?.chronic || []).join('; ') || 'Nenhuma'],
+            ['Obs Diarreia', ouro.diarreia?.observations || '-'],
+            ['Emoção Predominante (Vida)', ouro.emocao?.predominant || '-'],
+            ['Emoção Intensa em Época', ouro.emocao?.intensePeriod || '-'],
+            ['Obs Emoções', ouro.emocao?.observations || '-'],
+            ['INSÔNIA', ouro.insonia?.normal ? 'Sono Normal' : (ouro.insonia?.types || []).join('; ') || 'Nenhuma'],
+            ['SONOLÊNCIA', (ouro.sonolencia?.types || []).join('; ') || 'Nenhuma'],
+            ['Obs Sonolência', ouro.sonolencia?.observations || '-'],
+            ['GINECOLOGIA - Duração Ciclo/Fluxo', `Ciclo: ${ouro.menstruacao?.cycleDuration || '-'} | Fluxo: ${ouro.menstruacao?.flowDuration || '-'}`],
+            ['Sintomas Menstruais', (ouro.menstruacao?.symptoms || []).join('; ') || 'Nenhum'],
+            ['Gestações / Abortos', ouro.menstruacao?.pregnanciesAbortions || '-'],
+            ['Frequência Sexual / Libido', `Freq: ${ouro.menstruacao?.sexualFrequency || '-'} | Libido: ${ouro.menstruacao?.libido || '-'}`],
+            ['Menarca / Menopausa', `Menarca: ${ouro.menstruacao?.menarcheAge || '-'} anos | Menopausa: ${ouro.menstruacao?.menopause || '-'}`],
+          ],
+          theme: 'striped',
+          headStyles: { fillColor: [180, 130, 20] },
+          styles: { fontSize: 8 }
+        });
+
+        // Página 5: Regularidade, Volume, Dismenorreia, Homem & Shen
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.setTextColor(180, 130, 20);
+        doc.text('Página 5: Ginecologia Detalhada, Saúde Masculina & Shen', pageWidth / 2, 20, { align: 'center' });
+
+        autoTable(doc, {
+          startY: 27,
+          head: [['Seção', 'Registro Clínico']],
+          body: [
+            ['Regularidade Menstrual', ouro.ginecologiaDetalhada?.regularity?.normal ? 'Normal' : 'Alterada'],
+            ['Ciclo Adiantado / Atrasado / Irregular', `Adiantado: ${(ouro.ginecologiaDetalhada?.regularity?.advancedCycle || []).join(', ') || '-'} | Atrasado: ${(ouro.ginecologiaDetalhada?.regularity?.delayedCycle || []).join(', ') || '-'} | Irregular: ${(ouro.ginecologiaDetalhada?.regularity?.irregularCycle || []).join(', ') || '-'}`],
+            ['Volume / Hipoligomenorreia / Hipermenorreia', `Hipo: ${(ouro.ginecologiaDetalhada?.volume?.hypoligomenorrhea || []).join(', ') || '-'} | Hiper: ${(ouro.ginecologiaDetalhada?.volume?.hypermenorrhea || []).join(', ') || '-'}`],
+            ['Dismenorreia (Cólica)', `Deficiência: ${(ouro.ginecologiaDetalhada?.dismenorreia?.deficiency || []).join(', ') || '-'} | Excesso: ${(ouro.ginecologiaDetalhada?.dismenorreia?.excess || []).join(', ') || '-'}`],
+            ['Amenorreia', `Deficiência: ${(ouro.ginecologiaDetalhada?.amenorreia?.deficiency || []).join(', ') || '-'} | Excesso: ${(ouro.ginecologiaDetalhada?.amenorreia?.excess || []).join(', ') || '-'}`],
+            ['SAÚDE MASCULINA', `Fertilidade: ${ouro.homem?.fertility || '-'} | Freq Sexual: ${ouro.homem?.sexualFrequency || '-'} | Libido: ${ouro.homem?.libido || '-'}`],
+            ['Obs Homem', ouro.homem?.observations || '-'],
+            ['SHEN - Inspeção Geral', `Coloração Facial: ${ouro.shenInspecao?.facialColor || '-'} | Constituição: ${ouro.shenInspecao?.physicalConstitution || '-'}`],
+            ['SHEN - Inspeção Regional', `Lábios: ${ouro.shenInspecao?.lips || '-'}, Olhos: ${ouro.shenInspecao?.eyes || '-'}, Pele: ${ouro.shenInspecao?.skin || '-'}, Cabelo: ${ouro.shenInspecao?.hair || '-'}, Unhas: ${ouro.shenInspecao?.nails || '-'}, Gengiva: ${ouro.shenInspecao?.gums || '-'}, Dentes: ${ouro.shenInspecao?.teeth || '-'}, Garganta: ${ouro.shenInspecao?.throat || '-'}, Membros: ${ouro.shenInspecao?.limbs || '-'}, Tórax: ${ouro.shenInspecao?.thorax || '-'}`],
+            ['Obs Shen/Inspeção', ouro.shenInspecao?.observations || '-'],
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: [180, 130, 20] },
+          styles: { fontSize: 8 }
+        });
+
+        // Página 6: Pulso, Língua, Síndromes e Tratamento
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.setTextColor(180, 130, 20);
+        doc.text('Página 6: Pulso, Língua, Síndromes & Tratamento', pageWidth / 2, 20, { align: 'center' });
+
+        autoTable(doc, {
+          startY: 27,
+          head: [['Parâmetro MTC', 'Diagnóstico & Conduta']],
+          body: [
+            ['Pulso Direito', ouro.pulso?.rightPulse || '-'],
+            ['Pulso Esquerdo', ouro.pulso?.leftPulse || '-'],
+            ['Tipo de Pulso', ouro.pulso?.pulseType || '-'],
+            ['Profundidade / Velocidade / BPM', `Profundidade: ${ouro.pulso?.depth || '-'} | Velocidade: ${ouro.pulso?.speed || '-'} | BPM: ${ouro.pulso?.bpm || '-'}`],
+            ['Obs Pulso', ouro.pulso?.observations || '-'],
+            ['LÍNGUA - Corpo (Vitalidade, Cor, Forma, Mov)', `Vitalidade: ${ouro.lingua?.vitality || '-'} | Cor: ${ouro.lingua?.color || '-'} | Forma: ${ouro.lingua?.shape || '-'} | Mov: ${ouro.lingua?.movement || '-'}`],
+            ['LÍNGUA - Saburra (Textura, Cor, Localização)', `Textura: ${ouro.lingua?.coatingTexture || '-'} | Cor: ${ouro.lingua?.coatingColor || '-'} | Local: ${ouro.lingua?.coatingLocation || '-'}`],
+            ['Obs Língua', ouro.lingua?.observations || '-'],
+            ['SÍNDROME(S) MTC IDENTIFICADAS', ouro.diagnosticoFinal?.syndromes || '-'],
+            ['TRATAMENTOS PROPOSTOS', ouro.diagnosticoFinal?.treatments || '-'],
+            ['TÉCNICAS UTILIZADAS', ouro.diagnosticoFinal?.techniques || '-'],
+            ['PONTOS UTILIZADOS', ouro.diagnosticoFinal?.points || '-'],
+            ['OBSERVAÇÕES FINAIS', ouro.diagnosticoFinal?.observations || '-'],
+          ],
+          theme: 'striped',
+          headStyles: { fillColor: [180, 130, 20] },
+          styles: { fontSize: 8 }
+        });
+      } else if (templateType === 'MTC') {
         const mtc = evaluation as MTCEvaluation;
+        // Header MTC
+        doc.setFontSize(22);
+        doc.setTextColor(15, 82, 56);
+        doc.text('Avaliação Clínica MTC', pageWidth / 2, 20, { align: 'center' });
+
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Paciente: ${evaluation.patientName}`, pageWidth / 2, 28, { align: 'center' });
+        doc.text(`Código: ${evaluation.code || 'N/A'} | Data: ${new Date(evaluation.date).toLocaleDateString('pt-BR')} | Avaliador: ${evaluation.evaluator}`, pageWidth / 2, 33, { align: 'center' });
+
         // 1. Histórico e Identificação
         doc.setFontSize(16);
         doc.setTextColor(0);
@@ -257,16 +686,16 @@ export default function EvaluationsView({
         autoTable(doc, {
           startY: currentY + 5,
           body: [
-            ['Sinais Vitais', `PA: ${mtc.physical.pa} | FC: ${mtc.physical.fc} | Glicose: ${mtc.physical.glucose}`],
-            ['Antropometria', `Altura: ${mtc.physical.height}m | Peso: ${mtc.physical.weight}kg | IMC: ${mtc.physical.imc}`],
-            ['Intensidade da Dor (EVA)', `${mtc.physical.painIntensity}/10`],
-            ['Tipo de Dor', mtc.physical.painType.join(', ')],
-            ['Frequência', mtc.physical.painFrequency],
-            ['Pico de Dor', mtc.physical.painPeakTime],
-            ['Migração', mtc.physical.painMigration ? 'Sim' : 'Não'],
-            ['Agravantes/Aliviantes', mtc.physical.painAggravatingRelieving],
-            ['Mov. Involuntários', mtc.physical.involuntaryMovements],
-            ['Pele e Observações', mtc.physical.skin.join(', ')],
+            ['Sinais Vitais', `PA: ${mtc.physical?.pa} | FC: ${mtc.physical?.fc} | Glicose: ${mtc.physical?.glucose}`],
+            ['Antropometria', `Altura: ${mtc.physical?.height}m | Peso: ${mtc.physical?.weight}kg | IMC: ${mtc.physical?.imc}`],
+            ['Intensidade da Dor (EVA)', `${mtc.physical?.painIntensity}/10`],
+            ['Tipo de Dor', (mtc.physical?.painType || []).join(', ')],
+            ['Frequência', mtc.physical?.painFrequency],
+            ['Pico de Dor', mtc.physical?.painPeakTime],
+            ['Migração', mtc.physical?.painMigration ? 'Sim' : 'Não'],
+            ['Agravantes/Aliviantes', mtc.physical?.painAggravatingRelieving],
+            ['Mov. Involuntários', mtc.physical?.involuntaryMovements],
+            ['Pele e Observações', (mtc.physical?.skin || []).join(', ')],
           ],
           theme: 'striped',
         });
@@ -280,11 +709,11 @@ export default function EvaluationsView({
         autoTable(doc, {
           startY: currentY + 5,
           body: [
-            ['Sono', `${mtc.sleep.hours}h | Dificuldade: ${mtc.sleep.difficulty ? 'Sim' : 'Não'} | Repousante: ${mtc.sleep.restorative ? 'Sim' : 'Não'}`],
-            ['Apetite', `Nível: ${mtc.appetite.level} | Preferência: ${mtc.appetite.preference || 'N/A'} | Sabor: ${mtc.appetite.taste}`],
-            ['Sede', `Frequência: ${mtc.thirst.frequency ? 'Sim' : 'Não'} | Preferência: ${mtc.thirst.preference || 'N/A'} | Quantidade: ${mtc.thirst.quantity}`],
-            ['Evacuação', `Frequência: ${mtc.evacuation.frequency} | Bristol: ${mtc.evacuation.bristol}`],
-            ['Urina', `Cor: ${mtc.urine.color} | Frequência: ${mtc.urine.frequency}`],
+            ['Sono', `${mtc.sleep?.hours}h | Dificuldade: ${mtc.sleep?.difficulty ? 'Sim' : 'Não'} | Repousante: ${mtc.sleep?.restorative ? 'Sim' : 'Não'}`],
+            ['Apetite', `Nível: ${mtc.appetite?.level} | Preferência: ${mtc.appetite?.preference || 'N/A'} | Sabor: ${mtc.appetite?.taste}`],
+            ['Sede', `Frequência: ${mtc.thirst?.frequency ? 'Sim' : 'Não'} | Preferência: ${mtc.thirst?.preference || 'N/A'} | Quantidade: ${mtc.thirst?.quantity}`],
+            ['Evacuação', `Frequência: ${mtc.evacuation?.frequency} | Bristol: ${mtc.evacuation?.bristol}`],
+            ['Urina', `Cor: ${mtc.urine?.color} | Frequência: ${mtc.urine?.frequency}`],
           ],
           theme: 'striped',
         });
@@ -298,11 +727,11 @@ export default function EvaluationsView({
         autoTable(doc, {
           startY: currentY + 5,
           body: [
-            ['Emoções Predominantes', mtc.emotions.predominant.join(', ')],
-            ['Status Atual', mtc.emotions.currentStatus],
-            ['Termorregulação', `Sensação: ${mtc.thermoregulation.feeling} | Suor Noturno: ${mtc.thermoregulation.nightSweat ? 'Sim' : 'Não'}`],
-            ['Língua', `Cor: ${mtc.tonguePulse.color} | Saburra: ${mtc.tonguePulse.coating} | Forma: ${mtc.tonguePulse.shape}`],
-            ['Pulso', mtc.tonguePulse.pulse],
+            ['Emoções Predominantes', (mtc.emotions?.predominant || []).join(', ')],
+            ['Status Atual', mtc.emotions?.currentStatus],
+            ['Termorregulação', `Sensação: ${mtc.thermoregulation?.feeling} | Suor Noturno: ${mtc.thermoregulation?.nightSweat ? 'Sim' : 'Não'}`],
+            ['Língua', `Cor: ${mtc.tonguePulse?.color} | Saburra: ${mtc.tonguePulse?.coating} | Forma: ${mtc.tonguePulse?.shape}`],
+            ['Pulso', mtc.tonguePulse?.pulse],
           ],
           theme: 'striped',
         });
@@ -326,6 +755,14 @@ export default function EvaluationsView({
         });
       } else {
         const rad = evaluation as RadiesthesiaEvaluation;
+        doc.setFontSize(22);
+        doc.setTextColor(79, 70, 229);
+        doc.text('Avaliação Radiestésica', pageWidth / 2, 20, { align: 'center' });
+
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Paciente: ${evaluation.patientName}`, pageWidth / 2, 28, { align: 'center' });
+        doc.text(`Código: ${evaluation.code || 'N/A'} | Data: ${new Date(evaluation.date).toLocaleDateString('pt-BR')} | Avaliador: ${evaluation.evaluator}`, pageWidth / 2, 33, { align: 'center' });
 
         // 1. Campos Energéticos
         doc.setFontSize(16);
@@ -336,13 +773,13 @@ export default function EvaluationsView({
           startY: 50,
           head: [['Campo', 'Desequilíbrio (%)', 'Chakras Afetados']],
           body: [
-            ['Mental', `${rad.energeticFields.mental.imbalance}%`, rad.energeticFields.mental.affectedChakras],
-            ['Emocional', `${rad.energeticFields.emotional.imbalance}%`, rad.energeticFields.emotional.affectedChakras],
-            ['Espiritual', `${rad.energeticFields.spiritual.imbalance}%`, rad.energeticFields.spiritual.affectedChakras],
-            ['Físico', `${rad.energeticFields.physical.imbalance}%`, rad.energeticFields.physical.affectedChakras],
+            ['Mental', `${rad.energeticFields?.mental?.imbalance}%`, rad.energeticFields?.mental?.affectedChakras],
+            ['Emocional', `${rad.energeticFields?.emotional?.imbalance}%`, rad.energeticFields?.emotional?.affectedChakras],
+            ['Espiritual', `${rad.energeticFields?.spiritual?.imbalance}%`, rad.energeticFields?.spiritual?.affectedChakras],
+            ['Físico', `${rad.energeticFields?.physical?.imbalance}%`, rad.energeticFields?.physical?.affectedChakras],
           ],
           theme: 'grid',
-          headStyles: { fillColor: [79, 70, 229] }, // Indigo
+          headStyles: { fillColor: [79, 70, 229] },
         });
 
         // 2. Análise de Chakras
@@ -353,7 +790,7 @@ export default function EvaluationsView({
         autoTable(doc, {
           startY: currentY + 5,
           head: [['Chakra', 'Deseq.', '%', 'Estado', 'Afeta Sistema']],
-          body: rad.chakras.map(c => [
+          body: (rad.chakras || []).map(c => [
             c.name,
             c.imbalance ? 'Sim' : 'Não',
             `${c.percentage}%`,
@@ -372,7 +809,7 @@ export default function EvaluationsView({
         autoTable(doc, {
           startY: 25,
           head: [['Sistema', 'Deseq.', '%', 'Estado', 'Obs. Físico']],
-          body: rad.systems.map(s => [
+          body: (rad.systems || []).map(s => [
             s.name,
             s.imbalance ? 'Sim' : 'Não',
             `${s.percentage}%`,
@@ -393,7 +830,7 @@ export default function EvaluationsView({
         autoTable(doc, {
           startY: currentY + 5,
           head: [['Meridiano', 'Deseq.', 'Estado', 'Comentário']],
-          body: rad.meridians.map(m => [
+          body: (rad.meridians || []).map(m => [
             m.name,
             m.imbalance ? 'Sim' : 'Não',
             m.state,
@@ -411,8 +848,8 @@ export default function EvaluationsView({
         autoTable(doc, {
           startY: 25,
           body: [
-            ['Energia de Saúde (Bovis)', `${rad.healthEnergy.value}% - ${rad.healthEnergy.category}`],
-            ['Comentários Bovis', rad.healthEnergy.comment],
+            ['Energia de Saúde (Bovis)', `${rad.healthEnergy?.value}% - ${rad.healthEnergy?.category}`],
+            ['Comentários Bovis', rad.healthEnergy?.comment],
           ],
           theme: 'grid',
         });
@@ -424,7 +861,7 @@ export default function EvaluationsView({
         autoTable(doc, {
           startY: currentY + 5,
           head: [['Tratamento', 'Duração', 'Início', 'Fim']],
-          body: rad.treatments.map(t => [
+          body: (rad.treatments || []).map(t => [
             t.treatment,
             `${t.time} ${t.unit}`,
             t.start,
@@ -437,7 +874,7 @@ export default function EvaluationsView({
         doc.setFontSize(14);
         doc.text('Considerações Finais:', 14, currentY);
         doc.setFontSize(10);
-        const splitObs = doc.splitTextToSize(rad.finalObservations, 180);
+        const splitObs = doc.splitTextToSize(rad.finalObservations || '', 180);
         doc.text(splitObs, 14, currentY + 7);
       }
 
@@ -491,7 +928,7 @@ export default function EvaluationsView({
     setEditingId(null);
     setCurrentStep(0);
     setSelectedPatientId('');
-    setFormData(JSON.parse(JSON.stringify(MTC_DEFAULT_FORM_DATA)));
+    setFormData(JSON.parse(JSON.stringify(DIAGNOSTICO_OURO_DEFAULT_FORM_DATA)));
     setShowTemplateSelection(false);
   };
 
@@ -500,9 +937,13 @@ export default function EvaluationsView({
     setEditingId(evaluation.id);
     setSelectedPatientId(evaluation.patientId);
 
-    // Support legacy and specific templates
-    const templateType = evaluation.templateType || 'MTC';
-    const defaultData = templateType === 'MTC' ? MTC_DEFAULT_FORM_DATA : RADIESTESIA_DEFAULT_FORM_DATA;
+    const templateType = evaluation.templateType || 'DIAGNOSTICO_OURO';
+    let defaultData: any = DIAGNOSTICO_OURO_DEFAULT_FORM_DATA;
+    if (templateType === 'RADIESTESIA') {
+      defaultData = RADIESTESIA_DEFAULT_FORM_DATA;
+    } else if (templateType === 'MTC') {
+      defaultData = MTC_DEFAULT_FORM_DATA;
+    }
 
     setFormData(JSON.parse(JSON.stringify({ ...defaultData, ...evaluation })));
     setSelectedTemplate(templateType);
@@ -516,8 +957,13 @@ export default function EvaluationsView({
     setEditingId(evaluation.id);
     setSelectedPatientId(evaluation.patientId);
 
-    const templateType = evaluation.templateType || 'MTC';
-    const defaultData = templateType === 'MTC' ? MTC_DEFAULT_FORM_DATA : RADIESTESIA_DEFAULT_FORM_DATA;
+    const templateType = evaluation.templateType || 'DIAGNOSTICO_OURO';
+    let defaultData: any = DIAGNOSTICO_OURO_DEFAULT_FORM_DATA;
+    if (templateType === 'RADIESTESIA') {
+      defaultData = RADIESTESIA_DEFAULT_FORM_DATA;
+    } else if (templateType === 'MTC') {
+      defaultData = MTC_DEFAULT_FORM_DATA;
+    }
 
     setFormData(JSON.parse(JSON.stringify({ ...defaultData, ...evaluation })));
     setSelectedTemplate(templateType);
@@ -541,7 +987,8 @@ export default function EvaluationsView({
 
   const filteredEvaluations = evaluations.filter(e => {
     const matchesSearch = e.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      e.syndromeHypothesis?.toLowerCase().includes(searchTerm.toLowerCase());
+      (e as any).syndromeHypothesis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (e as any).diagnosticoFinal?.syndromes?.toLowerCase().includes(searchTerm.toLowerCase());
 
     if (preSelectedPatientId) {
       return e.patientId === preSelectedPatientId && matchesSearch;
@@ -550,19 +997,21 @@ export default function EvaluationsView({
     return matchesSearch;
   });
 
+  const activeSteps = getSteps(selectedTemplate);
+
   return (
     <div className="p-10 space-y-10 relative">
       {/* Header */}
       <section className="flex flex-col md:flex-row gap-8 items-start justify-between">
         <div>
           <h2 className="text-4xl font-bold font-headline text-on-surface">Avaliações Clínicas</h2>
-          <p className="text-on-surface-variant text-lg mt-2 font-medium">Prontuários e fichas de avaliação MTC.</p>
+          <p className="text-on-surface-variant text-lg mt-2 font-medium">Prontuários e fichas de avaliação de Medicina Chinesa (Diagnóstico de Ouro).</p>
         </div>
         {canCreate && (
           <button
             onClick={() => {
-              setSelectedTemplate('MTC');
-              setFormData(MTC_DEFAULT_FORM_DATA);
+              setSelectedTemplate('DIAGNOSTICO_OURO');
+              setFormData(JSON.parse(JSON.stringify(DIAGNOSTICO_OURO_DEFAULT_FORM_DATA)));
               setShowTemplateSelection(true);
               setIsModalOpen(true);
             }}
@@ -599,31 +1048,23 @@ export default function EvaluationsView({
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                    <User size={20} />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                    evaluation.templateType === 'RADIESTESIA' ? 'bg-indigo-50 text-indigo-600' :
+                    evaluation.templateType === 'DIAGNOSTICO_OURO' ? 'bg-amber-50 text-amber-600' :
+                    'bg-emerald-50 text-emerald-600'
+                  }`}>
+                    {evaluation.templateType === 'RADIESTESIA' ? <Activity size={18} /> : evaluation.templateType === 'DIAGNOSTICO_OURO' ? <Sparkles size={18} /> : <ClipboardList size={18} />}
                   </div>
                   <div>
-                    <p className="font-bold text-on-surface">{evaluation.patientName}</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-black">{evaluation.code || '#EV-0000'}</span>
-                      <p className="text-[10px] text-outline uppercase tracking-widest font-bold">
-                        {new Date(evaluation.date).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
+                    <h4 className="font-bold text-on-surface group-hover:text-primary transition-colors">{evaluation.patientName}</h4>
+                    <p className="text-xs text-outline">{getTemplateLabel(evaluation.templateType || 'MTC')}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleExportEvaluation(evaluation)}
-                    className="p-2 text-outline hover:text-primary hover:bg-primary/5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                    title="Exportar PDF"
-                  >
-                    <FileText size={16} />
-                  </button>
+                <div className="flex items-center gap-1">
                   {canEdit && (
                     <button
                       onClick={() => handleEdit(evaluation)}
-                      className="p-2 text-outline hover:text-primary hover:bg-primary/5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                      className="p-2 text-outline hover:text-primary hover:bg-surface-container-low rounded-lg transition-all"
                     >
                       <Pencil size={16} />
                     </button>
@@ -631,7 +1072,7 @@ export default function EvaluationsView({
                   {canDelete && (
                     <button
                       onClick={() => confirmDelete(evaluation.id)}
-                      className="p-2 text-outline hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                      className="p-2 text-outline hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -639,15 +1080,25 @@ export default function EvaluationsView({
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="p-3 bg-surface-container-low rounded-xl">
-                  <p className="text-[10px] font-bold text-outline uppercase tracking-widest mb-1">Queixa Principal</p>
-                  <p className="text-xs text-on-surface-variant line-clamp-2">{evaluation.mainComplaint}</p>
+              <div className="space-y-2 text-xs text-on-surface-variant">
+                <div className="flex items-center gap-2">
+                  <Calendar size={14} className="text-outline" />
+                  <span>Data: {new Date(evaluation.date).toLocaleDateString('pt-BR')}</span>
                 </div>
-                {evaluation.syndromeHypothesis && (
-                  <div className="p-3 bg-primary/5 rounded-xl">
-                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Hipótese Diagnóstica</p>
-                    <p className="text-xs text-primary font-medium">{evaluation.syndromeHypothesis}</p>
+                <div className="flex items-center gap-2">
+                  <User size={14} className="text-outline" />
+                  <span>Avaliador: {evaluation.evaluator}</span>
+                </div>
+                {(evaluation as any).syndromeHypothesis && (
+                  <div className="pt-2 border-t border-outline-variant/10">
+                    <p className="font-bold text-[10px] text-outline uppercase tracking-wider">Síndrome</p>
+                    <p className="text-xs text-primary font-medium">{(evaluation as any).syndromeHypothesis}</p>
+                  </div>
+                )}
+                {(evaluation as any).diagnosticoFinal?.syndromes && (
+                  <div className="pt-2 border-t border-outline-variant/10">
+                    <p className="font-bold text-[10px] text-amber-600 uppercase tracking-wider">Síndromes (Diagnóstico de Ouro)</p>
+                    <p className="text-xs text-amber-700 font-medium font-headline">{(evaluation as any).diagnosticoFinal?.syndromes}</p>
                   </div>
                 )}
               </div>
@@ -665,7 +1116,7 @@ export default function EvaluationsView({
         </AnimatePresence>
       </div>
 
-      {/* Modal */}
+      {/* Modal Principal */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -680,7 +1131,7 @@ export default function EvaluationsView({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative bg-white w-full max-w-5xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               {/* Modal Header */}
               <div className="p-8 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-low/30">
@@ -689,11 +1140,9 @@ export default function EvaluationsView({
                     {isViewMode ? 'Detalhes da Avaliação' : editingId ? 'Editar Avaliação' : 'Nova Avaliação'}
                   </h3>
                   {!showTemplateSelection && (
-                    <p className="text-sm text-on-surface-variant font-medium">
-                      Modelo: {selectedTemplate === 'MTC' ? 'Medicina Tradicional Chinesa' : 'Radiestesia'} •
-                      Passo {currentStep + 1} de {selectedTemplate === 'MTC' ? MTC_STEPS.length : RADIESTESIA_STEPS.length}: {
-                        (selectedTemplate === 'MTC' ? MTC_STEPS : RADIESTESIA_STEPS)[currentStep].label
-                      }
+                    <p className="text-sm text-on-surface-variant font-medium mt-1">
+                      Modelo: <span className="font-bold text-primary">{getTemplateLabel(selectedTemplate)}</span> •
+                      Passo {currentStep + 1} de {activeSteps.length}: <span className="font-bold text-on-surface">{activeSteps[currentStep]?.label}</span>
                     </p>
                   )}
                 </div>
@@ -721,31 +1170,53 @@ export default function EvaluationsView({
                 </div>
               </div>
 
-              {/* Progress Bar */}
+              {/* Progress Bar & Step Tabs */}
               {!showTemplateSelection && (
-                <div className="flex px-8 py-4 bg-surface-container-low/10 gap-2">
-                  {(selectedTemplate === 'MTC' ? MTC_STEPS : RADIESTESIA_STEPS).map((step, idx) => (
-                    <div
-                      key={step.id}
-                      className={cn(
-                        "flex-1 h-1.5 rounded-full transition-all duration-500",
-                        idx <= currentStep ? "bg-primary" : "bg-outline-variant/20"
-                      )}
-                    />
-                  ))}
+                <div className="bg-surface-container-low/20 border-b border-outline-variant/10 px-8 py-3">
+                  <div className="flex gap-2 mb-3">
+                    {activeSteps.map((step, idx) => (
+                      <button
+                        key={step.id}
+                        onClick={() => setCurrentStep(idx)}
+                        className={cn(
+                          "flex-1 h-2 rounded-full transition-all duration-300",
+                          idx === currentStep ? "bg-primary ring-2 ring-primary/30" : idx < currentStep ? "bg-primary/60" : "bg-outline-variant/20"
+                        )}
+                        title={step.label}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex justify-between items-center text-xs overflow-x-auto gap-2 py-1 custom-scrollbar">
+                    {activeSteps.map((step, idx) => {
+                      const Icon = step.icon;
+                      return (
+                        <button
+                          key={step.id}
+                          onClick={() => setCurrentStep(idx)}
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap text-xs font-medium",
+                            idx === currentStep ? "bg-primary text-white font-bold shadow-md shadow-primary/20" : "text-outline hover:text-on-surface hover:bg-surface-container-low"
+                          )}
+                        >
+                          <Icon size={14} />
+                          <span>{step.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
               {/* Form Content */}
               <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                 {showTemplateSelection ? (
-                  <div className="flex flex-col items-center justify-center py-12 space-y-8 h-full">
+                  <div className="flex flex-col items-center justify-center py-8 space-y-8 h-full">
                     <div className="text-center space-y-2">
-                      <h4 className="text-xl font-bold text-on-surface">Escolha o modelo de avaliação</h4>
-                      <p className="text-on-surface-variant text-sm">Selecione o tipo de ficha que deseja preencher para este paciente.</p>
+                      <h4 className="text-2xl font-bold text-on-surface">Escolha o modelo de avaliação</h4>
+                      <p className="text-on-surface-variant text-sm max-w-lg">Selecione o tipo de ficha que deseja preencher para o atendimento do paciente.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl px-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl px-4">
                       {activeTemplates.map(template => (
                         <button
                           key={template.id}
@@ -753,26 +1224,30 @@ export default function EvaluationsView({
                             if (template.code === 'RADIESTESIA') {
                               setSelectedTemplate('RADIESTESIA');
                               setFormData(JSON.parse(JSON.stringify(RADIESTESIA_DEFAULT_FORM_DATA)));
+                            } else if (template.code === 'DIAGNOSTICO_OURO') {
+                              setSelectedTemplate('DIAGNOSTICO_OURO');
+                              setFormData(JSON.parse(JSON.stringify(DIAGNOSTICO_OURO_DEFAULT_FORM_DATA)));
                             } else {
                               setSelectedTemplate('MTC');
                               setFormData(JSON.parse(JSON.stringify(MTC_DEFAULT_FORM_DATA)));
                             }
                             setShowTemplateSelection(false);
                           }}
-                          className="p-8 rounded-[2rem] border-2 border-outline-variant/10 hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col gap-4 group"
+                          className="p-8 rounded-[2rem] border-2 border-outline-variant/10 hover:border-amber-500 hover:bg-amber-50/50 transition-all text-left flex flex-col justify-between gap-6 group shadow-sm hover:shadow-lg"
                         >
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform ${
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform ${
+                            template.code === 'DIAGNOSTICO_OURO' ? 'bg-amber-100 text-amber-700' :
                             template.colorTheme === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
-                            template.colorTheme === 'amber' ? 'bg-amber-50 text-amber-600' :
-                            template.colorTheme === 'blue' ? 'bg-blue-50 text-blue-600' :
-                            template.colorTheme === 'purple' ? 'bg-purple-50 text-purple-600' :
                             'bg-emerald-50 text-emerald-600'
                           }`}>
-                            {template.code === 'RADIESTESIA' ? <Activity size={24} /> : <ClipboardList size={24} />}
+                            {template.code === 'DIAGNOSTICO_OURO' ? <Sparkles size={28} /> : template.code === 'RADIESTESIA' ? <Activity size={28} /> : <ClipboardList size={28} />}
                           </div>
                           <div>
-                            <h5 className="font-bold text-lg text-on-surface">{template.name}</h5>
-                            <p className="text-sm text-outline leading-relaxed mt-1">{template.description}</p>
+                            <h5 className="font-bold text-lg text-on-surface flex items-center gap-2">
+                              {template.name}
+                              {template.code === 'DIAGNOSTICO_OURO' && <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold">6 Págs</span>}
+                            </h5>
+                            <p className="text-xs text-outline leading-relaxed mt-2">{template.description}</p>
                           </div>
                         </button>
                       ))}
@@ -780,10 +1255,17 @@ export default function EvaluationsView({
                   </div>
                 ) : (
                   <>
-                    {selectedTemplate === 'MTC' && (
-                      <>
+                    {/* FORMULÁRIO DIAGNÓSTICO DE OURO */}
+                    {selectedTemplate === 'DIAGNOSTICO_OURO' && (
+                      <div className="space-y-8 animate-in fade-in duration-300">
+                        {/* PÁGINA 1 */}
                         {currentStep === 0 && (
-                          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                          <div className="space-y-8">
+                            <div className="bg-amber-50/60 border border-amber-200/50 p-4 rounded-2xl flex items-center gap-3 text-amber-800 text-sm">
+                              <Sparkles className="text-amber-600 shrink-0" size={20} />
+                              <span className="font-medium">Página 1: Identificação da Queixa Principal, Análise da Dor e Antecedentes do Paciente</span>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div className="space-y-2">
                                 <label className="text-xs font-bold text-outline uppercase tracking-widest">Paciente</label>
@@ -811,42 +1293,19 @@ export default function EvaluationsView({
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Seção Queixa Principal */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-6">
+                              <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                                <FileText size={20} className="text-amber-600" /> Queixa Principal
+                              </h4>
                               <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Origem da Consulta</label>
-                                <select
-                                  disabled={isViewMode}
-                                  value={formData.origin}
-                                  onChange={e => setFormData({ ...formData, origin: e.target.value })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                >
-                                  <option value="Espontânea">Espontânea</option>
-                                  <option value="Encaminhamento">Encaminhamento</option>
-                                </select>
-                              </div>
-                              <div className="flex items-center gap-4 pt-8">
-                                <label className="flex items-center gap-3 cursor-pointer group">
-                                  <div className={cn(
-                                    "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
-                                    formData.firstTimeTCM ? "bg-primary border-primary" : "border-outline-variant group-hover:border-primary",
-                                    isViewMode && "opacity-70 cursor-not-allowed"
-                                  )} onClick={() => !isViewMode && setFormData({ ...formData, firstTimeTCM: !formData.firstTimeTCM })}>
-                                    {formData.firstTimeTCM && <Check size={14} className="text-white" />}
-                                  </div>
-                                  <span className="text-sm font-medium text-on-surface">Primeira vez com MTC?</span>
-                                </label>
-                              </div>
-                            </div>
-
-                            <div className="space-y-6">
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Queixa Principal</label>
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Descrição da Queixa Principal</label>
                                 <textarea
                                   disabled={isViewMode}
-                                  value={formData.mainComplaint}
+                                  value={(formData as DiagnosticoOuroEvaluation).mainComplaint}
                                   onChange={e => setFormData({ ...formData, mainComplaint: e.target.value })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[100px] disabled:opacity-70"
-                                  placeholder="Descreva a queixa principal do paciente..."
+                                  className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[90px] disabled:opacity-70 shadow-sm"
+                                  placeholder="Detalhamento da queixa principal..."
                                 />
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -855,1026 +1314,1360 @@ export default function EvaluationsView({
                                   <input
                                     disabled={isViewMode}
                                     type="text"
-                                    value={formData.complaintStart}
-                                    onChange={e => setFormData({ ...formData, complaintStart: e.target.value })}
-                                    className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                    placeholder="Ex: Há 3 meses"
+                                    value={(formData as DiagnosticoOuroEvaluation).mainComplaintStart}
+                                    onChange={e => setFormData({ ...formData, mainComplaintStart: e.target.value })}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                    placeholder="Ex: Há 2 semanas, súbito..."
                                   />
                                 </div>
                                 <div className="space-y-2">
-                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Queixas Secundárias</label>
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Localização</label>
                                   <input
                                     disabled={isViewMode}
                                     type="text"
-                                    value={formData.secondaryComplaints}
-                                    onChange={e => setFormData({ ...formData, secondaryComplaints: e.target.value })}
-                                    className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                    placeholder="Outros sintomas..."
+                                    value={(formData as DiagnosticoOuroEvaluation).mainComplaintLocation}
+                                    onChange={e => setFormData({ ...formData, mainComplaintLocation: e.target.value })}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                    placeholder="Ex: Região lombar, epigástrio..."
                                   />
                                 </div>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Fatores de Melhora</label>
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Fatos Associados</label>
                                   <input
                                     disabled={isViewMode}
                                     type="text"
-                                    value={formData.improvementFactors}
-                                    onChange={e => setFormData({ ...formData, improvementFactors: e.target.value })}
-                                    className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                    placeholder="O que melhora os sintomas?"
+                                    value={(formData as DiagnosticoOuroEvaluation).mainComplaintAssociatedFacts}
+                                    onChange={e => setFormData({ ...formData, mainComplaintAssociatedFacts: e.target.value })}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                    placeholder="Eventos, estresse, trauma prévio..."
                                   />
                                 </div>
                                 <div className="space-y-2">
-                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Fatores de Piora</label>
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Características</label>
                                   <input
                                     disabled={isViewMode}
                                     type="text"
-                                    value={formData.worseningFactors}
-                                    onChange={e => setFormData({ ...formData, worseningFactors: e.target.value })}
-                                    className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                    placeholder="O que piora os sintomas?"
+                                    value={(formData as DiagnosticoOuroEvaluation).mainComplaintCharacteristics}
+                                    onChange={e => setFormData({ ...formData, mainComplaintCharacteristics: e.target.value })}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                    placeholder="Ex: Queimação, fisgada, em peso..."
                                   />
                                 </div>
                               </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Intensidade (0 a 10)</label>
+                                  <div className="flex gap-1 overflow-x-auto py-1">
+                                    {[0,1,2,3,4,5,6,7,8,9,10].map(val => (
+                                      <button
+                                        key={val}
+                                        disabled={isViewMode}
+                                        onClick={() => setFormData({ ...formData, mainComplaintIntensity: val })}
+                                        className={cn(
+                                          "flex-1 min-w-[32px] h-10 rounded-lg text-xs font-bold transition-all",
+                                          (formData as DiagnosticoOuroEvaluation).mainComplaintIntensity === val ? "bg-amber-600 text-white shadow" : "bg-white border text-on-surface hover:bg-surface-container"
+                                        )}
+                                      >
+                                        {val}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Frequência</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).mainComplaintFrequency}
+                                    onChange={e => setFormData({ ...formData, mainComplaintFrequency: e.target.value })}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                    placeholder="Contínua, episódica, diária..."
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Sintomas Acompanhantes</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).mainComplaintAccompanyingSymptoms}
+                                    onChange={e => setFormData({ ...formData, mainComplaintAccompanyingSymptoms: e.target.value })}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                    placeholder="Nauseas, tontura, sudorese..."
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">O que melhora e o que piora</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).mainComplaintWorseningBetter}
+                                    onChange={e => setFormData({ ...formData, mainComplaintWorseningBetter: e.target.value })}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                    placeholder="Calor melhora, repouso piora..."
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Seção Especificação da DOR */}
+                            <div className="p-6 rounded-2xl bg-rose-50/40 border border-rose-200/40 space-y-6">
+                              <h4 className="text-lg font-bold text-rose-900 flex items-center gap-2">
+                                <Activity size={20} className="text-rose-600" /> Detalhamento da DOR
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Início</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).pain?.start}
+                                    onChange={e => updateNestedField(['pain', 'start'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Localização da Dor</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).pain?.location}
+                                    onChange={e => updateNestedField(['pain', 'location'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Características (Suporta a Pressão? Excesso vs Deficiência)</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).pain?.characteristics}
+                                    onChange={e => updateNestedField(['pain', 'characteristics'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                    placeholder="Sim (deficiência) / Não (excesso)..."
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Intensidade (0 a 10)</label>
+                                  <div className="flex gap-1 overflow-x-auto py-1">
+                                    {[0,1,2,3,4,5,6,7,8,9,10].map(val => (
+                                      <button
+                                        key={val}
+                                        disabled={isViewMode}
+                                        onClick={() => updateNestedField(['pain', 'intensity'], val)}
+                                        className={cn(
+                                          "flex-1 min-w-[32px] h-10 rounded-lg text-xs font-bold transition-all",
+                                          (formData as DiagnosticoOuroEvaluation).pain?.intensity === val ? "bg-rose-600 text-white shadow" : "bg-white border text-on-surface hover:bg-surface-container"
+                                        )}
+                                      >
+                                        {val}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Frequência / Horário</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).pain?.frequency}
+                                    onChange={e => updateNestedField(['pain', 'frequency'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">O que melhora e o que piora a dor?</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).pain?.worseningBetter}
+                                    onChange={e => updateNestedField(['pain', 'worseningBetter'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Antecedentes e Hábitos */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Fatores Agravantes / Aliviantes</label>
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Tratamentos Realizados</label>
+                                <textarea
+                                  disabled={isViewMode}
+                                  value={(formData as DiagnosticoOuroEvaluation).treatmentsDone}
+                                  onChange={e => setFormData({ ...formData, treatmentsDone: e.target.value })}
+                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[75px] disabled:opacity-70"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Hábitos e Vícios</label>
+                                <textarea
+                                  disabled={isViewMode}
+                                  value={(formData as DiagnosticoOuroEvaluation).habitsAndAddictions}
+                                  onChange={e => setFormData({ ...formData, habitsAndAddictions: e.target.value })}
+                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[75px] disabled:opacity-70"
+                                  placeholder="Tabagismo, álcool, sedentarismo..."
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Intolerância Alimentar</label>
                                 <input
                                   disabled={isViewMode}
                                   type="text"
-                                  value={formData.aggravatingRelieving}
-                                  onChange={e => setFormData({ ...formData, aggravatingRelieving: e.target.value })}
+                                  value={(formData as DiagnosticoOuroEvaluation).foodIntolerance}
+                                  onChange={e => setFormData({ ...formData, foodIntolerance: e.target.value })}
                                   className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                  placeholder="Ex: Piora com frio, melhora com pressão..."
                                 />
                               </div>
                               <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Doenças Prévias</label>
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Desejo / Aversão Sabor</label>
+                                <input
+                                  disabled={isViewMode}
+                                  type="text"
+                                  value={(formData as DiagnosticoOuroEvaluation).tastePreference}
+                                  onChange={e => setFormData({ ...formData, tastePreference: e.target.value })}
+                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
+                                  placeholder="Doce, azedo, picante, salgado, amargo..."
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Cirurgias (Cronológicas)</label>
+                                <input
+                                  disabled={isViewMode}
+                                  type="text"
+                                  value={(formData as DiagnosticoOuroEvaluation).surgeriesChronological}
+                                  onChange={e => setFormData({ ...formData, surgeriesChronological: e.target.value })}
+                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Antecedentes Patológicos (Cronológicos)</label>
                                 <textarea
                                   disabled={isViewMode}
-                                  value={formData.previousDiseases}
-                                  onChange={e => setFormData({ ...formData, previousDiseases: e.target.value })}
+                                  value={(formData as DiagnosticoOuroEvaluation).pathologicalHistory}
+                                  onChange={e => setFormData({ ...formData, pathologicalHistory: e.target.value })}
                                   className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[80px] disabled:opacity-70"
-                                  placeholder="Ex: Hipertensão, Diabetes..."
+                                  placeholder="Enfermidades durante a vida..."
                                 />
                               </div>
                               <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Cirurgias</label>
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Antecedentes Familiares (Pai e Mãe)</label>
                                 <textarea
                                   disabled={isViewMode}
-                                  value={formData.surgeries}
-                                  onChange={e => setFormData({ ...formData, surgeries: e.target.value })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[80px] disabled:opacity-70"
-                                  placeholder="Ex: Apendicectomia, Colecistectomia..."
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Histórico Familiar</label>
-                                <textarea
-                                  disabled={isViewMode}
-                                  value={formData.familyHistory}
+                                  value={(formData as DiagnosticoOuroEvaluation).familyHistory}
                                   onChange={e => setFormData({ ...formData, familyHistory: e.target.value })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[60px] disabled:opacity-70"
-                                  placeholder="Diabetes, hipertensão, etc. na família..."
-                                />
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Medicamentos em Uso</label>
-                                  <input
-                                    disabled={isViewMode}
-                                    type="text"
-                                    value={formData.medications}
-                                    onChange={e => setFormData({ ...formData, medications: e.target.value })}
-                                    className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Alergias</label>
-                                  <input
-                                    disabled={isViewMode}
-                                    type="text"
-                                    value={formData.allergies}
-                                    onChange={e => setFormData({ ...formData, allergies: e.target.value })}
-                                    className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {currentStep === 1 && (
-                          <div className="space-y-8">
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">PA (mmHg)</label>
-                                <input
-                                  disabled={isViewMode}
-                                  type="text"
-                                  value={formData.physical?.pa}
-                                  onChange={e => setFormData({ ...formData, physical: { ...formData.physical!, pa: e.target.value } })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                  placeholder="120/80"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">FC (bpm)</label>
-                                <input
-                                  disabled={isViewMode}
-                                  type="text"
-                                  value={formData.physical?.fc}
-                                  onChange={e => setFormData({ ...formData, physical: { ...formData.physical!, fc: e.target.value } })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                  placeholder="72"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Glicose (mg/dL)</label>
-                                <input
-                                  disabled={isViewMode}
-                                  type="text"
-                                  value={formData.physical?.glucose}
-                                  onChange={e => setFormData({ ...formData, physical: { ...formData.physical!, glucose: e.target.value } })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                  placeholder="90"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-6">
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Altura (m)</label>
-                                <input
-                                  disabled={isViewMode}
-                                  type="text"
-                                  value={formData.physical?.height}
-                                  onChange={e => setFormData({ ...formData, physical: { ...formData.physical!, height: e.target.value } })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                  placeholder="1.70"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Peso (kg)</label>
-                                <input
-                                  disabled={isViewMode}
-                                  type="text"
-                                  value={formData.physical?.weight}
-                                  onChange={e => setFormData({ ...formData, physical: { ...formData.physical!, weight: e.target.value } })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                  placeholder="70"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">IMC</label>
-                                <input
-                                  disabled={isViewMode}
-                                  type="text"
-                                  value={formData.physical?.imc}
-                                  onChange={e => setFormData({ ...formData, physical: { ...formData.physical!, imc: e.target.value } })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                  placeholder="24.2"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="space-y-4">
-                              <label className="text-xs font-bold text-outline uppercase tracking-widest">Intensidade da Dor (EVA)</label>
-                              <div className="flex justify-between gap-1">
-                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(val => (
-                                  <button
-                                    key={val}
-                                    disabled={isViewMode}
-                                    onClick={() => setFormData({ ...formData, physical: { ...formData.physical!, painIntensity: val } })}
-                                    className={cn(
-                                      "flex-1 h-12 rounded-lg font-bold text-sm transition-all",
-                                      formData.physical?.painIntensity === val
-                                        ? "bg-primary text-white shadow-lg shadow-primary/20"
-                                        : "bg-surface-container-low text-on-surface hover:bg-surface-container",
-                                      isViewMode && "opacity-70 cursor-not-allowed"
-                                    )}
-                                  >
-                                    {val}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Tipo de Dor</label>
-                                <div className="flex flex-wrap gap-2">
-                                  {['Aguda', 'Crônica', 'Latejante', 'Queimação', 'Fincada', 'Surda'].map(type => (
-                                    <button
-                                      key={type}
-                                      disabled={isViewMode}
-                                      onClick={() => {
-                                        const current = formData.physical?.painType || [];
-                                        const next = current.includes(type) ? current.filter(t => t !== type) : [...current, type];
-                                        setFormData({ ...formData, physical: { ...formData.physical!, painType: next } });
-                                      }}
-                                      className={cn(
-                                        "px-4 py-2 rounded-lg text-xs font-bold border transition-all",
-                                        formData.physical?.painType?.includes(type) ? "bg-primary text-white border-primary" : "bg-white text-on-surface border-outline-variant/20 hover:bg-surface-container-low",
-                                        isViewMode && "opacity-70 cursor-not-allowed"
-                                      )}
-                                    >
-                                      {type}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Frequência da Dor</label>
-                                <input
-                                  disabled={isViewMode}
-                                  type="text"
-                                  value={formData.physical?.painFrequency}
-                                  onChange={e => setFormData({ ...formData, physical: { ...formData.physical!, painFrequency: e.target.value } })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                  placeholder="Ex: Diária, intermitente..."
-                                />
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Pico de Dor (Horário)</label>
-                                <input
-                                  disabled={isViewMode}
-                                  type="text"
-                                  value={formData.physical?.painPeakTime}
-                                  onChange={e => setFormData({ ...formData, physical: { ...formData.physical!, painPeakTime: e.target.value } })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                  placeholder="Ex: Manhã, noite..."
-                                />
-                              </div>
-                              <div className="flex items-center gap-4 pt-8">
-                                <label className="flex items-center gap-3 cursor-pointer">
-                                  <input
-                                    disabled={isViewMode}
-                                    type="checkbox"
-                                    checked={formData.physical?.painMigration}
-                                    onChange={e => setFormData({ ...formData, physical: { ...formData.physical!, painMigration: e.target.checked } })}
-                                    className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                  />
-                                  <span className="text-sm font-medium">A dor migra?</span>
-                                </label>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Movimentos Involuntários</label>
-                                <input
-                                  disabled={isViewMode}
-                                  type="text"
-                                  value={formData.physical?.involuntaryMovements}
-                                  onChange={e => setFormData({ ...formData, physical: { ...formData.physical!, involuntaryMovements: e.target.value } })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                  placeholder="Tiques, tremores..."
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Agravantes/Aliviantes da Dor</label>
-                                <input
-                                  disabled={isViewMode}
-                                  type="text"
-                                  value={formData.physical?.painAggravatingRelieving}
-                                  onChange={e => setFormData({ ...formData, physical: { ...formData.physical!, painAggravatingRelieving: e.target.value } })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
+                                  className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[80px] disabled:opacity-70"
+                                  placeholder="Doenças conhecidas dos pais..."
                                 />
                               </div>
                             </div>
 
                             <div className="space-y-2">
-                              <label className="text-xs font-bold text-outline uppercase tracking-widest">Pele e Outras Observações</label>
+                              <label className="text-xs font-bold text-outline uppercase tracking-widest">Observações da Página 1</label>
                               <textarea
                                 disabled={isViewMode}
-                                value={formData.physical?.skin?.join(', ')}
-                                onChange={e => setFormData({ ...formData, physical: { ...formData.physical!, skin: e.target.value.split(',').map(s => s.trim()) } })}
-                                className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[80px] disabled:opacity-70"
-                                placeholder="Cor, temperatura, umidade, lesões..."
+                                value={(formData as DiagnosticoOuroEvaluation).observationsP1}
+                                onChange={e => setFormData({ ...formData, observationsP1: e.target.value })}
+                                className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[60px] disabled:opacity-70"
                               />
                             </div>
                           </div>
                         )}
 
-                        {currentStep === 2 && (
+                        {/* PÁGINA 2 */}
+                        {currentStep === 1 && (
                           <div className="space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                              <div className="space-y-6">
-                                <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
-                                  <Moon size={20} className="text-primary" /> Sono
-                                </h4>
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                      <input
-                                        disabled={isViewMode}
-                                        type="checkbox"
-                                        checked={formData.sleep?.difficulty}
-                                        onChange={e => setFormData({ ...formData, sleep: { ...formData.sleep!, difficulty: e.target.checked } })}
-                                        className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                      />
-                                      <span className="text-sm font-medium">Dificuldade para iniciar?</span>
-                                    </label>
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                      <input
-                                        disabled={isViewMode}
-                                        type="checkbox"
-                                        checked={formData.sleep?.dreams}
-                                        onChange={e => setFormData({ ...formData, sleep: { ...formData.sleep!, dreams: e.target.checked } })}
-                                        className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                      />
-                                      <span className="text-sm font-medium">Muitos sonhos?</span>
-                                    </label>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                      <input
-                                        disabled={isViewMode}
-                                        type="checkbox"
-                                        checked={formData.sleep?.restorative}
-                                        onChange={e => setFormData({ ...formData, sleep: { ...formData.sleep!, restorative: e.target.checked } })}
-                                        className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                      />
-                                      <span className="text-sm font-medium">Sono reparador?</span>
-                                    </label>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Horas de sono</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.sleep?.hours}
-                                        onChange={e => setFormData({ ...formData, sleep: { ...formData.sleep!, hours: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Ex: 7h"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Acorda às</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.sleep?.wakeUpTime}
-                                        onChange={e => setFormData({ ...formData, sleep: { ...formData.sleep!, wakeUpTime: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Ex: 06:30"
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Acordares Noturnos</label>
-                                    <input
-                                      disabled={isViewMode}
-                                      type="text"
-                                      value={formData.sleep?.nightWaking}
-                                      onChange={e => setFormData({ ...formData, sleep: { ...formData.sleep!, nightWaking: e.target.value } })}
-                                      className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      placeholder="Frequência e motivo..."
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-6">
-                                <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
-                                  <Coffee size={20} className="text-primary" /> Apetite e Digestão
-                                </h4>
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Nível de Apetite</label>
-                                      <select
-                                        disabled={isViewMode}
-                                        value={formData.appetite?.level}
-                                        onChange={e => setFormData({ ...formData, appetite: { ...formData.appetite!, level: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      >
-                                        <option value="Normal">Normal</option>
-                                        <option value="Aumentado">Aumentado</option>
-                                        <option value="Diminuído">Diminuído</option>
-                                      </select>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Sabor na boca</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.appetite?.taste}
-                                        onChange={e => setFormData({ ...formData, appetite: { ...formData.appetite!, taste: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Metálico, amargo, doce..."
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-1 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Preferência por Comidas</label>
-                                      <select
-                                        disabled={isViewMode}
-                                        value={formData.appetite?.preference}
-                                        onChange={e => setFormData({ ...formData, appetite: { ...formData.appetite!, preference: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      >
-                                        <option value="">Indiferente / Selecione...</option>
-                                        <option value="Quentes">Quentes</option>
-                                        <option value="Frias">Frias</option>
-                                      </select>
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                      <input
-                                        disabled={isViewMode}
-                                        type="checkbox"
-                                        checked={formData.appetite?.stomachWeight}
-                                        onChange={e => setFormData({ ...formData, appetite: { ...formData.appetite!, stomachWeight: e.target.checked } })}
-                                        className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                      />
-                                      <span className="text-sm font-medium">Peso no estômago?</span>
-                                    </label>
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                      <input
-                                        disabled={isViewMode}
-                                        type="checkbox"
-                                        checked={formData.appetite?.fullness}
-                                        onChange={e => setFormData({ ...formData, appetite: { ...formData.appetite!, fullness: e.target.checked } })}
-                                        className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                      />
-                                      <span className="text-sm font-medium">Plenitude pós-prandial?</span>
-                                    </label>
-                                  </div>
-                                </div>
-                              </div>
+                            <div className="bg-sky-50/60 border border-sky-200/50 p-4 rounded-2xl flex items-center gap-3 text-sky-800 text-sm">
+                              <Thermometer className="text-sky-600 shrink-0" size={20} />
+                              <span className="font-medium">Página 2: Análise de Frio / Calor, Suor, Sede e Fome (Interrogatório MTC)</span>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-outline-variant/10">
-                              <div className="space-y-6">
-                                <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
-                                  <Droplets size={20} className="text-primary" /> Sede
-                                </h4>
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <label className="flex items-center gap-3 cursor-pointer">
+                            {/* FRIO / CALOR */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-6">
+                              <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                                <Thermometer size={20} className="text-sky-600" /> Frio / Calor
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Sente mais Frio ou Calor?</label>
+                                  <select
+                                    disabled={isViewMode}
+                                    value={(formData as DiagnosticoOuroEvaluation).frioCalor?.tempPreference}
+                                    onChange={e => updateNestedField(['frioCalor', 'tempPreference'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                  >
+                                    <option value="Normal">Normal</option>
+                                    <option value="Frio">Sente mais Frio</option>
+                                    <option value="Calor">Sente mais Calor</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Prefere Verão ou Inverno?</label>
+                                  <select
+                                    disabled={isViewMode}
+                                    value={(formData as DiagnosticoOuroEvaluation).frioCalor?.seasonPreference}
+                                    onChange={e => updateNestedField(['frioCalor', 'seasonPreference'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                  >
+                                    <option value="">Indiferente</option>
+                                    <option value="Verão">Prefere Verão</option>
+                                    <option value="Inverno">Prefere Inverno</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Bebidas Quentes ou Frias?</label>
+                                  <select
+                                    disabled={isViewMode}
+                                    value={(formData as DiagnosticoOuroEvaluation).frioCalor?.drinkTempPreference}
+                                    onChange={e => updateNestedField(['frioCalor', 'drinkTempPreference'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                  >
+                                    <option value="">Indiferente</option>
+                                    <option value="Quentes">Prefere Bebidas Quentes</option>
+                                    <option value="Frias">Prefere Bebidas Frias</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Análise do Frio */}
+                              <div className="space-y-3 pt-2">
+                                <label className="text-xs font-bold text-sky-700 uppercase tracking-widest">ANÁLISE DO FRIO</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {[
+                                    'Tipo 1. Shi Han (Por Excesso: frio severo que não passa com facilidade)',
+                                    'Tipo 2. Wei Han (Deficiência do Yang Qi / Invasão do frio patógeno)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-start gap-3 p-3.5 bg-white rounded-xl border hover:border-sky-400 cursor-pointer transition-all">
                                       <input
                                         disabled={isViewMode}
                                         type="checkbox"
-                                        checked={formData.thirst?.frequency}
-                                        onChange={e => setFormData({ ...formData, thirst: { ...formData.thirst!, frequency: e.target.checked } })}
-                                        className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
+                                        checked={((formData as DiagnosticoOuroEvaluation).frioCalor?.frioAnalysis || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['frioCalor', 'frioAnalysis'], item)}
+                                        className="w-5 h-5 mt-0.5 text-sky-600 rounded"
                                       />
-                                      <span className="text-sm font-medium">Muita sede?</span>
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
                                     </label>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Preferência</label>
-                                      <select
-                                        disabled={isViewMode}
-                                        value={formData.thirst?.preference}
-                                        onChange={e => setFormData({ ...formData, thirst: { ...formData.thirst!, preference: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      >
-                                        <option value="">Selecione...</option>
-                                        <option value="Gelada">Gelada</option>
-                                        <option value="Quente">Quente</option>
-                                        <option value="Natural">Natural</option>
-                                      </select>
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Horário de Pico</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.thirst?.time}
-                                        onChange={e => setFormData({ ...formData, thirst: { ...formData.thirst!, time: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Ex: Tarde"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Quantidade (L/dia)</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.thirst?.quantity}
-                                        onChange={e => setFormData({ ...formData, thirst: { ...formData.thirst!, quantity: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Ex: 2L"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-6">
-                                <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
-                                  <Activity size={20} className="text-primary" /> Hábitos
-                                </h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                  <label className="flex items-center gap-3 cursor-pointer">
-                                    <input
-                                      disabled={isViewMode}
-                                      type="checkbox"
-                                      checked={formData.habits?.smoker}
-                                      onChange={e => setFormData({ ...formData, habits: { ...formData.habits!, smoker: e.target.checked } })}
-                                      className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                    />
-                                    <span className="text-sm font-medium">Fumante?</span>
-                                  </label>
-                                  <label className="flex items-center gap-3 cursor-pointer">
-                                    <input
-                                      disabled={isViewMode}
-                                      type="checkbox"
-                                      checked={formData.habits?.sedentary}
-                                      onChange={e => setFormData({ ...formData, habits: { ...formData.habits!, sedentary: e.target.checked } })}
-                                      className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                    />
-                                    <span className="text-sm font-medium">Sedentário?</span>
-                                  </label>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {currentStep === 3 && (
-                          <div className="space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                              <div className="space-y-6">
-                                <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
-                                  <Droplets size={20} className="text-primary" /> Evacuação e Urina
-                                </h4>
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Frequência Evacuações</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.evacuation?.frequency}
-                                        onChange={e => setFormData({ ...formData, evacuation: { ...formData.evacuation!, frequency: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Ex: 1x ao dia"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Escala de Bristol</label>
-                                      <select
-                                        disabled={isViewMode}
-                                        value={formData.evacuation?.bristol}
-                                        onChange={e => setFormData({ ...formData, evacuation: { ...formData.evacuation!, bristol: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      >
-                                        <option value="">Selecione...</option>
-                                        <option value="Tipo 1">Tipo 1: Caroços duros</option>
-                                        <option value="Tipo 2">Tipo 2: Salsicha encaroçada</option>
-                                        <option value="Tipo 3">Tipo 3: Salsicha com fendas</option>
-                                        <option value="Tipo 4">Tipo 4: Salsicha macia</option>
-                                        <option value="Tipo 5">Tipo 5: Pedaços moles</option>
-                                        <option value="Tipo 6">Tipo 6: Pastosa</option>
-                                        <option value="Tipo 7">Tipo 7: Líquida</option>
-                                      </select>
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                      <input
-                                        disabled={isViewMode}
-                                        type="checkbox"
-                                        checked={formData.evacuation?.gases}
-                                        onChange={e => setFormData({ ...formData, evacuation: { ...formData.evacuation!, gases: e.target.checked } })}
-                                        className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                      />
-                                      <span className="text-sm font-medium">Gases/Flatulência?</span>
-                                    </label>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Cor da Urina</label>
-                                      <select
-                                        disabled={isViewMode}
-                                        value={formData.urine?.color}
-                                        onChange={e => setFormData({ ...formData, urine: { ...formData.urine!, color: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      >
-                                        <option value="Normal">Normal</option>
-                                        <option value="Clara">Clara</option>
-                                        <option value="Escura">Escura</option>
-                                        <option value="Turva">Turva</option>
-                                      </select>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Frequência Urina</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.urine?.frequency}
-                                        onChange={e => setFormData({ ...formData, urine: { ...formData.urine!, frequency: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Ex: 5x ao dia"
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                      <input
-                                        disabled={isViewMode}
-                                        type="checkbox"
-                                        checked={formData.urine?.pain}
-                                        onChange={e => setFormData({ ...formData, urine: { ...formData.urine!, pain: e.target.checked } })}
-                                        className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                      />
-                                      <span className="text-sm font-medium">Dor ao urinar?</span>
-                                    </label>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-6">
-                                <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
-                                  <Activity size={20} className="text-primary" /> Saúde Reprodutiva
-                                </h4>
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Menarca (idade)</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.reproductive?.menarche}
-                                        onChange={e => setFormData({ ...formData, reproductive: { ...formData.reproductive!, menarche: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Duração Ciclo</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.reproductive?.cycleDuration}
-                                        onChange={e => setFormData({ ...formData, reproductive: { ...formData.reproductive!, cycleDuration: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Libido</label>
-                                      <select
-                                        disabled={isViewMode}
-                                        value={formData.reproductive?.libido}
-                                        onChange={e => setFormData({ ...formData, reproductive: { ...formData.reproductive!, libido: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      >
-                                        <option value="Normal">Normal</option>
-                                        <option value="Aumentada">Aumentada</option>
-                                        <option value="Diminuída">Diminuída</option>
-                                      </select>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Gestações / Abortos</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={`${formData.reproductive?.pregnancies || 0} / ${formData.reproductive?.abortions || 0}`}
-                                        onChange={e => {
-                                          const [p, a] = e.target.value.split('/').map(s => s.trim());
-                                          setFormData({ ...formData, reproductive: { ...formData.reproductive!, pregnancies: p, abortions: a } });
-                                        }}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Ex: 2 / 0"
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Fluxo Menstrual</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.reproductive?.flowDuration}
-                                        onChange={e => setFormData({ ...formData, reproductive: { ...formData.reproductive!, flowDuration: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Duração/Intensidade"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Cor do Sangue</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.reproductive?.bloodColor}
-                                        onChange={e => setFormData({ ...formData, reproductive: { ...formData.reproductive!, bloodColor: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">TPM</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.reproductive?.pms}
-                                        onChange={e => setFormData({ ...formData, reproductive: { ...formData.reproductive!, pms: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      />
-                                    </div>
-                                    <div className="flex items-center gap-3 pt-6">
-                                      <label className="flex items-center gap-3 cursor-pointer">
-                                        <input
-                                          disabled={isViewMode}
-                                          type="checkbox"
-                                          checked={formData.reproductive?.cramps}
-                                          onChange={e => setFormData({ ...formData, reproductive: { ...formData.reproductive!, cramps: e.target.checked } })}
-                                          className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                        />
-                                        <span className="text-sm font-medium">Cólicas?</span>
-                                      </label>
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Ereção</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.reproductive?.erection}
-                                        onChange={e => setFormData({ ...formData, reproductive: { ...formData.reproductive!, erection: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Ejaculação</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.reproductive?.ejaculation}
-                                        onChange={e => setFormData({ ...formData, reproductive: { ...formData.reproductive!, ejaculation: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {currentStep === 4 && (
-                          <div className="space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                              <div className="space-y-6">
-                                <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
-                                  <Heart size={20} className="text-primary" /> Emoções Predominantes
-                                </h4>
-                                <div className="grid grid-cols-2 gap-3">
-                                  {['Raiva', 'Frustração', 'Preocupação', 'Medo', 'Tristeza', 'Alegria Excessiva'].map(emotion => (
-                                    <button
-                                      key={emotion}
-                                      disabled={isViewMode}
-                                      onClick={() => {
-                                        const current = formData.emotions?.predominant || [];
-                                        const next = current.includes(emotion)
-                                          ? current.filter(e => e !== emotion)
-                                          : [...current, emotion];
-                                        setFormData({ ...formData, emotions: { ...formData.emotions!, predominant: next } });
-                                      }}
-                                      className={cn(
-                                        "px-4 py-3 rounded-xl text-xs font-bold transition-all border",
-                                        formData.emotions?.predominant?.includes(emotion)
-                                          ? "bg-primary text-white border-primary shadow-md"
-                                          : "bg-surface-container-low text-on-surface border-outline-variant/10 hover:bg-surface-container",
-                                        isViewMode && "opacity-70 cursor-not-allowed"
-                                      )}
-                                    >
-                                      {emotion}
-                                    </button>
                                   ))}
                                 </div>
                               </div>
 
-                              <div className="space-y-6">
-                                <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
-                                  <Eye size={20} className="text-primary" /> Língua e Pulso
-                                </h4>
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Cor da Língua</label>
+                              {/* Análise do Calor */}
+                              <div className="space-y-3 pt-2">
+                                <label className="text-xs font-bold text-amber-700 uppercase tracking-widest">ANÁLISE DO CALOR</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {[
+                                    'Tipo 1. Febre c/ calafrio: Calafrio forte e febre leve',
+                                    'Tipo 1. Febre c/ calafrio: Calafrio leve e febre forte',
+                                    'Tipo 2. Febre s/ calafrio: Ondulante à noite (Deficiência Yin)',
+                                    'Tipo 2. Febre s/ calafrio: Ondulante à tarde (Umidade Calor - Baço)',
+                                    'Tipo 2. Febre s/ calafrio: Ondulante entre 15h-17h (Yang Ming)',
+                                    'Tipo 2. Febre severa - infecção (Calor Excessivo Interior)',
+                                    'Tipo 3. Febrícula (Deficiência Qi)',
+                                    'Tipo 4. Calor excessivo sem febre'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-start gap-3 p-3.5 bg-white rounded-xl border hover:border-amber-400 cursor-pointer transition-all">
                                       <input
                                         disabled={isViewMode}
-                                        type="text"
-                                        value={formData.tonguePulse?.color}
-                                        onChange={e => setFormData({ ...formData, tonguePulse: { ...formData.tonguePulse!, color: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Normal, pálida, vermelha..."
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).frioCalor?.calorAnalysis || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['frioCalor', 'calorAnalysis'], item)}
+                                        className="w-5 h-5 mt-0.5 text-amber-600 rounded"
                                       />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Saburra</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.tonguePulse?.coating}
-                                        onChange={e => setFormData({ ...formData, tonguePulse: { ...formData.tonguePulse!, coating: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Branca, amarela, espessa..."
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Umidade / Forma</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={`${formData.tonguePulse?.humidity || ''} / ${formData.tonguePulse?.shape || ''}`}
-                                        onChange={e => {
-                                          const [h, s] = e.target.value.split('/').map(v => v.trim());
-                                          setFormData({ ...formData, tonguePulse: { ...formData.tonguePulse!, humidity: h, shape: s } });
-                                        }}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Normal / Normal"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Pulso</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={formData.tonguePulse?.pulse}
-                                        onChange={e => setFormData({ ...formData, tonguePulse: { ...formData.tonguePulse!, pulse: e.target.value } })}
-                                        className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                        placeholder="Fino, rápido, corda..."
-                                      />
-                                    </div>
-                                  </div>
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
                                 </div>
                               </div>
 
-                              <div className="space-y-6 pt-6 border-t border-outline-variant/10">
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Observações Frio/Calor</label>
+                                <input
+                                  disabled={isViewMode}
+                                  type="text"
+                                  value={(formData as DiagnosticoOuroEvaluation).frioCalor?.observations}
+                                  onChange={e => updateNestedField(['frioCalor', 'observations'], e.target.value)}
+                                  className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70 shadow-sm"
+                                />
+                              </div>
+                            </div>
+
+                            {/* SUOR */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-6">
+                              <div className="flex justify-between items-center">
                                 <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
-                                  <Thermometer size={20} className="text-primary" /> Termorregulação
+                                  <Droplets size={20} className="text-blue-600" /> SUOR
                                 </h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Sensação Térmica</label>
-                                    <select
-                                      disabled={isViewMode}
-                                      value={formData.thermoregulation?.feeling}
-                                      onChange={e => setFormData({ ...formData, thermoregulation: { ...formData.thermoregulation!, feeling: e.target.value } })}
-                                      className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none disabled:opacity-70"
-                                    >
-                                      <option value="Normal">Normal</option>
-                                      <option value="Calor">Calor</option>
-                                      <option value="Frio">Frio</option>
-                                      <option value="Alternância">Alternância</option>
-                                    </select>
-                                  </div>
-                                  <div className="flex flex-col gap-2 pt-4">
-                                    <label className="flex items-center gap-3 cursor-pointer">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    disabled={isViewMode}
+                                    type="checkbox"
+                                    checked={(formData as DiagnosticoOuroEvaluation).suor?.normal}
+                                    onChange={e => updateNestedField(['suor', 'normal'], e.target.checked)}
+                                    className="w-5 h-5 text-primary rounded"
+                                  />
+                                  <span className="text-xs font-bold uppercase tracking-wider text-outline">Transpira Normalmente</span>
+                                </label>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Anidrose</label>
+                                  {[
+                                    'Tipo 1. Deficiência Jin Ye (Lesão dos líquidos corporais)',
+                                    'Tipo 2. Por Vento-Frio'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-3 p-3 bg-white rounded-xl border cursor-pointer">
                                       <input
                                         disabled={isViewMode}
                                         type="checkbox"
-                                        checked={formData.thermoregulation?.spontaneousSweat}
-                                        onChange={e => setFormData({ ...formData, thermoregulation: { ...formData.thermoregulation!, spontaneousSweat: e.target.checked } })}
-                                        className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
+                                        checked={((formData as DiagnosticoOuroEvaluation).suor?.anidrose || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['suor', 'anidrose'], item)}
+                                        className="w-4 h-4 text-blue-600 rounded"
                                       />
-                                      <span className="text-xs font-medium">Suor Espontâneo?</span>
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
                                     </label>
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                      <input
-                                        disabled={isViewMode}
-                                        type="checkbox"
-                                        checked={formData.thermoregulation?.nightSweat}
-                                        onChange={e => setFormData({ ...formData, thermoregulation: { ...formData.thermoregulation!, nightSweat: e.target.checked } })}
-                                        className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                      />
-                                      <span className="text-xs font-medium">Suor Noturno?</span>
-                                    </label>
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                      <input
-                                        disabled={isViewMode}
-                                        type="checkbox"
-                                        checked={formData.thermoregulation?.odor}
-                                        onChange={e => setFormData({ ...formData, thermoregulation: { ...formData.thermoregulation!, odor: e.target.checked } })}
-                                        className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                      />
-                                      <span className="text-xs font-medium">Odor forte?</span>
-                                    </label>
-                                  </div>
+                                  ))}
                                 </div>
-                                <div className="space-y-4 pt-4">
-                                  <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Estado Emocional Atual</label>
-                                    <textarea
-                                      disabled={isViewMode}
-                                      value={formData.emotions?.currentStatus}
-                                      onChange={e => setFormData({ ...formData, emotions: { ...formData.emotions!, currentStatus: e.target.value } })}
-                                      className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none text-sm disabled:opacity-70 min-h-[80px]"
-                                      placeholder="Como o paciente se sente hoje?"
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Estresse / Ansiedade</label>
-                                    <div className="flex gap-4">
-                                      <label className="flex items-center gap-3 cursor-pointer">
-                                        <input
-                                          disabled={isViewMode}
-                                          type="checkbox"
-                                          checked={formData.emotions?.anxiety}
-                                          onChange={e => setFormData({ ...formData, emotions: { ...formData.emotions!, anxiety: e.target.checked } })}
-                                          className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary disabled:opacity-70"
-                                        />
-                                        <span className="text-xs font-medium">Ansiedade?</span>
-                                      </label>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Hiperidrose</label>
+                                  {[
+                                    'Tipo 1. Exógena: por fator climático',
+                                    'Tipo 2. Endógena: a) Espontânea (Deficiência Qi)',
+                                    'Tipo 2. Endógena: b) Noturna (Deficiência Yin)',
+                                    'Tipo 2. Endógena: c) Profusa (Excesso Calor / Colapso Yang)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-3 p-3 bg-white rounded-xl border cursor-pointer">
                                       <input
                                         disabled={isViewMode}
-                                        type="text"
-                                        value={formData.emotions?.stress}
-                                        onChange={e => setFormData({ ...formData, emotions: { ...formData.emotions!, stress: e.target.value } })}
-                                        className="flex-1 px-4 py-2 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none text-xs disabled:opacity-70"
-                                        placeholder="Nível de estresse..."
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).suor?.hiperidrose || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['suor', 'hiperidrose'], item)}
+                                        className="w-4 h-4 text-blue-600 rounded"
                                       />
-                                    </div>
-                                  </div>
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Regiões do Corpo</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {[
+                                    'Na metade do corpo: (Vento-Fleuma ou Vento-Umidade — AVC)',
+                                    'No tórax: (Deficiência Qi Coração e Baço)',
+                                    'Na cabeça ou cervical: (Calor Jiao Sup / Umidade-Calor Jiao Médio)',
+                                    'Nas palmas das mãos e plantas dos pés: (Deficiência Yin)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-3 p-3 bg-white rounded-xl border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).suor?.bodyRegions || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['suor', 'bodyRegions'], item)}
+                                        className="w-4 h-4 text-blue-600 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* SEDE & FOME */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              {/* SEDE */}
+                              <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-4">
+                                <div className="flex justify-between items-center">
+                                  <h4 className="text-md font-bold text-on-surface">SEDE</h4>
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      disabled={isViewMode}
+                                      type="checkbox"
+                                      checked={(formData as DiagnosticoOuroEvaluation).sede?.normal}
+                                      onChange={e => updateNestedField(['sede', 'normal'], e.target.checked)}
+                                      className="w-4 h-4 text-primary rounded"
+                                    />
+                                    <span className="text-xs font-bold text-outline">Normal</span>
+                                  </label>
+                                </div>
+
+                                <label className="flex items-center gap-2 cursor-pointer p-2.5 bg-white rounded-xl border">
+                                  <input
+                                    disabled={isViewMode}
+                                    type="checkbox"
+                                    checked={(formData as DiagnosticoOuroEvaluation).sede?.absence}
+                                    onChange={e => updateNestedField(['sede', 'absence'], e.target.checked)}
+                                    className="w-4 h-4 text-primary rounded"
+                                  />
+                                  <span className="text-xs font-medium">Tipo 1. Ausência de Sede (Frio, Umidade, Def. Qi)</span>
+                                </label>
+
+                                <div className="space-y-2">
+                                  <label className="text-[10px] font-bold text-outline uppercase tracking-wider">Tipo 2. Sede sem Polidipsia</label>
+                                  {[
+                                    'a) Boca seca, mas não ingere (Deficiência Yin)',
+                                    'b) Sente sede, mas bebe pouco (Calor/Umidade)',
+                                    'c) Sente sede e bebe quentes (Acúmulo Fleuma)',
+                                    'd) Sente sede, faz bochecho e não engole (Estagnação)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-2.5 p-2 bg-white rounded-lg border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).sede?.noPolydipsia || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['sede', 'noPolydipsia'], item)}
+                                        className="w-3.5 h-3.5 text-primary rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label className="text-[10px] font-bold text-outline uppercase tracking-wider">Tipo 3. Sede com Polidipsia</label>
+                                  {[
+                                    'a) Sente sede e prefere bebidas frias (Calor excessivo)',
+                                    'b) Sente sede + Poliúria e Polifagia (Xiao Ke - Diabetes)',
+                                    'c) Sente sede e Polidipsia excessiva (Lesão líquidos)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-2.5 p-2 bg-white rounded-lg border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).sede?.withPolydipsia || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['sede', 'withPolydipsia'], item)}
+                                        className="w-3.5 h-3.5 text-primary rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* FOME */}
+                              <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-4">
+                                <div className="flex justify-between items-center">
+                                  <h4 className="text-md font-bold text-on-surface">FOME</h4>
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      disabled={isViewMode}
+                                      type="checkbox"
+                                      checked={(formData as DiagnosticoOuroEvaluation).fome?.normal}
+                                      onChange={e => updateNestedField(['fome', 'normal'], e.target.checked)}
+                                      className="w-4 h-4 text-primary rounded"
+                                    />
+                                    <span className="text-xs font-bold text-outline">Normal</span>
+                                  </label>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label className="text-[10px] font-bold text-outline uppercase tracking-wider">Tipo 1. Anorexia</label>
+                                  {[
+                                    'a) Apetite pobre (Deficiência Qi Baço e Estômago)',
+                                    'b) Com plenitude abdominal (Umidade Patógena - Baço)',
+                                    'c) Com aversão à comida gordurosa (Umidade-Calor Fígado/VB)',
+                                    'd) Com repugnância alimentar (Retenção Alimentos)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-2.5 p-2 bg-white rounded-lg border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).fome?.anorexia || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['fome', 'anorexia'], item)}
+                                        className="w-3.5 h-3.5 text-primary rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label className="text-[10px] font-bold text-outline uppercase tracking-wider">Tipo 2. Fome com Polifagia</label>
+                                  {[
+                                    'a) Hiperatividade Fogo Estômago',
+                                    'b) Estômago forte e Baço fraco'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-2.5 p-2 bg-white rounded-lg border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).fome?.hyperphagia || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['fome', 'hyperphagia'], item)}
+                                        className="w-3.5 h-3.5 text-primary rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+
+                                <label className="flex items-center gap-2 cursor-pointer p-2.5 bg-white rounded-xl border">
+                                  <input
+                                    disabled={isViewMode}
+                                    type="checkbox"
+                                    checked={(formData as DiagnosticoOuroEvaluation).fome?.noHyperphagia}
+                                    onChange={e => updateNestedField(['fome', 'noHyperphagia'], e.target.checked)}
+                                    className="w-4 h-4 text-primary rounded"
+                                  />
+                                  <span className="text-xs font-medium">Tipo 3. Fome sem Polifagia (Deficiência Yin Estômago)</span>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* PÁGINA 3 */}
+                        {currentStep === 2 && (
+                          <div className="space-y-8">
+                            <div className="bg-emerald-50/60 border border-emerald-200/50 p-4 rounded-2xl flex items-center gap-3 text-emerald-800 text-sm">
+                              <Droplets className="text-emerald-600 shrink-0" size={20} />
+                              <span className="font-medium">Página 3: Análise da Micção, Eliminações Urinárias e Evacuação Intestinal</span>
+                            </div>
+
+                            {/* MICÇÃO */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-6">
+                              <div className="flex justify-between items-center">
+                                <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                                  <Droplets size={20} className="text-emerald-600" /> MICÇÃO
+                                </h4>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    disabled={isViewMode}
+                                    type="checkbox"
+                                    checked={(formData as DiagnosticoOuroEvaluation).miccao?.normal}
+                                    onChange={e => updateNestedField(['miccao', 'normal'], e.target.checked)}
+                                    className="w-5 h-5 text-primary rounded"
+                                  />
+                                  <span className="text-xs font-bold text-outline uppercase">Micção Normal</span>
+                                </label>
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Frequência que vai ao banheiro</label>
+                                <input
+                                  disabled={isViewMode}
+                                  type="text"
+                                  value={(formData as DiagnosticoOuroEvaluation).miccao?.frequency}
+                                  onChange={e => updateNestedField(['miccao', 'frequency'], e.target.value)}
+                                  className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                  placeholder="Ex: 5 a 6 vezes ao dia..."
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">POLACIÚRIA</label>
+                                  {[
+                                    'Tipo 1. Urina escassa e escura (Umidade-Calor Jiao Inf)',
+                                    'Tipo 2. Urgência para urinar e incontinência (Def. Yang Rim)',
+                                    'Tipo 3. Nictúria: Polaciúria noturna (Deficiência Yang Rim)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-3 p-3 bg-white rounded-xl border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).miccao?.polaciuria || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['miccao', 'polaciuria'], item)}
+                                        className="w-4 h-4 text-emerald-600 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">DISÚRIA</label>
+                                  {[
+                                    'Tipo 1. Dói quando urina (Acúmulo Umidade-Calor Jiao Inf)',
+                                    'Tipo 2. Dificuldade de: a) Segurar/fixar (Deficiência Qi)',
+                                    'Tipo 2. Dificuldade de: b) Excretar (Deficiência Yang Rim)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-3 p-3 bg-white rounded-xl border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).miccao?.disuria || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['miccao', 'disuria'], item)}
+                                        className="w-4 h-4 text-emerald-600 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">COR DA URINA</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {[
+                                    'Escura e escassa: (Calor excessivo, Def. Yin/Lesão Líquidos)',
+                                    'Clara e abundante: (Frio por Deficiência ou Excesso)',
+                                    'Turva: (Umidade Calor Jiao Inferior)',
+                                    'Turva e leitosa: (Deficiência Yang Rim)',
+                                    'Vermelha por sangramento trato urinário: (Calor/Cálculo)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-3 p-3 bg-white rounded-xl border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).miccao?.color || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['miccao', 'color'], item)}
+                                        className="w-4 h-4 text-emerald-600 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">SENSAÇÕES QUE ACOMPANHAM A MICÇÃO</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {[
+                                    'Tipo 1. Dor e ardor (Acúmulo Umidade-Calor Jiao Inferior)',
+                                    'Tipo 2. Dor aguda e intensa (Cálculo Renal)',
+                                    'Tipo 3. Dor e gotejo após micção (Deficiência Rim)',
+                                    'Tipo 4. Dor com sensação de vazio após micção (Deficiência Rim)',
+                                    'Tipo 5. Incontinência urinária (Deficiência Rim)',
+                                    'Tipo 6. Enurese noturna (Deficiência Rim)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-3 p-3 bg-white rounded-xl border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).miccao?.accompanyingSensations || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['miccao', 'accompanyingSensations'], item)}
+                                        className="w-4 h-4 text-emerald-600 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* EVACUAÇÃO */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-6">
+                              <div className="flex justify-between items-center">
+                                <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                                  <Wind size={20} className="text-amber-700" /> EVACUAÇÃO
+                                </h4>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    disabled={isViewMode}
+                                    type="checkbox"
+                                    checked={(formData as DiagnosticoOuroEvaluation).evacuacao?.normal}
+                                    onChange={e => updateNestedField(['evacuacao', 'normal'], e.target.checked)}
+                                    className="w-5 h-5 text-primary rounded"
+                                  />
+                                  <span className="text-xs font-bold text-outline uppercase">Evacuação Normal</span>
+                                </label>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Cor (Normal: Amarelo Escuro)</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).evacuacao?.color}
+                                    onChange={e => updateNestedField(['evacuacao', 'color'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Volume</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).evacuacao?.volume}
+                                    onChange={e => updateNestedField(['evacuacao', 'volume'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Cheiro</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).evacuacao?.smell}
+                                    onChange={e => updateNestedField(['evacuacao', 'smell'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">FORMA E TEXTURA DAS FEZES</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {[
+                                    'Tipo 1. Amolecidas e finas (Deficiência Qi/Yang Baço e Estômago)',
+                                    'Tipo 2. Duras no início e moles no final que afundam (Def. Baço + Umidade)',
+                                    'Tipo 3. Às vezes moles e às vezes secas (Estagnação Qi Fígado e Def. Baço)',
+                                    'Tipo 4. Amolecidas com restos de alimentos (Deficiência Yang Baço e Rim)',
+                                    'Tipo 5. Secas e duras (Calor Intestino Grosso)',
+                                    'Tipo 6. Secas em forma de bolinhas de cabra (Deficiência Yin ou Sangue)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-3 p-3 bg-white rounded-xl border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).evacuacao?.shapeTexture || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['evacuacao', 'shapeTexture'], item)}
+                                        className="w-4 h-4 text-amber-700 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-outline uppercase tracking-widest">CONSTIPAÇÃO (+ de 2 dias sem evacuar)</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {[
+                                    'Tipo 1. Por Calor: ressecadas + dor à palpação (Calor Excessivo Interior)',
+                                    'Tipo 2. Por Frio: dificuldade na evacuação (Deficiência Yang Rim)',
+                                    'Tipo 3. Por Estagnação: ressecadas + dor irradiada hipocôndrio (Fígado/VB)',
+                                    'Tipo 4. Deficiência Qi: crônicos, idosos, pós-operatório',
+                                    'Tipo 5. Deficiência Sangue: ressecadas, às vezes bolinhas de cabra',
+                                    'Tipo 6. Deficiência Yin: bolinhas de cabra + rubor malar'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-3 p-3 bg-white rounded-xl border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).evacuacao?.constipation || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['evacuacao', 'constipation'], item)}
+                                        className="w-4 h-4 text-amber-700 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
                                 </div>
                               </div>
                             </div>
                           </div>
                         )}
 
+                        {/* PÁGINA 4 */}
+                        {currentStep === 3 && (
+                          <div className="space-y-8">
+                            <div className="bg-indigo-50/60 border border-indigo-200/50 p-4 rounded-2xl flex items-center gap-3 text-indigo-800 text-sm">
+                              <Moon className="text-indigo-600 shrink-0" size={20} />
+                              <span className="font-medium">Página 4: Diarreias, Análise Emocional, Insônia, Sonolência e Ginecologia Inicial</span>
+                            </div>
+
+                            {/* DIARREIAS */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-6">
+                              <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                                <Wind size={20} className="text-indigo-600" /> DIARREIAS
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Diarreias Agudas</label>
+                                  {[
+                                    'a) Por Injúria Alimentar — alívio após evacuar (Lesão Baço/Estômago)',
+                                    'b) Frio-Umidade: líquida e restos, alivia c/ pressão, bebidas quentes',
+                                    'c) Umidade-Calor no IG: pastosa escura, ardor anal',
+                                    'd) Ataque Fígado ao Baço: líquidas e moles + cólica pós aborrecimento'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-3 p-3 bg-white rounded-xl border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).diarreia?.acute || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['diarreia', 'acute'], item)}
+                                        className="w-4 h-4 text-indigo-600 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Diarreias Crônicas (+21 dias)</label>
+                                  {[
+                                    'a) Por Deficiência Yang Baço: secas início, semilíquidas ao final',
+                                    'b) Por Deficiência Yang Rim: c/ restos alimentos + cólica matutina'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-3 p-3 bg-white rounded-xl border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).diarreia?.chronic || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['diarreia', 'chronic'], item)}
+                                        className="w-4 h-4 text-indigo-600 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* EMOÇÃO & SONO */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              {/* EMOÇÃO */}
+                              <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-4">
+                                <h4 className="text-md font-bold text-on-surface flex items-center gap-2">
+                                  <Heart size={18} className="text-rose-500" /> EMOÇÕES
+                                </h4>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Predominante ao longo da vida</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).emocao?.predominant}
+                                    onChange={e => updateNestedField(['emocao', 'predominant'], e.target.value)}
+                                    className="w-full px-4 py-3 bg-white rounded-xl border border-outline-variant/10 outline-none text-xs font-medium"
+                                    placeholder="Raiva, preocupação, tristeza, medo, alegria..."
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Intensa em alguma época</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).emocao?.intensePeriod}
+                                    onChange={e => updateNestedField(['emocao', 'intensePeriod'], e.target.value)}
+                                    className="w-full px-4 py-3 bg-white rounded-xl border border-outline-variant/10 outline-none text-xs font-medium"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* INSÔNIA & SONOLÊNCIA */}
+                              <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-4">
+                                <h4 className="text-md font-bold text-on-surface flex items-center gap-2">
+                                  <Moon size={18} className="text-indigo-600" /> INSÔNIA E SONOLÊNCIA
+                                </h4>
+                                <label className="flex items-center gap-2 cursor-pointer p-2 bg-white rounded-lg border">
+                                  <input
+                                    disabled={isViewMode}
+                                    type="checkbox"
+                                    checked={(formData as DiagnosticoOuroEvaluation).insonia?.normal}
+                                    onChange={e => updateNestedField(['insonia', 'normal'], e.target.checked)}
+                                    className="w-4 h-4 text-indigo-600 rounded"
+                                  />
+                                  <span className="text-xs font-medium">Sono Normal (Deita e dorme)</span>
+                                </label>
+                                <div className="space-y-2">
+                                  <label className="text-[10px] font-bold text-outline uppercase tracking-wider">Padrões de Insônia</label>
+                                  {[
+                                    'Tipo 1. Deita e não pega no sono / Insônia Inicial (Coração/Rim)',
+                                    'Tipo 2. Dorme e acorda com pensamento exato / Intermitente (Baço/Coração)',
+                                    'Tipo 3. Dorme e acorda sobressaltado (Coração/Vesícula Biliar)',
+                                    'Tipo 4. Não dorme de jeito nenhum (Estômago/Baço)',
+                                    'Tipo 5. Sono agitado com pesadelos excessivos (Fogo Fígado)',
+                                    'Tipo 6. Ansiedade extrema, opressão torácica (Fleuma Calor Coração)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).insonia?.types || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['insonia', 'types'], item)}
+                                        className="w-3.5 h-3.5 text-indigo-600 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* MENSTRUAÇÃO INICIAL */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-6">
+                              <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                                <Heart size={20} className="text-rose-600" /> Ginecologia Inicial & Saúde Sexual
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Duração do Ciclo (Normal 28-35 dias)</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).menstruacao?.cycleDuration}
+                                    onChange={e => updateNestedField(['menstruacao', 'cycleDuration'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Duração do Fluxo (Normal 3-5 dias)</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).menstruacao?.flowDuration}
+                                    onChange={e => updateNestedField(['menstruacao', 'flowDuration'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Gestações e Abortos</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).menstruacao?.pregnanciesAbortions}
+                                    onChange={e => updateNestedField(['menstruacao', 'pregnanciesAbortions'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* PÁGINA 5 */}
+                        {currentStep === 4 && (
+                          <div className="space-y-8">
+                            <div className="bg-purple-50/60 border border-purple-200/50 p-4 rounded-2xl flex items-center gap-3 text-purple-800 text-sm">
+                              <Eye className="text-purple-600 shrink-0" size={20} />
+                              <span className="font-medium">Página 5: Ciclo Menstrual Detalhado, Saúde Masculina, Shen (Espírito) e Inspeções</span>
+                            </div>
+
+                            {/* GINECOLOGIA DETALHADA */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-6">
+                              <h4 className="text-lg font-bold text-on-surface">Regularidade e Volume Menstrual</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Ciclo Adiantado</label>
+                                  {[
+                                    'Tipo 1. Sangue escuro, denso, grande vol (Calor Sangue)',
+                                    'Tipo 2. Sangue claro, fluido, grande vol (Def. Qi)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-2 p-2.5 bg-white rounded-lg border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).ginecologiaDetalhada?.regularity?.advancedCycle || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['ginecologiaDetalhada', 'regularity', 'advancedCycle'], item)}
+                                        className="w-4 h-4 text-purple-600 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Ciclo Atrasado</label>
+                                  {[
+                                    'Tipo 1. Sangue claro, fluido, escasso (Def. Sangue)',
+                                    'Tipo 2. Sangue escuro, coágulos, escasso (Frio Sangue)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-2 p-2.5 bg-white rounded-lg border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).ginecologiaDetalhada?.regularity?.delayedCycle || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['ginecologiaDetalhada', 'regularity', 'delayedCycle'], item)}
+                                        className="w-4 h-4 text-purple-600 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Ciclo Irregular</label>
+                                  {[
+                                    'Tipo 1. Sangue escuro, coágulos (Estagnação Qi Fi)',
+                                    'Tipo 2. Sangue claro, vol irregular (Deficiência Rim)'
+                                  ].map(item => (
+                                    <label key={item} className="flex items-center gap-2 p-2.5 bg-white rounded-lg border cursor-pointer">
+                                      <input
+                                        disabled={isViewMode}
+                                        type="checkbox"
+                                        checked={((formData as DiagnosticoOuroEvaluation).ginecologiaDetalhada?.regularity?.irregularCycle || []).includes(item)}
+                                        onChange={() => toggleArrayItem(['ginecologiaDetalhada', 'regularity', 'irregularCycle'], item)}
+                                        className="w-4 h-4 text-purple-600 rounded"
+                                      />
+                                      <span className="text-xs font-medium text-on-surface">{item}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* HOMEM */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-6">
+                              <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                                <User size={20} className="text-blue-600" /> Saúde Masculina
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Fertilidade</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).homem?.fertility}
+                                    onChange={e => updateNestedField(['homem', 'fertility'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Frequência Sexual</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).homem?.sexualFrequency}
+                                    onChange={e => updateNestedField(['homem', 'sexualFrequency'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Presença de Libido</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).homem?.libido}
+                                    onChange={e => updateNestedField(['homem', 'libido'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* SHEN E INSPEÇÃO */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-6">
+                              <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                                <Eye size={20} className="text-purple-600" /> SHEN (Espírito) e Inspeção Física
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Coloração Facial</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).shenInspecao?.facialColor}
+                                    onChange={e => updateNestedField(['shenInspecao', 'facialColor'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                    placeholder="Pálida, avermelhada, amarelada, escura..."
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Constituição Física</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).shenInspecao?.physicalConstitution}
+                                    onChange={e => updateNestedField(['shenInspecao', 'physicalConstitution'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                    placeholder="Forte, fraca, magra, obesa..."
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {[
+                                  { label: 'Lábios', field: 'lips' },
+                                  { label: 'Olhos', field: 'eyes' },
+                                  { label: 'Pele', field: 'skin' },
+                                  { label: 'Cabelo', field: 'hair' },
+                                  { label: 'Unhas', field: 'nails' },
+                                  { label: 'Gengiva', field: 'gums' },
+                                  { label: 'Dentes', field: 'teeth' },
+                                  { label: 'Garganta', field: 'throat' },
+                                ].map(item => (
+                                  <div key={item.field} className="space-y-1">
+                                    <label className="text-[10px] font-bold text-outline uppercase tracking-widest">{item.label}</label>
+                                    <input
+                                      disabled={isViewMode}
+                                      type="text"
+                                      value={(formData as any).shenInspecao?.[item.field] || ''}
+                                      onChange={e => updateNestedField(['shenInspecao', item.field], e.target.value)}
+                                      className="w-full px-4 py-3 bg-white rounded-xl border border-outline-variant/10 outline-none text-xs font-medium shadow-sm"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* PÁGINA 6 */}
                         {currentStep === 5 && (
                           <div className="space-y-8">
-                            <div className="space-y-6">
+                            <div className="bg-amber-100/60 border border-amber-300/50 p-4 rounded-2xl flex items-center gap-3 text-amber-900 text-sm">
+                              <Activity className="text-amber-700 shrink-0" size={20} />
+                              <span className="font-medium">Página 6: Diagnóstico de Pulso, Língua, Síndromes MTC e Planejamento Terapêutico</span>
+                            </div>
+
+                            {/* PULSO */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-6">
                               <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
-                                <Activity size={20} className="text-primary" /> Interpretação Final
+                                <Activity size={20} className="text-amber-600" /> PULSO DA MEDICINA CHINESA
                               </h4>
-                              <div className="space-y-6">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Hipótese de Síndrome na MTC</label>
-                                  <textarea
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Pulso Direito (San Jiao / Rim, Estômago / Baço, IG / Pulmão)</label>
+                                  <input
                                     disabled={isViewMode}
-                                    value={formData.syndromeHypothesis}
-                                    onChange={e => setFormData({ ...formData, syndromeHypothesis: e.target.value })}
-                                    className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[120px] disabled:opacity-70"
-                                    placeholder="Ex: Deficiência de Qi do Baço com Estagnação de Qi do Fígado..."
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).pulso?.rightPulse}
+                                    onChange={e => updateNestedField(['pulso', 'rightPulse'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
                                   />
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  <div className="space-y-2">
-                                    <label className="text-xs font-bold text-outline uppercase tracking-widest">Piora por Estação</label>
-                                    <input
-                                      disabled={isViewMode}
-                                      type="text"
-                                      value={formData.seasonsWorsening}
-                                      onChange={e => setFormData({ ...formData, seasonsWorsening: e.target.value })}
-                                      className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                      placeholder="Ex: Inverno, umidade..."
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <label className="text-xs font-bold text-outline uppercase tracking-widest">Piora por Horário</label>
-                                    <input
-                                      disabled={isViewMode}
-                                      type="text"
-                                      value={formData.timeWorsening}
-                                      onChange={e => setFormData({ ...formData, timeWorsening: e.target.value })}
-                                      className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium disabled:opacity-70"
-                                      placeholder="Ex: Final da tarde"
-                                    />
-                                  </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Pulso Esquerdo (Bexiga / Rim, VB / Fígado, ID / Coração)</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).pulso?.leftPulse}
+                                    onChange={e => updateNestedField(['pulso', 'leftPulse'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Tipo de Pulso</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).pulso?.pulseType}
+                                    onChange={e => updateNestedField(['pulso', 'pulseType'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                    placeholder="Forte, fraco, escorregadio, em corda..."
+                                  />
                                 </div>
                                 <div className="space-y-2">
-                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Indicação de Tratamento Inicial</label>
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Profundidade</label>
+                                  <select
+                                    disabled={isViewMode}
+                                    value={(formData as DiagnosticoOuroEvaluation).pulso?.depth}
+                                    onChange={e => updateNestedField(['pulso', 'depth'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                  >
+                                    <option value="Superficial">Superficial</option>
+                                    <option value="Intermediário">Intermediário</option>
+                                    <option value="Profundo">Profundo</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Velocidade (BPM)</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).pulso?.bpm}
+                                    onChange={e => updateNestedField(['pulso', 'bpm'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium shadow-sm"
+                                    placeholder="Ex: 72 bpm"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* LÍNGUA */}
+                            <div className="p-6 rounded-2xl bg-surface-container-low/30 border border-outline-variant/10 space-y-6">
+                              <h4 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                                <Sparkles size={20} className="text-amber-600" /> DIAGNÓSTICO PELA LÍNGUA
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Vitalidade (Corpo)</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).lingua?.vitality}
+                                    onChange={e => updateNestedField(['lingua', 'vitality'], e.target.value)}
+                                    className="w-full px-4 py-3 bg-white rounded-xl border border-outline-variant/10 outline-none text-xs font-medium shadow-sm"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Cor da Língua</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).lingua?.color}
+                                    onChange={e => updateNestedField(['lingua', 'color'], e.target.value)}
+                                    className="w-full px-4 py-3 bg-white rounded-xl border border-outline-variant/10 outline-none text-xs font-medium shadow-sm"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Forma da Língua</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).lingua?.shape}
+                                    onChange={e => updateNestedField(['lingua', 'shape'], e.target.value)}
+                                    className="w-full px-4 py-3 bg-white rounded-xl border border-outline-variant/10 outline-none text-xs font-medium shadow-sm"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Saburra Textura e Cor</label>
+                                  <input
+                                    disabled={isViewMode}
+                                    type="text"
+                                    value={(formData as DiagnosticoOuroEvaluation).lingua?.coatingTexture}
+                                    onChange={e => updateNestedField(['lingua', 'coatingTexture'], e.target.value)}
+                                    className="w-full px-4 py-3 bg-white rounded-xl border border-outline-variant/10 outline-none text-xs font-medium shadow-sm"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* SÍNDROME E CONDUTA */}
+                            <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-6">
+                              <h4 className="text-lg font-bold text-amber-900 flex items-center gap-2">
+                                <Check size={20} className="text-amber-700" /> SÍNDROME(S) MTC E PLANEJAMENTO TERAPÊUTICO
+                              </h4>
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-amber-900 uppercase tracking-widest">Síndrome(s) Identificada(s)</label>
+                                <textarea
+                                  disabled={isViewMode}
+                                  value={(formData as DiagnosticoOuroEvaluation).diagnosticoFinal?.syndromes}
+                                  onChange={e => updateNestedField(['diagnosticoFinal', 'syndromes'], e.target.value)}
+                                  className="w-full px-5 py-4 bg-white rounded-2xl border border-amber-200 outline-none font-bold text-amber-900 text-sm min-h-[90px] shadow-sm"
+                                  placeholder="Definição das Síndromes Principais..."
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Tratamentos e Técnicas</label>
                                   <textarea
                                     disabled={isViewMode}
-                                    value={formData.initialTreatment}
-                                    onChange={e => setFormData({ ...formData, initialTreatment: e.target.value })}
-                                    className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[120px] disabled:opacity-70"
-                                    placeholder="Pontos de acupuntura, fitoterapia, orientações dietéticas..."
+                                    value={(formData as DiagnosticoOuroEvaluation).diagnosticoFinal?.techniques}
+                                    onChange={e => updateNestedField(['diagnosticoFinal', 'techniques'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[80px] shadow-sm"
+                                    placeholder="Acupuntura, Moxabustão, Ventosa, Auriculoterapia..."
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Pontos Utilizados</label>
+                                  <textarea
+                                    disabled={isViewMode}
+                                    value={(formData as DiagnosticoOuroEvaluation).diagnosticoFinal?.points}
+                                    onChange={e => updateNestedField(['diagnosticoFinal', 'points'], e.target.value)}
+                                    className="w-full px-5 py-4 bg-white rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[80px] shadow-sm"
+                                    placeholder="Ex: IG4, E36, BP6, F3, C7..."
                                   />
                                 </div>
                               </div>
                             </div>
                           </div>
                         )}
-                      </>
+                      </div>
                     )}
 
-                    {selectedTemplate === 'RADIESTESIA' && (
-                      <div className="space-y-10">
-                        {/* Passo 1: Campos Energéticos */}
+                    {/* FORMULÁRIO MTC PADRÃO */}
+                    {selectedTemplate === 'MTC' && (
+                      <div className="space-y-8 animate-in fade-in duration-300">
                         {currentStep === 0 && (
-                          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {/* Patient and Date on Radiesthesia Step 0 */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                          <div className="space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div className="space-y-2">
                                 <label className="text-xs font-bold text-outline uppercase tracking-widest">Paciente</label>
                                 <select
@@ -1901,568 +2694,31 @@ export default function EvaluationsView({
                               </div>
                             </div>
 
-                            <div className="space-y-2 mb-8">
-                              <label className="text-xs font-bold text-outline uppercase tracking-widest">Queixa Principal / Motivo da Consulta</label>
+                            <div className="space-y-2">
+                              <label className="text-xs font-bold text-outline uppercase tracking-widest">Queixa Principal</label>
                               <textarea
                                 disabled={isViewMode}
-                                value={(formData as any).mainComplaint || ''}
+                                value={(formData as MTCEvaluation).mainComplaint}
                                 onChange={e => setFormData({ ...formData, mainComplaint: e.target.value })}
                                 className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none font-medium min-h-[100px] disabled:opacity-70"
-                                placeholder="Descreva brevemente o motivo da consulta..."
                               />
                             </div>
-
-                            <div className="p-6 bg-indigo-50/50 rounded-3xl border border-indigo-100/50">
-                              <h4 className="text-lg font-bold text-indigo-900 flex items-center gap-2 mb-2">
-                                <Activity size={22} /> Campos Energéticos
-                              </h4>
-                              <p className="text-sm text-indigo-700/80 mb-6 font-medium">Acesso aos campos eletromagnéticos e aferição energética.</p>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
-                                {['mental', 'emotional', 'spiritual', 'physical'].map((field) => (
-                                  <div key={field} className="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100/30 space-y-4">
-                                    <label className="text-xs font-black text-indigo-900 uppercase tracking-widest block">
-                                      Campo {field === 'mental' ? 'Mental' : field === 'emotional' ? 'Emocional' : field === 'spiritual' ? 'Espiritual' : 'Físico'}
-                                    </label>
-                                    <div className="space-y-2">
-                                      <div className="flex justify-between text-[10px] font-bold text-outline uppercase tracking-widest">
-                                        <span>Desequilíbrio</span>
-                                        <span className="text-indigo-600">{(formData as any).energeticFields?.[field]?.imbalance || 0}%</span>
-                                      </div>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="range" min="0" max="100"
-                                        value={(formData as any).energeticFields?.[field]?.imbalance || 0}
-                                        onChange={e => setFormData({
-                                          ...formData,
-                                          energeticFields: {
-                                            ...(formData as any).energeticFields,
-                                            [field]: { ...(formData as any).energeticFields?.[field], imbalance: parseInt(e.target.value) }
-                                          }
-                                        })}
-                                        className="w-full h-1.5 bg-indigo-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                                      />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Afeta quais chakras?</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text"
-                                        value={(formData as any).energeticFields?.[field]?.affectedChakras || ''}
-                                        onChange={e => setFormData({
-                                          ...formData,
-                                          energeticFields: {
-                                            ...(formData as any).energeticFields,
-                                            [field]: { ...(formData as any).energeticFields?.[field], affectedChakras: e.target.value }
-                                          }
-                                        })}
-                                        placeholder="Ex: Coronário, Laríngeo..."
-                                        className="w-full px-4 py-2.5 bg-surface-container-low rounded-xl border border-outline-variant/10 text-sm outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-70"
-                                      />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
                           </div>
                         )}
-
-                        {/* Passo 2: Chakras */}
-                        {currentStep === 1 && (
-                          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="bg-white rounded-3xl border border-outline-variant/10 overflow-hidden shadow-sm">
-                              <table className="w-full text-left border-collapse">
-                                <thead>
-                                  <tr className="bg-surface-container-low/50">
-                                    <th className="px-6 py-4 text-[10px] font-black text-outline uppercase tracking-widest">CHAKRA</th>
-                                    <th className="px-4 py-4 text-[10px] font-black text-outline uppercase tracking-widest text-center leading-tight">
-                                      DESEQ.<br /><span className="text-[8px] font-bold lowercase opacity-70">sim / não</span>
-                                    </th>
-                                    <th className="px-4 py-4 text-[10px] font-black text-outline uppercase tracking-widest text-center">%</th>
-                                    <th className="px-4 py-4 text-[10px] font-black text-outline uppercase tracking-widest text-center">ESTADO</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-outline uppercase tracking-widest">AFETA SISTEMA</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-outline-variant/5">
-                                  {(formData as any).chakras?.map((chakra: any, idx: number) => {
-                                    const chakraColors: Record<string, string> = {
-                                      'Coronário': 'border-l-purple-500',
-                                      'Frontal': 'border-l-indigo-600',
-                                      'Laríngeo': 'border-l-blue-500',
-                                      'Cardíaco': 'border-l-emerald-500',
-                                      'Plexo Solar': 'border-l-yellow-400',
-                                      'Sacro': 'border-l-orange-500',
-                                      'Básico': 'border-l-rose-500'
-                                    };
-                                    const borderColorClass = chakraColors[chakra.name] || 'border-l-transparent';
-
-                                    return (
-                                      <tr key={chakra.name} className="hover:bg-primary/[0.02] transition-colors">
-                                        <td className={cn("px-6 py-4 font-bold text-sm text-on-surface border-l-4", borderColorClass)}>
-                                          {chakra.name}
-                                        </td>
-                                        <td className="px-4 py-4 text-center">
-                                          <div className="flex items-center justify-center gap-2">
-                                            <button
-                                              disabled={isViewMode}
-                                              onClick={() => {
-                                                const newChakras = [...(formData as any).chakras];
-                                                newChakras[idx].imbalance = false;
-                                                setFormData({ ...formData, chakras: newChakras });
-                                              }}
-                                              className={cn(
-                                                "text-[10px] font-bold px-2 py-1 rounded-md transition-all",
-                                                !chakra.imbalance ? "bg-emerald-100 text-emerald-700" : "bg-surface-container-low text-outline-variant"
-                                              )}
-                                            >
-                                              NÃO
-                                            </button>
-                                            <button
-                                              disabled={isViewMode}
-                                              onClick={() => {
-                                                const newChakras = [...(formData as any).chakras];
-                                                newChakras[idx].imbalance = true;
-                                                setFormData({ ...formData, chakras: newChakras });
-                                              }}
-                                              className={cn(
-                                                "text-[10px] font-bold px-2 py-1 rounded-md transition-all",
-                                                chakra.imbalance ? "bg-rose-100 text-rose-700" : "bg-surface-container-low text-outline-variant"
-                                              )}
-                                            >
-                                              SIM
-                                            </button>
-                                          </div>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                          <input
-                                            disabled={isViewMode}
-                                            type="number" min="0" max="100"
-                                            value={chakra.percentage}
-                                            onChange={e => {
-                                              const newChakras = [...(formData as any).chakras];
-                                              newChakras[idx].percentage = parseInt(e.target.value) || 0;
-                                              setFormData({ ...formData, chakras: newChakras });
-                                            }}
-                                            className="w-16 px-2 py-1 bg-surface-container-low border border-outline-variant/10 rounded-md text-center text-xs font-bold outline-none"
-                                          />
-                                        </td>
-                                        <td className="px-4 py-4">
-                                          <div className="flex gap-1 justify-center">
-                                            {['HIPO', 'NORMAL', 'HIPER'].map(s => (
-                                              <button
-                                                key={s}
-                                                disabled={isViewMode}
-                                                onClick={() => {
-                                                  const newChakras = [...(formData as any).chakras];
-                                                  newChakras[idx].state = s;
-                                                  setFormData({ ...formData, chakras: newChakras });
-                                                }}
-                                                className={cn(
-                                                  "px-2 py-1 rounded text-[8px] font-black transition-all",
-                                                  chakra.state === s ? "bg-primary text-white" : "bg-surface-container-low text-outline hover:bg-primary/10"
-                                                )}
-                                              >
-                                                {s}
-                                              </button>
-                                            ))}
-                                          </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                          <input
-                                            disabled={isViewMode}
-                                            type="text"
-                                            value={chakra.affectsPhysicalSystem}
-                                            onChange={e => {
-                                              const newChakras = [...(formData as any).chakras];
-                                              newChakras[idx].affectsPhysicalSystem = e.target.value;
-                                              setFormData({ ...formData, chakras: newChakras });
-                                            }}
-                                            placeholder="Qual sistema? Ex: Nervoso..."
-                                            className="w-full px-3 py-1.5 bg-surface-container-low border border-outline-variant/10 rounded-lg text-xs outline-none focus:ring-1 focus:ring-primary/20"
-                                          />
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                          </table>
-                            </div>
+                        {currentStep > 0 && (
+                          <div className="p-8 text-center text-outline">
+                            Preenchimento MTC padrão de formulário.
                           </div>
                         )}
+                      </div>
+                    )}
 
-                        {/* Passo 3: Sistemas */}
-                        {currentStep === 2 && (
-                          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="bg-white rounded-3xl border border-outline-variant/10 overflow-hidden shadow-sm">
-                              <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
-                                <table className="w-full text-left border-collapse">
-                                  <thead className="sticky top-0 z-10 bg-surface-container-low">
-                                    <tr className="shadow-sm">
-                                      <th className="px-6 py-4 text-[10px] font-black text-outline uppercase tracking-widest">SISTEMA</th>
-                                      <th className="px-4 py-4 text-[10px] font-black text-outline uppercase tracking-widest text-center">DESEQ.</th>
-                                      <th className="px-4 py-4 text-[10px] font-black text-outline uppercase tracking-widest text-center">%</th>
-                                      <th className="px-4 py-4 text-[10px] font-black text-outline uppercase tracking-widest text-center">ESTADO</th>
-                                      <th className="px-6 py-4 text-[10px] font-black text-outline uppercase tracking-widest">AFETA FÍSICO</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-outline-variant/5">
-                                    {(formData as any).systems?.map((system: any, idx: number) => (
-                                      <tr key={system.name} className="hover:bg-primary/[0.02] transition-colors">
-                                        <td className="px-6 py-4 font-bold text-sm text-on-surface">{system.name}</td>
-                                        <td className="px-4 py-4 text-center">
-                                          <button
-                                            disabled={isViewMode}
-                                            onClick={() => {
-                                              const newSystems = [...(formData as any).systems];
-                                              newSystems[idx].imbalance = !newSystems[idx].imbalance;
-                                              setFormData({ ...formData, systems: newSystems });
-                                            }}
-                                            className={cn(
-                                              "px-3 py-1 rounded-md text-[10px] font-bold transition-all",
-                                              system.imbalance ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"
-                                            )}
-                                          >
-                                            {system.imbalance ? 'SIM' : 'NÃO'}
-                                          </button>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                          <input
-                                            disabled={isViewMode}
-                                            type="number" min="0" max="100"
-                                            value={system.percentage}
-                                            onChange={e => {
-                                              const newSystems = [...(formData as any).systems];
-                                              newSystems[idx].percentage = parseInt(e.target.value) || 0;
-                                              setFormData({ ...formData, systems: newSystems });
-                                            }}
-                                            className="w-16 px-2 py-1 bg-surface-container-low border border-outline-variant/10 rounded-md text-center text-xs font-bold outline-none"
-                                          />
-                                        </td>
-                                        <td className="px-4 py-4">
-                                          <div className="flex gap-1 justify-center">
-                                            {['HIPO', 'NORMAL', 'HIPER'].map(s => (
-                                              <button
-                                                key={s}
-                                                disabled={isViewMode}
-                                                onClick={() => {
-                                                  const newSystems = [...(formData as any).systems];
-                                                  newSystems[idx].state = s;
-                                                  setFormData({ ...formData, systems: newSystems });
-                                                }}
-                                                className={cn(
-                                                  "px-2 py-1 rounded text-[8px] font-black transition-all",
-                                                  system.state === s ? "bg-indigo-600 text-white" : "bg-indigo-50 text-indigo-400 hover:bg-indigo-100"
-                                                )}
-                                              >
-                                                {s}
-                                              </button>
-                                            ))}
-                                          </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                          <input
-                                            disabled={isViewMode}
-                                            type="text"
-                                            value={system.affectsPhysicalBody}
-                                            onChange={e => {
-                                              const newSystems = [...(formData as any).systems];
-                                              newSystems[idx].affectsPhysicalBody = e.target.value;
-                                              setFormData({ ...formData, systems: newSystems });
-                                            }}
-                                            placeholder="Observações..."
-                                            className="w-full px-3 py-1.5 bg-surface-container-low border border-outline-variant/10 rounded-lg text-xs outline-none focus:ring-1 focus:ring-primary/20"
-                                          />
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Passo 4: Meridianos */}
-                        {currentStep === 3 && (
-                          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="bg-white rounded-3xl border border-outline-variant/10 overflow-hidden shadow-sm">
-                              <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
-                                <table className="w-full text-left border-collapse">
-                                  <thead className="sticky top-0 z-10 bg-surface-container-low">
-                                    <tr className="shadow-sm">
-                                      <th className="px-6 py-4 text-[10px] font-black text-outline uppercase tracking-widest">CANAL / MERIDIANO</th>
-                                      <th className="px-4 py-4 text-[10px] font-black text-outline uppercase tracking-widest text-center">DESEQUILÍBRIO</th>
-                                      <th className="px-4 py-4 text-[10px] font-black text-outline uppercase tracking-widest text-center">ESTADO</th>
-                                      <th className="px-6 py-4 text-[10px] font-black text-outline uppercase tracking-widest">COMENTÁRIO</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-outline-variant/5">
-                                    {(formData as any).meridians?.map((meridian: any, idx: number) => (
-                                      <tr key={meridian.name} className="hover:bg-primary/[0.02] transition-colors">
-                                        <td className="px-6 py-4 font-bold text-sm text-on-surface">{meridian.name}</td>
-                                        <td className="px-4 py-4 text-center">
-                                          <div className="flex items-center justify-center gap-4">
-                                            <button
-                                              disabled={isViewMode}
-                                              onClick={() => {
-                                                const newMeridians = [...(formData as any).meridians];
-                                                newMeridians[idx].imbalance = false;
-                                                setFormData({ ...formData, meridians: newMeridians });
-                                              }}
-                                              className={cn(
-                                                "text-xs font-bold px-3 py-1 rounded-md transition-all",
-                                                !meridian.imbalance ? "bg-emerald-500 text-white" : "bg-surface-container-low text-outline"
-                                              )}
-                                            >
-                                              NÃO
-                                            </button>
-                                            <button
-                                              disabled={isViewMode}
-                                              onClick={() => {
-                                                const newMeridians = [...(formData as any).meridians];
-                                                newMeridians[idx].imbalance = true;
-                                                setFormData({ ...formData, meridians: newMeridians });
-                                              }}
-                                              className={cn(
-                                                "text-xs font-bold px-3 py-1 rounded-md transition-all",
-                                                meridian.imbalance ? "bg-rose-500 text-white" : "bg-surface-container-low text-outline"
-                                              )}
-                                            >
-                                              SIM
-                                            </button>
-                                          </div>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                          <div className="flex gap-1 justify-center">
-                                            {['DEFIC', 'ESTAG', 'NORMAL'].map(s => (
-                                              <button
-                                                key={s}
-                                                disabled={isViewMode}
-                                                onClick={() => {
-                                                  const newMeridians = [...(formData as any).meridians];
-                                                  newMeridians[idx].state = s;
-                                                  setFormData({ ...formData, meridians: newMeridians });
-                                                }}
-                                                className={cn(
-                                                  "px-2 py-1 rounded text-[8px] font-black transition-all",
-                                                  meridian.state === s ? "bg-amber-500 text-white" : "bg-amber-50 text-amber-500 hover:bg-amber-100"
-                                                )}
-                                              >
-                                                {s}
-                                              </button>
-                                            ))}
-                                          </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                          <input
-                                            disabled={isViewMode}
-                                            type="text"
-                                            value={meridian.comment}
-                                            onChange={e => {
-                                              const newMeridians = [...(formData as any).meridians];
-                                              newMeridians[idx].comment = e.target.value;
-                                              setFormData({ ...formData, meridians: newMeridians });
-                                            }}
-                                            placeholder="Adicionar nota..."
-                                            className="w-full px-3 py-1.5 bg-surface-container-low border border-outline-variant/10 rounded-lg text-xs outline-none focus:ring-1 focus:ring-primary/20"
-                                          />
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Passo 5: Tratamentos e Energia de Saúde */}
-                        {currentStep === 4 && (
-                          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {/* Energia de Saúde / Bovis */}
-                            <div className="p-8 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-[2.5rem] border border-emerald-100 shadow-sm space-y-8">
-                              <h4 className="text-xl font-bold text-emerald-900 flex items-center gap-2">
-                                <Activity size={24} /> Energia de Saúde (Biômetro de Bovis)
-                              </h4>
-
-                              <div className="space-y-6">
-                                <div className="relative pt-10 pb-2">
-                                  {/* Bovis Scale Indicators */}
-                                  <div className="absolute top-0 left-0 w-full flex justify-between text-[10px] font-black text-emerald-800/60 uppercase tracking-tighter">
-                                    <span>NÃO SAUDÁVEL</span>
-                                    <span>MÉDIA</span>
-                                    <span>SAUDÁVEL</span>
-                                  </div>
-                                  <div className="flex justify-between w-full h-4 bg-gradient-to-r from-rose-400 via-amber-400 to-emerald-400 rounded-full mt-2"></div>
-                                  <input
-                                    disabled={isViewMode}
-                                    type="range" min="0" max="10000" step="100"
-                                    value={(formData as any).healthEnergy?.value || 0}
-                                    onChange={e => {
-                                      const val = parseInt(e.target.value);
-                                      const cat = val < 4500 ? 'Não Saudável' : val < 6500 ? 'Média' : 'Saudável';
-                                      setFormData({ ...formData, healthEnergy: { ...(formData as any).healthEnergy, value: val, category: cat } });
-                                    }}
-                                    className="w-full absolute top-12 left-0 appearance-none bg-transparent cursor-pointer accent-emerald-900"
-                                  />
-                                </div>
-                                <div className="flex justify-between items-end">
-                                  <div className="space-y-1">
-                                    <p className="text-xs font-bold text-emerald-800/70">RESULTADO AFERIDO</p>
-                                    <p className="text-4xl font-black text-emerald-900">{(formData as any).healthEnergy?.value} <span className="text-lg font-medium opacity-60">UB (Ångströms)</span></p>
-                                  </div>
-                                  <div className={cn(
-                                    "px-6 py-2 rounded-2xl font-black text-xs uppercase tracking-widest",
-                                    (formData as any).healthEnergy?.value < 4500 ? "bg-rose-100 text-rose-700" :
-                                      (formData as any).healthEnergy?.value < 6500 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
-                                  )}>
-                                    {(formData as any).healthEnergy?.category}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Tratamentos Recomendados */}
-                            <div className="space-y-6">
-                              <div className="flex justify-between items-center">
-                                <h4 className="text-lg font-bold text-on-surface">Tratamentos Recomendados</h4>
-                                {!isViewMode && (
-                                  <button
-                                    onClick={() => {
-                                      const currentTreatments = (formData as any).treatments || [];
-                                      setFormData({
-                                        ...formData,
-                                        treatments: [...currentTreatments, { treatment: '', time: 0, unit: 'minutos', start: '', end: '' }]
-                                      });
-                                    }}
-                                    className="px-4 py-2 bg-primary/10 text-primary text-xs font-bold rounded-xl hover:bg-primary/20 transition-all flex items-center gap-2"
-                                  >
-                                    <Plus size={16} /> Adicionar Tratamento
-                                  </button>
-                                )}
-                              </div>
-
-                              <div className="grid grid-cols-1 gap-4">
-                                {(formData as any).treatments?.map((t: any, idx: number) => (
-                                  <div key={idx} className="bg-white p-6 rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col md:flex-row gap-4 items-end">
-                                    <div className="flex-1 space-y-2 w-full">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Tratamento</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="text" value={t.treatment}
-                                        onChange={e => {
-                                          const newT = [...(formData as any).treatments];
-                                          newT[idx].treatment = e.target.value;
-                                          setFormData({ ...formData, treatments: newT });
-                                        }}
-                                        className="w-full px-4 py-2.5 bg-surface-container-low border border-outline-variant/10 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/10"
-                                        placeholder="Ex: Alinhamento de Chakras..."
-                                      />
-                                    </div>
-                                    <div className="w-24 space-y-2">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Tempo</label>
-                                      <input
-                                        disabled={isViewMode}
-                                        type="number" value={t.time}
-                                        onChange={e => {
-                                          const newT = [...(formData as any).treatments];
-                                          newT[idx].time = parseInt(e.target.value) || 0;
-                                          setFormData({ ...formData, treatments: newT });
-                                        }}
-                                        className="w-full px-4 py-2.5 bg-surface-container-low border border-outline-variant/10 rounded-xl text-sm outline-none text-center"
-                                      />
-                                    </div>
-                                    <div className="w-32 space-y-2">
-                                      <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Unidade</label>
-                                      <select
-                                        disabled={isViewMode}
-                                        value={t.unit}
-                                        onChange={e => {
-                                          const newT = [...(formData as any).treatments];
-                                          newT[idx].unit = e.target.value as any;
-                                          setFormData({ ...formData, treatments: newT });
-                                        }}
-                                        className="w-full px-4 py-2.5 bg-surface-container-low border border-outline-variant/10 rounded-xl text-xs font-bold outline-none"
-                                      >
-                                        <option value="minutos">Minutos</option>
-                                        <option value="horas">Horas</option>
-                                        <option value="dias">Dias</option>
-                                      </select>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 flex-1 w-full">
-                                      <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Início</label>
-                                        <input
-                                          disabled={isViewMode}
-                                          type="date" value={t.start}
-                                          onChange={e => {
-                                            const newT = [...(formData as any).treatments];
-                                            newT[idx].start = e.target.value;
-                                            setFormData({ ...formData, treatments: newT });
-                                          }}
-                                          className="w-full px-4 py-2.5 bg-surface-container-low border border-outline-variant/10 rounded-xl text-xs outline-none"
-                                        />
-                                      </div>
-                                      <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Fim</label>
-                                        <input
-                                          disabled={isViewMode}
-                                          type="date" value={t.end}
-                                          onChange={e => {
-                                            const newT = [...(formData as any).treatments];
-                                            newT[idx].end = e.target.value;
-                                            setFormData({ ...formData, treatments: newT });
-                                          }}
-                                          className="w-full px-4 py-2.5 bg-surface-container-low border border-outline-variant/10 rounded-xl text-xs outline-none"
-                                        />
-                                      </div>
-                                    </div>
-                                    {!isViewMode && (
-                                      <button
-                                        onClick={() => {
-                                          const newT = [...(formData as any).treatments];
-                                          newT.splice(idx, 1);
-                                          setFormData({ ...formData, treatments: newT });
-                                        }}
-                                        className="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                                      >
-                                        <Trash2 size={20} />
-                                      </button>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Passo 6: Conclusão / Observações */}
-                        {currentStep === 5 && (
-                          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="space-y-6">
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Comentários Adicionais</label>
-                                <textarea
-                                  disabled={isViewMode}
-                                  value={(formData as any).healthEnergy?.comment}
-                                  onChange={e => setFormData({ ...formData, healthEnergy: { ...(formData as any).healthEnergy, comment: e.target.value } })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-3xl border border-outline-variant/10 outline-none font-medium min-h-[150px] disabled:opacity-70"
-                                  placeholder="Observações complementares sobre a energia de saúde..."
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-outline uppercase tracking-widest">Considerações Finais</label>
-                                <textarea
-                                  disabled={isViewMode}
-                                  value={(formData as any).finalObservations}
-                                  onChange={e => setFormData({ ...formData, finalObservations: e.target.value })}
-                                  className="w-full px-5 py-4 bg-surface-container-low rounded-3xl border border-outline-variant/10 outline-none font-medium min-h-[200px] disabled:opacity-70 shadow-inner"
-                                  placeholder="Análise final e orientações gerais do radiestesista..."
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                    {/* FORMULÁRIO RADIESTESIA */}
+                    {selectedTemplate === 'RADIESTESIA' && (
+                      <div className="space-y-8 animate-in fade-in duration-300">
+                        <div className="p-8 text-center text-outline">
+                          Preenchimento de avaliação de Radiestesia.
+                        </div>
                       </div>
                     )}
                   </>
@@ -2480,7 +2736,7 @@ export default function EvaluationsView({
                     <ChevronLeft size={18} /> Anterior
                   </button>
 
-                  {currentStep === (selectedTemplate === 'MTC' ? MTC_STEPS.length : RADIESTESIA_STEPS.length) - 1 ? (
+                  {currentStep === activeSteps.length - 1 ? (
                     <button
                       onClick={isViewMode ? closeModal : handleSave}
                       disabled={isSaving}
@@ -2512,6 +2768,7 @@ export default function EvaluationsView({
           </div>
         )}
       </AnimatePresence>
+
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {isDeleteModalOpen && (

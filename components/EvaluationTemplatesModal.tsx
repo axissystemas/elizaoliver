@@ -17,7 +17,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { EvaluationTemplate, TemplateStep, TemplateField, FieldType } from '@/types/evaluationTemplate';
+import { EvaluationTemplate, TemplateStep, TemplateField, FieldType, DEFAULT_SYSTEM_TEMPLATES } from '@/types/evaluationTemplate';
 import { saveEvaluationTemplates, deleteEvaluationTemplate } from '@/lib/evaluationTemplateService';
 
 interface Props {
@@ -28,7 +28,16 @@ interface Props {
 }
 
 export default function EvaluationTemplatesModal({ isOpen, onClose, templates, onTemplatesChange }: Props) {
-  const [currentTemplates, setCurrentTemplates] = useState<EvaluationTemplate[]>(templates);
+  const [currentTemplates, setCurrentTemplates] = useState<EvaluationTemplate[]>(() => 
+    templates && templates.length > 0 ? templates : DEFAULT_SYSTEM_TEMPLATES
+  );
+
+  React.useEffect(() => {
+    if (templates && templates.length > 0) {
+      setCurrentTemplates(templates);
+    }
+  }, [templates]);
+
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<EvaluationTemplate | null>(null);
 
@@ -155,8 +164,8 @@ export default function EvaluationTemplatesModal({ isOpen, onClose, templates, o
     setTemplateSteps(updatedSteps);
   };
 
-  const systemTemplates = currentTemplates.filter(t => t.isSystem);
-  const customTemplates = currentTemplates.filter(t => !t.isSystem);
+  const systemTemplates = currentTemplates.filter(t => t.isSystem || t.code === 'MTC' || t.code === 'RADIESTESIA');
+  const customTemplates = currentTemplates.filter(t => !t.isSystem && t.code !== 'MTC' && t.code !== 'RADIESTESIA');
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
