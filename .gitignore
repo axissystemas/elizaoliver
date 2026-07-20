@@ -85,3 +85,9 @@ supabase/.temp/
 # Local Output
 # ========================
 test_results.txt
+
+# ========================
+# Agentes & Skills AI
+# ========================
+.agents/
+

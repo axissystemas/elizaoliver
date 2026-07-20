@@ -18,6 +18,7 @@ const IGNORE_PATTERNS = [
   '.env.local',
   '.vercel',
   '.cursor',
+  '.agents',
   'playwright-report',
   'test-results',
   'test_results.txt',
