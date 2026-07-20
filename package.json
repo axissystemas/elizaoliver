@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "clean": "next clean",
+    "export:clean": "node scripts/export-clean-copy.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
