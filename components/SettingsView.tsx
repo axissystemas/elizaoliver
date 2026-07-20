@@ -33,13 +33,20 @@ import {
   AlertCircle,
   Crown,
   Zap,
-  MessageSquare
+  MessageSquare,
+  ClipboardList,
+  Copy,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, UserRole, ROLE_LABELS, ALL_PERMISSIONS, ROLE_PERMISSIONS } from '@/types/auth';
 import ConfirmationModal from './ConfirmationModal';
 import AdminSaaSModal from './AdminSaaSModal';
+import EvaluationTemplatesModal from './EvaluationTemplatesModal';
 import { getWhatsAppSettings, saveWhatsAppSettings, WhatsAppSettings, DEFAULT_WHATSAPP_SETTINGS } from '@/lib/whatsapp';
+import { EvaluationTemplate, TemplateStep, TemplateField, DEFAULT_SYSTEM_TEMPLATES } from '@/types/evaluationTemplate';
+import { getEvaluationTemplates, saveEvaluationTemplates, deleteEvaluationTemplate } from '@/lib/evaluationTemplateService';
 
 interface Profile {
   name: string;
@@ -123,6 +130,20 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [whatsAppSettings, setWhatsAppSettings] = useState<WhatsAppSettings>(() => getWhatsAppSettings());
   const [whatsAppSavedFeedback, setWhatsAppSavedFeedback] = useState(false);
+
+  // Estados para Gerenciador de Fichas de Avaliação Modulares
+  const [isEvaluationTemplatesModalOpen, setIsEvaluationTemplatesModalOpen] = useState(false);
+  const [evaluationTemplates, setEvaluationTemplates] = useState<EvaluationTemplate[]>([]);
+  const [isFormBuilderOpen, setIsFormBuilderOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<EvaluationTemplate | null>(null);
+
+  useEffect(() => {
+    async function loadTemplates() {
+      const data = await getEvaluationTemplates();
+      setEvaluationTemplates(data);
+    }
+    loadTemplates();
+  }, []);
 
   const { plan, planCode, checkQuota, hasFeature } = useSubscription();
   const [quotas, setQuotas] = useState<Record<string, any>>({});
@@ -488,6 +509,14 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
           color: 'text-orange-500', 
           bg: 'bg-orange-50',
           onClick: () => setIsSpecialtiesModalOpen(true)
+        },
+        { 
+          icon: ClipboardList, 
+          label: 'Fichas de Avaliação', 
+          description: 'Ative, desative ou crie modelos de fichas de avaliação personalizadas.', 
+          color: 'text-teal-500', 
+          bg: 'bg-teal-50',
+          onClick: () => setIsEvaluationTemplatesModalOpen(true)
         },
       ]
     },
@@ -1938,6 +1967,14 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
         onClose={() => setIsAdminSaaSModalOpen(false)} 
         user={user} 
         availablePlans={availablePlans} 
+      />
+
+      {/* Modal Gerenciador de Fichas de Avaliação Modulares */}
+      <EvaluationTemplatesModal
+        isOpen={isEvaluationTemplatesModalOpen}
+        onClose={() => setIsEvaluationTemplatesModalOpen(false)}
+        templates={evaluationTemplates}
+        onTemplatesChange={setEvaluationTemplates}
       />
     </div>
   );

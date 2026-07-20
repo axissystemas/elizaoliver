@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
+import { EvaluationTemplate, DEFAULT_SYSTEM_TEMPLATES } from '@/types/evaluationTemplate';
+import { getEvaluationTemplates } from '@/lib/evaluationTemplateService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -187,6 +189,15 @@ export default function EvaluationsView({
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [activeTemplates, setActiveTemplates] = useState<EvaluationTemplate[]>(() => DEFAULT_SYSTEM_TEMPLATES.filter(t => t.isActive));
+
+  useEffect(() => {
+    async function loadActiveTemplates() {
+      const templates = await getEvaluationTemplates();
+      setActiveTemplates(templates.filter(t => t.isActive));
+    }
+    loadActiveTemplates();
+  }, [isModalOpen]);
 
   const canCreate = user?.permissions.includes('evaluations:create') || user?.role === 'ADMIN';
   const canEdit = user?.permissions.includes('evaluations:edit') || user?.role === 'ADMIN';
@@ -735,39 +746,36 @@ export default function EvaluationsView({
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl px-4">
-                      <button
-                        onClick={() => {
-                          setSelectedTemplate('MTC');
-                          setFormData(JSON.parse(JSON.stringify(MTC_DEFAULT_FORM_DATA)));
-                          setShowTemplateSelection(false);
-                        }}
-                        className="p-8 rounded-[2rem] border-2 border-outline-variant/10 hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col gap-4 group"
-                      >
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                          <ClipboardList size={24} />
-                        </div>
-                        <div>
-                          <h5 className="font-bold text-lg text-on-surface">Avaliação MTC</h5>
-                          <p className="text-sm text-outline leading-relaxed mt-1">Medicina Tradicional Chinesa, 5 elementos, canais e colaterais.</p>
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setSelectedTemplate('RADIESTESIA');
-                          setFormData(JSON.parse(JSON.stringify(RADIESTESIA_DEFAULT_FORM_DATA)));
-                          setShowTemplateSelection(false);
-                        }}
-                        className="p-8 rounded-[2rem] border-2 border-outline-variant/10 hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col gap-4 group"
-                      >
-                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                          <Activity size={24} />
-                        </div>
-                        <div>
-                          <h5 className="font-bold text-lg text-on-surface">Radiestesia</h5>
-                          <p className="text-sm text-outline leading-relaxed mt-1">Análise energética de chakras, campos energéticos e sistemas.</p>
-                        </div>
-                      </button>
+                      {activeTemplates.map(template => (
+                        <button
+                          key={template.id}
+                          onClick={() => {
+                            if (template.code === 'RADIESTESIA') {
+                              setSelectedTemplate('RADIESTESIA');
+                              setFormData(JSON.parse(JSON.stringify(RADIESTESIA_DEFAULT_FORM_DATA)));
+                            } else {
+                              setSelectedTemplate('MTC');
+                              setFormData(JSON.parse(JSON.stringify(MTC_DEFAULT_FORM_DATA)));
+                            }
+                            setShowTemplateSelection(false);
+                          }}
+                          className="p-8 rounded-[2rem] border-2 border-outline-variant/10 hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col gap-4 group"
+                        >
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform ${
+                            template.colorTheme === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
+                            template.colorTheme === 'amber' ? 'bg-amber-50 text-amber-600' :
+                            template.colorTheme === 'blue' ? 'bg-blue-50 text-blue-600' :
+                            template.colorTheme === 'purple' ? 'bg-purple-50 text-purple-600' :
+                            'bg-emerald-50 text-emerald-600'
+                          }`}>
+                            {template.code === 'RADIESTESIA' ? <Activity size={24} /> : <ClipboardList size={24} />}
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-lg text-on-surface">{template.name}</h5>
+                            <p className="text-sm text-outline leading-relaxed mt-1">{template.description}</p>
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 ) : (
