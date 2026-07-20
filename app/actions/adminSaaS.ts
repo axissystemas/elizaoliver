@@ -97,6 +97,21 @@ export async function forcePlanActivation(organizationId: string, planId: string
 export async function deleteUserAction(targetUserId: string) {
   const supabase = getAdminSupabase();
   
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    throw new Error('Unauthorized');
+  }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+    
+  if (adminProfile?.role !== 'ADMIN') {
+    throw new Error('Unauthorized');
+  }
+
   // Deleta o usuário diretamente do Supabase Auth Admin API (usando a Service Role Key)
   const { error } = await supabase.auth.admin.deleteUser(targetUserId);
   
