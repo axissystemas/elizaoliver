@@ -1,0 +1,260 @@
+[
+  {
+    "nome": "Inhame",
+    "categoria": "raízes",
+    "sabor_original": "Doce",
+    "sabores_normalizados": [
+      "Doce"
+    ],
+    "natureza_original": "Morno",
+    "natureza_normalizada": "Morno",
+    "canais_originais": "BP, P, R",
+    "canais_normalizados": [
+      "Baço",
+      "Pulmão",
+      "Rim"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": false,
+    "inconsistencia_obs": ""
+  },
+  {
+    "nome": "Cenoura",
+    "categoria": "raízes",
+    "sabor_original": "Doce",
+    "sabores_normalizados": [
+      "Doce"
+    ],
+    "natureza_original": "Neutro / ligeiramente Morno",
+    "natureza_normalizada": "Neutro",
+    "canais_originais": "BP, F, P",
+    "canais_normalizados": [
+      "Baço",
+      "Fígado",
+      "Pulmão"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": false,
+    "inconsistencia_obs": "Divergência entre referências: Maciocia registra Neutro; Bob Flaws registra ligeiramente Morno."
+  },
+  {
+    "nome": "Gengibre",
+    "categoria": "raízes",
+    "sabor_original": "Picante",
+    "sabores_normalizados": [
+      "Picante"
+    ],
+    "natureza_original": "Morno",
+    "natureza_normalizada": "Morno",
+    "canais_originais": "P, E, BP",
+    "canais_normalizados": [
+      "Pulmão",
+      "Estômago",
+      "Baço"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": false,
+    "inconsistencia_obs": ""
+  },
+  {
+    "nome": "Feijão Azuki",
+    "categoria": "leguminosas",
+    "sabor_original": "Doce/Azedo",
+    "sabores_normalizados": [
+      "Doce",
+      "Azedo"
+    ],
+    "natureza_original": "Neutro",
+    "natureza_normalizada": "Neutro",
+    "canais_originais": "C, ID, BP",
+    "canais_normalizados": [
+      "Coração",
+      "Intestino Delgado",
+      "Baço"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": false,
+    "inconsistencia_obs": ""
+  },
+  {
+    "nome": "Espinafre",
+    "categoria": "folhas",
+    "sabor_original": "Doce",
+    "sabores_normalizados": [
+      "Doce"
+    ],
+    "natureza_original": "Fresco",
+    "natureza_normalizada": "Fresco",
+    "canais_originais": "F, E, IG",
+    "canais_normalizados": [
+      "Fígado",
+      "Estômago",
+      "Intestino Grosso"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": false,
+    "inconsistencia_obs": ""
+  },
+  {
+    "nome": "Hortelã",
+    "categoria": "folhas",
+    "sabor_original": "Picante",
+    "sabores_normalizados": [
+      "Picante"
+    ],
+    "natureza_original": "Fresco",
+    "natureza_normalizada": "Fresco",
+    "canais_originais": "F, P",
+    "canais_normalizados": [
+      "Fígado",
+      "Pulmão"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": false,
+    "inconsistencia_obs": ""
+  },
+  {
+    "nome": "Arroz Integral",
+    "categoria": "cereais",
+    "sabor_original": "Doce",
+    "sabores_normalizados": [
+      "Doce"
+    ],
+    "natureza_original": "Neutro",
+    "natureza_normalizada": "Neutro",
+    "canais_originais": "BP, E",
+    "canais_normalizados": [
+      "Baço",
+      "Estômago"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": false,
+    "inconsistencia_obs": ""
+  },
+  {
+    "nome": "Maçã",
+    "categoria": "frutas",
+    "sabor_original": "Doce, Azedo",
+    "sabores_normalizados": [
+      "Doce",
+      "Azedo"
+    ],
+    "natureza_original": "Fresco",
+    "natureza_normalizada": "Fresco",
+    "canais_originais": "C, Baço, Pulmão",
+    "canais_normalizados": [
+      "Coração",
+      "Baço",
+      "Pulmão"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": false,
+    "inconsistencia_obs": ""
+  },
+  {
+    "nome": "Carne de Carneiro",
+    "categoria": "animais",
+    "sabor_original": "Doce",
+    "sabores_normalizados": [
+      "Doce"
+    ],
+    "natureza_original": "Quente",
+    "natureza_normalizada": "Quente",
+    "canais_originais": "BP, R",
+    "canais_normalizados": [
+      "Baço",
+      "Rim"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": false,
+    "inconsistencia_obs": ""
+  },
+  {
+    "nome": "Carne de Gado",
+    "categoria": "animais",
+    "sabor_original": "Doce",
+    "sabores_normalizados": [
+      "Doce"
+    ],
+    "natureza_original": "Morno",
+    "natureza_normalizada": "Morno",
+    "canais_originais": "BP, E",
+    "canais_normalizados": [
+      "Baço",
+      "Estômago"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": false,
+    "inconsistencia_obs": ""
+  },
+  {
+    "nome": "Mel",
+    "categoria": "alimentos extras",
+    "sabor_original": "Doce",
+    "sabores_normalizados": [
+      "Doce"
+    ],
+    "natureza_original": "Neutro",
+    "natureza_normalizada": "Neutro",
+    "canais_originais": "BP, P, IG",
+    "canais_normalizados": [
+      "Baço",
+      "Pulmão",
+      "Intestino Grosso"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": false,
+    "inconsistencia_obs": ""
+  },
+  {
+    "nome": "Espirulina",
+    "categoria": "alimentos extras",
+    "sabor_original": "Salgado",
+    "sabores_normalizados": [
+      "Salgado"
+    ],
+    "natureza_original": "Frio",
+    "natureza_normalizada": "Frio",
+    "canais_originais": "F, R, BP",
+    "canais_normalizados": [
+      "Fígado",
+      "Rim",
+      "Baço"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": false,
+    "inconsistencia_obs": ""
+  },
+  {
+    "nome": "Gengibre",
+    "categoria": "alimentos extras",
+    "sabor_original": "Picante",
+    "sabores_normalizados": [
+      "Picante"
+    ],
+    "natureza_original": "Morno",
+    "natureza_normalizada": "Morno",
+    "canais_originais": "P, E, BP",
+    "canais_normalizados": [
+      "Pulmão",
+      "Estômago",
+      "Baço"
+    ],
+    "fonte_importacao": "Tabela Inicial MTC",
+    "status": "pendente_revisao",
+    "duplicado": true,
+    "inconsistencia_obs": "Duplicidade detectada: Alimento já presente na categoria raízes."
+  }
+]

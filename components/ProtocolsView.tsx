@@ -61,6 +61,7 @@ const CATEGORIES = ['Todos', 'Tonificação', 'Sedação', 'Yin/Yang', 'Dor', 'A
 const COLORS = ['bg-emerald-500', 'bg-indigo-500', 'bg-blue-500', 'bg-rose-500', 'bg-amber-500', 'bg-purple-500'];
 
 import { User } from '@/types/auth';
+import DietotherapyView from './dietotherapy/DietotherapyView';
 
 export default function ProtocolsView({ 
   user,
@@ -73,6 +74,7 @@ export default function ProtocolsView({
   onSaveProtocol: (data: any) => Promise<void>,
   onDeleteProtocol: (id: string) => Promise<void>
 }) {
+  const [activeTab, setActiveTab] = useState<'acupuntura' | 'dietoterapia'>('dietoterapia');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -149,21 +151,45 @@ export default function ProtocolsView({
 
   return (
     <div className="p-10 space-y-10 relative">
-      {/* Header */}
-      <section className="flex flex-col md:flex-row gap-8 items-start justify-between">
-        <div>
-          <h2 className="text-4xl font-bold font-headline text-on-surface">Biblioteca de Protocolos</h2>
-          <p className="text-on-surface-variant text-lg mt-2 font-medium">Gerencie e descubra protocolos de tratamento baseados em MTC.</p>
-        </div>
-        {canCreate && (
-          <button 
-            onClick={() => handleOpenModal()}
-            className="px-8 py-4 rounded-2xl text-sm font-bold bg-primary text-white shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3"
-          >
-            <Plus size={20} /> Criar Novo Protocolo
-          </button>
-        )}
-      </section>
+      {/* Tab Switcher */}
+      <div className="flex border-b border-outline-variant/15 gap-8 mb-6">
+        <button 
+          onClick={() => setActiveTab('dietoterapia')}
+          className={`pb-4 text-base font-bold transition-all relative ${activeTab === 'dietoterapia' ? 'text-primary' : 'text-outline hover:text-primary'}`}
+        >
+          Dietoterapia Chinesa
+          {activeTab === 'dietoterapia' && (
+            <motion.div layoutId="activeTabUnderline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
+          )}
+        </button>
+        <button 
+          onClick={() => setActiveTab('acupuntura')}
+          className={`pb-4 text-base font-bold transition-all relative ${activeTab === 'acupuntura' ? 'text-primary' : 'text-outline hover:text-primary'}`}
+        >
+          Acupuntura e Moxabustão
+          {activeTab === 'acupuntura' && (
+            <motion.div layoutId="activeTabUnderline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'acupuntura' ? (
+        <>
+          {/* Header */}
+          <section className="flex flex-col md:flex-row gap-8 items-start justify-between">
+            <div>
+              <h2 className="text-4xl font-bold font-headline text-on-surface">Biblioteca de Protocolos</h2>
+              <p className="text-on-surface-variant text-lg mt-2 font-medium">Gerencie e descubra protocolos de tratamento baseados em MTC.</p>
+            </div>
+            {canCreate && (
+              <button 
+                onClick={() => handleOpenModal()}
+                className="px-8 py-4 rounded-2xl text-sm font-bold bg-primary text-white shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3"
+              >
+                <Plus size={20} /> Criar Novo Protocolo
+              </button>
+            )}
+          </section>
 
       {/* Search and Filter */}
       <section className="flex gap-4">
@@ -291,6 +317,10 @@ export default function ProtocolsView({
           </div>
         </motion.div>
       </div>
+      </>
+      ) : (
+        <DietotherapyView user={user} />
+      )}
 
       {/* CRUD Modal */}
       <AnimatePresence>

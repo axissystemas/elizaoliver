@@ -26,7 +26,7 @@ const navItems = [
   { id: 'calendar', label: 'Agenda', icon: Calendar },
   { id: 'evaluations', label: 'Avaliações', icon: ClipboardList },
 
-  { id: 'protocols', label: 'Protocolos', icon: FileText },
+  { id: 'protocols', label: 'Protocolos e Orientações', icon: FileText },
   { id: 'financial', label: 'Finanças', icon: CreditCard },
   { id: 'billing', label: 'Faturas', icon: FileText },
   { id: 'inventory', label: 'Estoque', icon: Package },

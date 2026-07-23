@@ -45,6 +45,8 @@ import {
   RadiesthesiaEvaluation,
   DiagnosticoOuroEvaluation
 } from '@/types/evaluations';
+import DietBuilderModal from './dietotherapy/DietBuilderModal';
+import { dietotherapyService } from '@/lib/dietotherapyService';
 
 interface Patient {
   id: string;
@@ -391,6 +393,10 @@ export default function EvaluationsView({
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Dietotherapy integration
+  const [isDietBuilderOpen, setIsDietBuilderOpen] = useState(false);
+  const [preloadedEval, setPreloadedEval] = useState<any | null>(null);
+
   const processAndCompressImage = (file: File, callback: (base64: string) => void) => {
     if (!file) return;
     const reader = new FileReader();
@@ -689,7 +695,7 @@ export default function EvaluationsView({
             photoY = 20;
           }
           doc.setFontSize(10);
-          doc.setFont(undefined, 'bold');
+          doc.setFont('helvetica', 'bold');
           doc.setTextColor(180, 130, 20);
           doc.text('FOTO DA LÍNGUA DO PACIENTE:', 14, photoY);
           try {
@@ -824,7 +830,7 @@ export default function EvaluationsView({
             photoY = 20;
           }
           doc.setFontSize(10);
-          doc.setFont(undefined, 'bold');
+          doc.setFont('helvetica', 'bold');
           doc.setTextColor(15, 82, 56);
           doc.text('FOTO DA LÍNGUA DO PACIENTE:', 14, photoY);
           try {
@@ -1259,6 +1265,24 @@ export default function EvaluationsView({
                         <FileText size={16} />
                       )}
                       Exportar PDF
+                    </button>
+                  )}
+                  {isViewMode && (selectedTemplate === 'MTC' || selectedTemplate === 'DIAGNOSTICO_OURO') && (
+                    <button
+                      onClick={() => {
+                        const pat = patients.find(p => p.name === formData.patientName || p.id === formData.patientId);
+                        setPreloadedEval({
+                          id: (formData as any).id,
+                          patientId: formData.patientId || pat?.id || '',
+                          pattern: (formData as any).syndromeHypothesis || (formData as any).diagnosticoFinal?.syndromes || '',
+                          principles: (formData as any).initialTreatment || (formData as any).diagnosticoFinal?.treatments || ''
+                        });
+                        setIsDietBuilderOpen(true);
+                        closeModal();
+                      }}
+                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all flex items-center gap-2"
+                    >
+                      <Sparkles size={16} /> Criar Orientação
                     </button>
                   )}
                   <button
@@ -3144,6 +3168,23 @@ export default function EvaluationsView({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Diet Builder Modal Integration */}
+      {isDietBuilderOpen && (
+        <DietBuilderModal 
+          onClose={() => setIsDietBuilderOpen(false)}
+          preloadedEval={preloadedEval}
+          onSave={async (presc) => {
+            try {
+              await dietotherapyService.savePrescription(presc);
+              alert('Orientação Dietética criada e salva com sucesso!');
+            } catch (e: any) {
+              alert(e.message || 'Erro ao salvar orientação.');
+            }
+          }}
+          user={user}
+        />
+      )}
     </div>
   );
 }

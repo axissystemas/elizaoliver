@@ -35,7 +35,7 @@ const navItems = [
   { id: 'patients', label: 'Pacientes', icon: Users, featureKey: 'mod_patients' },
   { id: 'evaluations', label: 'Avaliações', icon: ClipboardList, featureKey: 'mod_evaluations' },
   { id: 'calendar', label: 'Agenda', icon: Calendar, featureKey: 'mod_calendar' },
-  { id: 'protocols', label: 'Protocolos', icon: FileText, featureKey: 'mod_protocols' },
+  { id: 'protocols', label: 'Protocolos e Orientações', icon: FileText, featureKey: 'mod_protocols' },
   { id: 'financial', label: 'Financeiro', icon: CreditCard, featureKey: 'mod_financial' },
   { id: 'billing', label: 'Faturamento', icon: FileText, featureKey: 'mod_billing' },
   { id: 'inventory', label: 'Estoque', icon: Package, featureKey: 'mod_inventory' },
@@ -93,8 +93,8 @@ export default function Sidebar({ activeView, setActiveView, onNewAppointment, o
                   : "text-on-surface-variant hover:bg-surface-container"
               )}
             >
-              <Icon size={20} className={cn(isActive ? "text-white" : "group-hover:text-primary")} />
-              <span className="font-medium text-sm">{item.label}</span>
+              <Icon size={20} className={cn("shrink-0", isActive ? "text-white" : "group-hover:text-primary")} />
+              <span className="font-medium text-sm text-left flex-1">{item.label}</span>
               {isActive && (
                 <motion.div 
                   layoutId="active-pill"

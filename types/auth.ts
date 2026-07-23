@@ -72,12 +72,23 @@ export const ALL_PERMISSIONS: Permission[] = [
 
   { 
     id: 'protocols', 
-    label: 'Protocolos',
+    label: 'Protocolos e Orientações',
     sub: [
       { id: 'protocols:view', label: 'Visualizar Protocolos' },
       { id: 'protocols:create', label: 'Criar Protocolo' },
       { id: 'protocols:edit', label: 'Editar Protocolo' },
       { id: 'protocols:delete', label: 'Excluir Protocolo' }
+    ]
+  },
+  { 
+    id: 'dietotherapy', 
+    label: 'Dietoterapia Chinesa',
+    sub: [
+      { id: 'dietotherapy:view', label: 'Visualizar Alimentos e Orientações' },
+      { id: 'dietotherapy:create', label: 'Cadastrar Alimentos e Emitir Orientações' },
+      { id: 'dietotherapy:edit', label: 'Editar Alimentos e Orientações' },
+      { id: 'dietotherapy:delete', label: 'Excluir Registros de Dietoterapia' },
+      { id: 'dietotherapy:import', label: 'Importar Lotes e Executar Rollback' }
     ]
   },
   { 
@@ -170,6 +181,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'evaluations', 'evaluations:view', 'evaluations:create', 'evaluations:edit',
     'calendar', 'calendar:view', 'calendar:create', 'calendar:edit',
     'protocols', 'protocols:view', 'protocols:create', 'protocols:edit',
+    'dietotherapy', 'dietotherapy:view', 'dietotherapy:create', 'dietotherapy:edit', 'dietotherapy:import',
     'inventory', 'inventory:view', 'inventory:create', 'inventory:edit', 'inventory:delete',
     'billing', 'billing:view', 'billing:audit',
     'reports', 'reports:view', 'reports:export',

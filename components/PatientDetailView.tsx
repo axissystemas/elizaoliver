@@ -37,6 +37,9 @@ import { User } from '@/types/auth';
 import ConfirmationModal from './ConfirmationModal';
 import { supabase } from '@/lib/supabase';
 import { openWhatsApp, WhatsAppTemplates } from '@/lib/whatsapp';
+import DietBuilderModal from './dietotherapy/DietBuilderModal';
+import { dietotherapyService } from '@/lib/dietotherapyService';
+import { DietPdfGenerator } from '@/lib/DietPdfGenerator';
 
 interface PatientDetailViewProps {
   patient: any;
@@ -84,7 +87,7 @@ export default function PatientDetailView({
     if (!patient || !supabase) return;
     setIsSavingNotes(true);
     try {
-      const { error } = await supabase.from('patients').update({ notes }).eq('id', patient.id);
+      const { error } = await supabase.from('patients').update({ notes } as any).eq('id', patient.id);
       if (error) throw error;
       alert('Notas de evolução salvas com sucesso!');
     } catch (error) {
@@ -100,7 +103,54 @@ export default function PatientDetailView({
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [packageToDeleteId, setPackageToDeleteId] = useState<string | null>(null);
   const [isEditingPackage, setIsEditingPackage] = useState(false);
-  const [activeTab, setActiveTab] = useState<'geral' | 'historico' | 'pacotes'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'historico' | 'pacotes' | 'dietoterapia'>('geral');
+
+  // Dietotherapy States
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [isDietBuilderOpen, setIsDietBuilderOpen] = useState(false);
+  const [preloadedEval, setPreloadedEval] = useState<any | null>(null);
+  const [editingPrescriptionId, setEditingPrescriptionId] = useState<string | null>(null);
+  const [adherence, setAdherence] = useState('Boa');
+  const [evolutionText, setEvolutionText] = useState('');
+
+  const fetchPrescriptions = React.useCallback(async () => {
+    try {
+      const data = await dietotherapyService.getPrescriptions();
+      setPrescriptions(data.filter(p => p.patient_id === patient.id));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [patient.id]);
+
+  React.useEffect(() => {
+    fetchPrescriptions();
+  }, [fetchPrescriptions]);
+
+  const handleExportPrescriptionPdf = (presc: any, forceType?: 'clinical' | 'simplified') => {
+    const type = forceType || presc.report_type || 'simplified';
+    const doc = DietPdfGenerator.generatePrescriptionPdf(presc, type);
+    doc.save(`orientacao_dietetica_${presc.patient_name || 'paciente'}_${type}.pdf`);
+  };
+
+  const handleUpdateAdherence = async (prescId: string) => {
+    try {
+      const target = prescriptions.find(p => p.id === prescId);
+      if (!target) return;
+      
+      const updated = await dietotherapyService.savePrescription({
+        ...target,
+        adherence: adherence,
+        evolution_notes: evolutionText,
+        updated_at: new Date().toISOString()
+      });
+
+      setPrescriptions(prev => prev.map(p => p.id === prescId ? updated : p));
+      setEditingPrescriptionId(null);
+      alert('Acompanhamento de adesão e evolução salvo com sucesso!');
+    } catch (e: any) {
+      alert(e.message || 'Erro ao atualizar.');
+    }
+  };
 
   const [packageFormData, setPackageFormData] = useState({
     total_sessions: 10,
@@ -343,7 +393,7 @@ export default function PatientDetailView({
 
       {/* Tabs Navigation */}
       <div className="flex items-center gap-2 bg-surface-container-low p-2 rounded-[2rem] w-fit no-print">
-        {['geral', 'historico', 'pacotes'].map((tab) => (
+        {['geral', 'historico', 'pacotes', 'dietoterapia'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab as any)}
@@ -351,7 +401,7 @@ export default function PatientDetailView({
               activeTab === tab ? 'bg-white text-primary shadow-sm' : 'text-outline hover:text-primary'
             }`}
           >
-            {tab === 'geral' ? 'Resumo Clínico' : tab === 'historico' ? 'Consultas' : 'Pacotes'}
+            {tab === 'geral' ? 'Resumo Clínico' : tab === 'historico' ? 'Consultas' : tab === 'pacotes' ? 'Pacotes' : 'Dietoterapia'}
           </button>
         ))}
       </div>
@@ -366,7 +416,26 @@ export default function PatientDetailView({
                   <div className="bg-surface-container-low p-6 rounded-2xl border-l-4 border-primary">
                     <div className="flex justify-between items-center mb-2">
                        <label className="text-xs font-bold uppercase tracking-widest text-outline">Descrição</label>
-                       <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-black">{latestEvaluation?.code || '#EV-0000'}</span>
+                       <div className="flex items-center gap-2">
+                         <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-black">{latestEvaluation?.code || '#EV-0000'}</span>
+                         {latestEvaluation && (
+                           <button
+                             onClick={() => {
+                               const evalData = latestEvaluation.data || {};
+                               setPreloadedEval({
+                                 id: latestEvaluation.id,
+                                 patientId: patient.id,
+                                 pattern: latestEvaluation.syndromeHypothesis || evalData.syndromeHypothesis || '',
+                                 principles: latestEvaluation.initialTreatment || evalData.initialTreatment || ''
+                               });
+                               setIsDietBuilderOpen(true);
+                             }}
+                             className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-bold rounded flex items-center gap-1 transition-all"
+                           >
+                             <Sparkles size={10} /> Prescrever Dietoterapia
+                           </button>
+                         )}
+                       </div>
                     </div>
                     <p className="text-on-surface font-medium leading-relaxed">{latestEvaluation?.mainComplaint || "Nenhuma avaliação."}</p>
                   </div>
@@ -678,7 +747,269 @@ export default function PatientDetailView({
             </motion.div>
           </div>
         )}
+
+        {/* DIETOTERAPIA TAB PANEL */}
+        {activeTab === 'dietoterapia' && (
+          <motion.div key="dietoterapia" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-8">
+            <div className="flex justify-between items-end">
+              <div>
+                <h3 className="text-2xl font-bold font-headline">Dietoterapia Chinesa</h3>
+                <p className="text-sm text-on-surface-variant mt-1">Orientações e prescrições alimentares do paciente</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setPreloadedEval(null);
+                  setIsDietBuilderOpen(true);
+                }} 
+                className="px-8 py-3.5 rounded-2xl bg-primary text-white font-bold shadow-xl flex items-center gap-2"
+              >
+                <Plus size={18} /> Nova Orientação
+              </button>
+            </div>
+
+            {/* Histórico de Avaliações */}
+            <div className="bg-white rounded-[2.5rem] p-10 border border-outline-variant/10 shadow-sm space-y-6">
+              <h4 className="text-sm font-bold text-outline uppercase tracking-wider flex items-center gap-2">
+                📋 Histórico de Avaliações MTC
+              </h4>
+              {evaluations.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {evaluations.map(ev => {
+                    const evalData = ev.data || {};
+                    const patternName = ev.syndromeHypothesis || evalData.syndromeHypothesis || 'Padrão não especificado';
+                    const principlesStr = ev.initialTreatment || evalData.initialTreatment || '';
+                    return (
+                      <div key={ev.id} className="p-5 bg-surface-container-low/50 rounded-2xl border border-outline-variant/10 flex justify-between items-start text-xs">
+                        <div className="space-y-1">
+                          <span className="font-bold text-on-surface text-sm block">
+                            {new Date(ev.date).toLocaleDateString('pt-BR')} {ev.code ? `- ${ev.code}` : ''}
+                          </span>
+                          <span className="text-outline font-semibold block">Padrão: {patternName}</span>
+                          {principlesStr && <span className="text-primary font-medium block">Princípios: {principlesStr}</span>}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setPreloadedEval({
+                              id: ev.id,
+                              patientId: patient.id,
+                              pattern: patternName,
+                              principles: principlesStr
+                            });
+                            setIsDietBuilderOpen(true);
+                          }}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1 shadow-sm transition-all"
+                        >
+                          <Sparkles size={12} /> Prescrever
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-outline italic">Nenhuma avaliação cadastrada para este paciente.</p>
+              )}
+            </div>
+
+            {/* Prescrições */}
+            <div className="space-y-6">
+              <h4 className="text-sm font-bold text-outline uppercase tracking-wider">
+                Orientações Registradas
+              </h4>
+
+              {prescriptions.length > 0 ? (
+                <div className="space-y-6">
+                  {prescriptions.map((presc) => (
+                    <div key={presc.id} className="p-8 bg-white rounded-[2.5rem] border border-outline-variant/10 shadow-sm space-y-6 relative overflow-hidden group">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-lg text-on-surface">{presc.title}</span>
+                            <span className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${
+                              presc.status === 'final' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {presc.status === 'final' ? 'Versão Final / Emitida' : 'Rascunho'}
+                            </span>
+                            {presc.is_template && (
+                              <span className="px-2 py-0.5 text-[8px] bg-indigo-100 text-indigo-700 font-bold rounded-md">Modelo</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-outline mt-1 font-semibold">
+                            Criado em {new Date(presc.created_at).toLocaleDateString('pt-BR')} por {presc.created_by || 'Sistema'}
+                            {presc.version_number ? ` • Versão ${presc.version_number}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleExportPrescriptionPdf(presc, 'simplified')}
+                            className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                            title="Exportar Guia Simplificado do Paciente"
+                          >
+                            <Download size={14} /> Guia Paciente
+                          </button>
+                          <button
+                            onClick={() => handleExportPrescriptionPdf(presc, 'clinical')}
+                            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                            title="Exportar Dossiê Clínico Detalhado"
+                          >
+                            <FileText size={14} /> Dossiê Clínico
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingPrescriptionId(presc.id);
+                              setAdherence(presc.adherence || 'Boa (75%)');
+                              setEvolutionText(presc.evolution_notes || '');
+                            }}
+                            className="p-2.5 bg-white border border-outline-variant/10 rounded-xl text-outline hover:text-secondary hover:border-secondary/20 hover:shadow-sm transition-all"
+                            title="Registrar Adesão / Evolução"
+                          >
+                            <Edit3 size={18} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Quadro Resumo */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs bg-surface-container-low/30 p-6 rounded-2xl border border-outline-variant/5">
+                        <div>
+                          <span className="text-[10px] text-outline font-bold block mb-1">DIAGNÓSTICO MTC</span>
+                          <span className="font-semibold">{presc.disharmony_pattern || 'Não especificado'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-outline font-bold block mb-1">PRINCÍPIOS DE TRATAMENTO</span>
+                          <span className="font-semibold">{presc.treatment_principles?.join(', ') || 'Nenhum'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-outline font-bold block mb-1">PERÍODO</span>
+                          <span className="font-semibold">{presc.period || '30 dias'}</span>
+                        </div>
+                      </div>
+
+                      {/* Alimentos Selecionados */}
+                      <div className="space-y-3">
+                        <span className="text-xs font-bold text-on-surface block">Alimentos Selecionados:</span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+                            <span className="text-[10px] font-bold text-emerald-800 block mb-2">💚 PRIORIZAR</span>
+                            <div className="space-y-1 text-xs">
+                              {presc.items.filter((i: any) => i.recommendation_level === 'prioritize').map((i: any) => (
+                                <div key={i.food_id} className="font-medium text-emerald-950">
+                                  • {i.food_name} <span className="text-[10px] text-emerald-700/70">({i.custom_prep_notes || 'Geral'})</span>
+                                </div>
+                              ))}
+                              {presc.items.filter((i: any) => i.recommendation_level === 'prioritize').length === 0 && <span className="text-[10px] text-outline italic">Nenhum</span>}
+                            </div>
+                          </div>
+
+                          <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                            <span className="text-[10px] font-bold text-amber-800 block mb-2">💛 MODERAR</span>
+                            <div className="space-y-1 text-xs">
+                              {presc.items.filter((i: any) => i.recommendation_level === 'moderate').map((i: any) => (
+                                <div key={i.food_id} className="font-medium text-amber-950">
+                                  • {i.food_name}
+                                </div>
+                              ))}
+                              {presc.items.filter((i: any) => i.recommendation_level === 'moderate').length === 0 && <span className="text-[10px] text-outline italic">Nenhum</span>}
+                            </div>
+                          </div>
+
+                          <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-100">
+                            <span className="text-[10px] font-bold text-rose-800 block mb-2">🔴 EVITAR</span>
+                            <div className="space-y-1 text-xs">
+                              {presc.items.filter((i: any) => i.recommendation_level === 'avoid').map((i: any) => (
+                                <div key={i.food_id} className="font-medium text-rose-950">
+                                  • {i.food_name}
+                                </div>
+                              ))}
+                              {presc.items.filter((i: any) => i.recommendation_level === 'avoid').length === 0 && <span className="text-[10px] text-outline italic">Nenhum</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Adesão & Evolução */}
+                      {(presc.adherence || presc.evolution_notes) && (
+                        <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant/10 text-xs text-on-surface space-y-1.5">
+                          <div>
+                            <span className="font-bold text-[10px] text-outline block">ADESÃO DO PACIENTE</span>
+                            <span className="font-semibold text-primary">{presc.adherence}</span>
+                          </div>
+                          {presc.evolution_notes && (
+                            <div>
+                              <span className="font-bold text-[10px] text-outline block">NOTAS DE EVOLUÇÃO</span>
+                              <p className="italic text-on-surface-variant font-medium mt-0.5">"{presc.evolution_notes}"</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Edição de Adesão */}
+                      {editingPrescriptionId === presc.id && (
+                        <div className="p-6 bg-surface-container-high rounded-2xl border border-outline-variant/15 space-y-4">
+                          <span className="text-xs font-bold text-on-surface block">Registrar Acompanhamento da Conduta</span>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-bold text-outline block">ADESÃO ATUAL</label>
+                              <select
+                                value={adherence}
+                                onChange={e => setAdherence(e.target.value)}
+                                className="w-full p-2.5 bg-white border border-outline-variant/15 rounded-lg text-xs font-bold"
+                              >
+                                <option value="Muito Alta (100%)">Muito Alta (100%)</option>
+                                <option value="Boa (75%)">Boa (75%)</option>
+                                <option value="Regular (50%)">Regular (50%)</option>
+                                <option value="Baixa (<25%)">Baixa (&lt;25%)</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-bold text-outline block">EVOLUÇÃO CLÍNICA / FEEDBACK</label>
+                              <input
+                                type="text"
+                                value={evolutionText}
+                                onChange={e => setEvolutionText(e.target.value)}
+                                className="w-full p-2.5 bg-white border border-outline-variant/15 rounded-lg text-xs"
+                                placeholder="Ex: Redução do inchaço, melhor disposição intestinal..."
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-end gap-2 text-xs font-bold">
+                            <button onClick={() => setEditingPrescriptionId(null)} className="px-4 py-2 border rounded-lg hover:bg-white transition-all">Cancelar</button>
+                            <button onClick={() => handleUpdateAdherence(presc.id)} className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-container shadow transition-all">Salvar Notas</button>
+                          </div>
+                        </div>
+                      )}
+
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-24 bg-white rounded-[2rem] border-2 border-dashed border-outline-variant/20 italic text-outline text-xs font-semibold">
+                  Nenhuma orientação dietoterápica emitida para este paciente.
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
+
+      {/* Diet Builder Modal */}
+      {isDietBuilderOpen && (
+        <DietBuilderModal 
+          onClose={() => setIsDietBuilderOpen(false)}
+          preloadedEval={preloadedEval}
+          onSave={async (presc) => {
+            try {
+              presc.patient_id = patient.id;
+              presc.patient_name = patient.name;
+              const saved = await dietotherapyService.savePrescription(presc);
+              setPrescriptions(prev => [saved, ...prev.filter(p => p.id !== saved.id)]);
+              setIsDietBuilderOpen(false);
+              alert('Orientação dietética criada com sucesso!');
+            } catch (e: any) {
+              alert(e.message || 'Erro ao salvar orientação.');
+            }
+          }}
+          user={user}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal 
