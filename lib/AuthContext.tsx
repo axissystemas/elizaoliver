@@ -68,6 +68,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data) {
         if (data.is_active === false) {
           console.warn('Conta inativa detectada para o usuário:', data.email);
+          logAction({
+            action: 'LOGIN',
+            entityType: 'AUTH',
+            userId: data.id,
+            details: {
+              method: 'email',
+              status: 'bloqueado_inativo',
+              success: false,
+              reason: 'Conta inativa pelo administrador',
+              user_email: data.email,
+              user_name: data.name
+            }
+          }).catch(() => {});
+
           setUser(null);
           setSession(null);
           if (supabase) {
@@ -245,11 +259,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (currentSession) {
           // Só loga e busca perfil se for um novo usuário ou evento de login real
           if (currentSession.user.id !== prevSessionId || event === 'SIGNED_IN') {
-            if (event === 'SIGNED_IN') {
-              // Log assíncrono para não travar a UI
-              logAction({ action: 'LOGIN', entityType: 'AUTH', userId: currentSession.user.id, details: { method: 'email' } }).catch(() => {});
-            }
             await fetchProfile(currentSession.user.id);
+            if (event === 'SIGNED_IN') {
+              logAction({
+                action: 'LOGIN',
+                entityType: 'AUTH',
+                userId: currentSession.user.id,
+                details: { method: 'email', status: 'sucesso', success: true }
+              }).catch(() => {});
+            }
           }
         } else {
           setUser(null);
@@ -431,7 +449,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           throw error;
         }
-        return; // Login no Supabase bem-sucedido
+
+        // ── Verifica se o perfil de usuário está inativo no banco ──
+        if (data?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, is_active, name, email')
+            .eq('id', data.user.id)
+            .maybeSingle();
+
+          if (profile && profile.is_active === false) {
+            console.warn('[Auth] Tentativa de login para usuário inativo:', cleanEmail);
+            
+            // Registra a tentativa bloqueada no Log de Auditoria
+            logAction({
+              action: 'LOGIN',
+              entityType: 'AUTH',
+              userId: data.user.id,
+              details: {
+                method: 'email',
+                status: 'bloqueado_inativo',
+                success: false,
+                reason: 'Conta inativa pelo administrador',
+                user_email: cleanEmail,
+                user_name: profile.name || cleanEmail.split('@')[0]
+              }
+            }).catch(() => {});
+
+            // Desloga imediatamente do Supabase para encerrar a sessão local
+            await supabase.auth.signOut().catch(() => {});
+            setUser(null);
+            setSession(null);
+
+            throw new Error('LOGIN_INACTIVE');
+          }
+        }
+
+        return; // Login no Supabase bem-sucedido e perfil ativo
       } catch (err: any) {
         // Se as credenciais baterem com o ADM nativo, fazemos o fallback local
         if (isNativeEmailMatch && isNativePasswordMatch) {

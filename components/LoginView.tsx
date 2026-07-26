@@ -41,7 +41,9 @@ export default function LoginView({ onLogin }: LoginViewProps) {
       await signIn(trimmedEmail, password);
     } catch (err: any) {
       console.error('Auth error:', err);
-      if (err.message === 'Invalid login credentials') {
+      if (err.message === 'LOGIN_INACTIVE' || err.message?.includes('inativada') || err.message?.includes('inativa')) {
+        setError('Login Desativado: Sua conta foi inativada pelo administrador da clínica.');
+      } else if (err.message === 'Invalid login credentials') {
         setError('E-mail ou senha incorretos.');
       } else {
         setError(err.message || 'Erro ao processar solicitação.');
@@ -132,13 +134,29 @@ export default function LoginView({ onLogin }: LoginViewProps) {
           </div>
 
           {error && (
-            <motion.p 
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="text-xs font-bold p-3 rounded-xl text-center text-rose-500 bg-rose-50"
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className={`p-4 rounded-2xl border text-xs font-medium flex items-start gap-3 text-left ${
+                error.toLowerCase().includes('desativado') || error.toLowerCase().includes('inativ')
+                  ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-sm'
+                  : 'bg-rose-50 border-rose-200 text-rose-700'
+              }`}
             >
-              {error}
-            </motion.p>
+              <AlertTriangle className={`shrink-0 mt-0.5 ${
+                error.toLowerCase().includes('desativado') || error.toLowerCase().includes('inativ')
+                  ? 'text-amber-600'
+                  : 'text-rose-600'
+              }`} size={18} />
+              <div>
+                <p className="font-bold text-sm mb-0.5">
+                  {error.toLowerCase().includes('desativado') || error.toLowerCase().includes('inativ')
+                    ? 'Login Desativado'
+                    : 'Erro de Autenticação'}
+                </p>
+                <p className="leading-relaxed">{error.replace(/^Login Desativado:\s*/i, '')}</p>
+              </div>
+            </motion.div>
           )}
 
           <button 
@@ -218,7 +236,7 @@ function ForgotPasswordButton() {
           {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.92, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.92, y: 16 }}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
@@ -271,39 +289,30 @@ function ForgotPasswordButton() {
                   <input
                     required
                     type="email"
-                    id="reset-email-input"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
-                    placeholder="seu@email.com"
-                    disabled={status === 'loading'}
-                    className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium text-sm transition-all disabled:opacity-60"
+                    placeholder="Seu e-mail cadastrado"
+                    className="w-full pl-11 pr-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none text-sm font-medium transition-all"
                   />
                 </div>
 
                 {status === 'error' && (
-                  <motion.p
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="text-xs font-semibold p-2.5 rounded-lg text-center text-rose-600 bg-rose-50"
-                  >
-                    {errorMsg}
-                  </motion.p>
+                  <p className="text-xs text-rose-500 font-semibold text-center">{errorMsg}</p>
                 )}
 
-                <div className="flex gap-3 pt-1">
+                <div className="flex gap-2 pt-2">
                   <button
                     type="button"
                     onClick={handleClose}
                     disabled={status === 'loading'}
-                    className="flex-1 py-3 rounded-xl border border-outline-variant/20 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-all disabled:opacity-50"
+                    className="flex-1 py-3 bg-surface-container-low text-on-surface-variant rounded-xl font-bold text-xs hover:bg-surface-container transition-all disabled:opacity-50"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    id="btn-reset-password-submit"
-                    disabled={status === 'loading' || !resetEmail.trim()}
-                    className="flex-1 py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                    disabled={status === 'loading'}
+                    className="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-xs shadow-md hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {status === 'loading' ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -237,7 +237,7 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
         new Date(log.created_at).toLocaleString('pt-BR'),
         log.profiles?.name || 'Sistema / Auto',
         log.profiles?.email || 'N/A',
-        getActionLabel(log.action),
+        getActionLabel(log.action, log.details),
         log.entity_type,
         log.entity_id || 'N/A',
         log.ip_address || 'N/A',
@@ -277,7 +277,7 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
     return { name, email };
   };
 
-  const getActionColor = (action: string) => {
+  const getActionColor = (action: string, details?: any) => {
     switch (action?.toUpperCase()) {
       case 'DELETE': return 'text-rose-600 bg-rose-50 border-rose-200';
       case 'CREATE':
@@ -285,14 +285,21 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
       case 'UPDATE': return 'text-blue-600 bg-blue-50 border-blue-200';
       case 'INACTIVATE': return 'text-amber-600 bg-amber-50 border-amber-200';
       case 'ACTIVATE': return 'text-teal-600 bg-teal-50 border-teal-200';
-      case 'LOGIN': return 'text-purple-600 bg-purple-50 border-purple-200';
+      case 'LOGIN': 
+        if (details?.status === 'bloqueado_inativo' || details?.success === false) {
+          return 'text-rose-700 bg-rose-50 border-rose-200 font-bold';
+        }
+        if (details?.status === 'sucesso' || details?.success === true) {
+          return 'text-emerald-700 bg-emerald-50 border-emerald-200 font-bold';
+        }
+        return 'text-purple-600 bg-purple-50 border-purple-200';
       case 'EXPORT':
       case 'IMPORT': return 'text-indigo-600 bg-indigo-50 border-indigo-200';
       default: return 'text-slate-600 bg-slate-50 border-slate-200';
     }
   };
 
-  const getActionLabel = (action: string) => {
+  const getActionLabel = (action: string, details?: any) => {
     switch (action?.toUpperCase()) {
       case 'DELETE': return 'Exclusão';
       case 'CREATE': return 'Criação';
@@ -300,7 +307,14 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
       case 'UPDATE': return 'Atualização';
       case 'INACTIVATE': return 'Inativação';
       case 'ACTIVATE': return 'Reativação';
-      case 'LOGIN': return 'Acesso / Login';
+      case 'LOGIN': 
+        if (details?.status === 'bloqueado_inativo' || details?.success === false) {
+          return 'Login Bloqueado (Inativo)';
+        }
+        if (details?.status === 'sucesso' || details?.success === true) {
+          return 'Login (Sucesso)';
+        }
+        return 'Acesso / Login';
       case 'LOGOUT': return 'Saída';
       case 'EXPORT': return 'Exportação';
       case 'IMPORT': return 'Importação';
@@ -308,6 +322,21 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
       case 'SETTINGS_CHANGE': return 'Configurações';
       default: return action;
     }
+  };
+
+  const getDetailsSummary = (details: any) => {
+    if (!details) return '-';
+    if (details.summary) return details.summary;
+    if (typeof details === 'object') {
+      if (details.status === 'bloqueado_inativo' || details.success === false) {
+        return `[FALHA / INATIVO] ${details.reason || 'Conta inativa pelo administrador'} (Método: ${details.method || 'email'})`;
+      }
+      if (details.status === 'sucesso' || details.success === true) {
+        return `[SUCESSO] Autenticação realizada via ${details.method || 'email'}`;
+      }
+      return JSON.stringify(details);
+    }
+    return String(details);
   };
 
   const filteredLogs = logs.filter(log => {
@@ -542,8 +571,8 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wider ${getActionColor(log.action)}`}>
-                          {getActionLabel(log.action)}
+                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wider ${getActionColor(log.action, log.details)}`}>
+                          {getActionLabel(log.action, log.details)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap font-bold text-on-surface-variant text-xs">
@@ -551,7 +580,7 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
                       </td>
                       <td className="px-6 py-4 text-xs text-on-surface-variant">
                         <div className="max-w-xs md:max-w-md truncate font-medium">
-                          {log.details?.summary || (typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details || '-'))}
+                          {getDetailsSummary(log.details)}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
@@ -627,8 +656,8 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
                     </div>
                   <div>
                     <p className="font-bold text-outline uppercase tracking-wider text-[10px]">Ação Executada</p>
-                    <span className={`inline-block px-2 py-0.5 mt-0.5 font-bold rounded text-[10px] uppercase border ${getActionColor(selectedLog.action)}`}>
-                      {getActionLabel(selectedLog.action)}
+                    <span className={`inline-block px-2 py-0.5 mt-0.5 font-bold rounded text-[10px] uppercase border ${getActionColor(selectedLog.action, selectedLog.details)}`}>
+                      {getActionLabel(selectedLog.action, selectedLog.details)}
                     </span>
                   </div>
                   <div>

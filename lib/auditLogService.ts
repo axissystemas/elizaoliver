@@ -120,6 +120,9 @@ export async function isAuditEnabled(): Promise<boolean> {
   return auditEnabledCache;
 }
 
+let lastLoginLogTime = 0;
+let lastLoginLogKey = '';
+
 /**
  * Registra uma ação no log de auditoria de forma assíncrona, híbrida (Nuvem + LocalStorage) e não-bloqueante.
  */
@@ -127,6 +130,17 @@ export async function logAction({ action, entityType, details = {}, entityId, us
   try {
     const isEnabled = await isAuditEnabled();
     if (!isEnabled) return;
+
+    // Evita duplicar o mesmo log de LOGIN dentro de um curto intervalo (3s)
+    if (action === 'LOGIN') {
+      const currentKey = `${userId || details?.user_email}_${details?.status || 'default'}`;
+      const now = Date.now();
+      if (now - lastLoginLogTime < 3000 && lastLoginLogKey === currentKey) {
+        return;
+      }
+      lastLoginLogTime = now;
+      lastLoginLogKey = currentKey;
+    }
 
     const client = getSupabase();
 
@@ -169,7 +183,7 @@ export async function logAction({ action, entityType, details = {}, entityId, us
           if (profile) {
             if (profile.name) userName = profile.name;
             if (profile.email) userEmail = profile.email;
-            if (!finalOrgId) finalOrgId = profile.organization_id;
+            if (!finalOrgId && profile.organization_id) finalOrgId = profile.organization_id;
           }
         }
       } catch (e) {}
