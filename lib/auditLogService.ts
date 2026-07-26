@@ -114,8 +114,6 @@ export async function logAction({ action, entityType, details = {}, entityId, us
       }
     }
 
-    if (!finalUserId) return;
-
     const safeDetails = { ...details };
     if (safeDetails.password) delete safeDetails.password;
     if (safeDetails.newPassword) delete safeDetails.newPassword;
@@ -126,7 +124,7 @@ export async function logAction({ action, entityType, details = {}, entityId, us
     const { error } = await client
       .from('audit_logs')
       .insert({
-        user_id: finalUserId,
+        user_id: finalUserId || null,
         organization_id: finalOrgId || null,
         action,
         entity_type: entityType,
