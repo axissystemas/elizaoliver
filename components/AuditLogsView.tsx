@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@/types/auth';
-import { logAction } from '@/lib/auditLogService';
+import { logAction, getLocalAuditLogs } from '@/lib/auditLogService';
 
 interface AuditLog {
   id: string;
@@ -134,77 +134,69 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
   };
 
   const fetchLogs = async () => {
-    if (!supabase) return;
     setLoading(true);
     try {
-      let rawLogs: any[] = [];
+      const localLogs = getLocalAuditLogs();
+      let cloudLogs: any[] = [];
 
-      // 1. Tenta consulta primária com join relacional
-      let query = supabase
-        .from('audit_logs')
-        .select(`
-          *,
-          profiles (
-            name,
-            email
-          )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5000);
+      if (supabase) {
+        try {
+          let query = supabase
+            .from('audit_logs')
+            .select(`
+              *,
+              profiles (
+                name,
+                email
+              )
+            `)
+            .order('created_at', { ascending: false })
+            .limit(5000);
 
-      if (filterType !== 'ALL') {
-        query = query.eq('entity_type', filterType);
-      }
+          if (filterType !== 'ALL') query = query.eq('entity_type', filterType);
+          if (actionFilter !== 'ALL') query = query.eq('action', actionFilter);
 
-      if (actionFilter !== 'ALL') {
-        query = query.eq('action', actionFilter);
-      }
+          const { data, error } = await query;
 
-      const { data, error } = await query;
+          if (error) {
+            console.warn('[AuditLogsView] Join relacional falhou. Buscando logs sem join...', error.message);
+            let directQuery = supabase
+              .from('audit_logs')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(5000);
 
-      if (error) {
-        console.warn('[AuditLogsView] Join de relacionamento falhou. Buscando logs sem join...', error.message);
-        let directQuery = supabase
-          .from('audit_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5000);
+            if (filterType !== 'ALL') directQuery = directQuery.eq('entity_type', filterType);
+            if (actionFilter !== 'ALL') directQuery = directQuery.eq('action', actionFilter);
 
-        if (filterType !== 'ALL') directQuery = directQuery.eq('entity_type', filterType);
-        if (actionFilter !== 'ALL') directQuery = directQuery.eq('action', actionFilter);
-
-        const { data: directData, error: directError } = await directQuery;
-        if (directError) {
-          console.error('[AuditLogsView] Erro ao buscar logs diretamente:', directError);
-        } else {
-          rawLogs = directData || [];
-        }
-      } else {
-        rawLogs = data || [];
-      }
-
-      // 2. Enriquece perfis em memória para garantir que o nome e e-mail apareçam
-      try {
-        const missingUserIds = Array.from(new Set(rawLogs.filter(l => !l.profiles && l.user_id).map(l => l.user_id)));
-        if (missingUserIds.length > 0) {
-          const { data: profs } = await supabase
-            .from('profiles')
-            .select('id, name, email')
-            .in('id', missingUserIds);
-
-          if (profs && profs.length > 0) {
-            const pMap = new Map(profs.map(p => [p.id, p]));
-            rawLogs = rawLogs.map(l => ({
-              ...l,
-              profiles: l.profiles || pMap.get(l.user_id) || undefined
-            }));
+            const { data: directData } = await directQuery;
+            cloudLogs = directData || [];
+          } else {
+            cloudLogs = data || [];
           }
+        } catch (e) {
+          console.warn('[AuditLogsView] Aviso ao buscar logs no Supabase:', e);
         }
-      } catch (pErr) {
-        console.warn('[AuditLogsView] Erro ao associar perfis:', pErr);
       }
 
-      setLogs(rawLogs);
+      // Mescla os logs do LocalStorage com os da Nuvem, desduplicando por ID
+      const logMap = new Map<string, AuditLog>();
+
+      for (const log of localLogs) {
+        if (filterType !== 'ALL' && log.entity_type !== filterType) continue;
+        if (actionFilter !== 'ALL' && log.action !== actionFilter) continue;
+        logMap.set(log.id, log as any);
+      }
+
+      for (const log of cloudLogs) {
+        logMap.set(log.id, log as any);
+      }
+
+      const mergedLogs = Array.from(logMap.values()).sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setLogs(mergedLogs);
     } catch (err) {
       console.error('Erro crítico ao buscar logs:', err);
     } finally {
@@ -214,6 +206,25 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
 
   useEffect(() => {
     fetchLogs();
+
+    const handleLogCreated = (e: any) => {
+      if (e.detail) {
+        const newLog = e.detail;
+        setLogs(prev => {
+          if (prev.some(l => l.id === newLog.id)) return prev;
+          return [newLog, ...prev];
+        });
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('axis_audit_log_created', handleLogCreated);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('axis_audit_log_created', handleLogCreated);
+      }
+    };
   }, [filterType, actionFilter]);
 
   const handleExportCSV = () => {

@@ -27,6 +27,22 @@ export type AuditEntityType =
   | 'CLINIC' 
   | 'SYSTEM';
 
+export interface AuditLogEntry {
+  id: string;
+  user_id?: string | null;
+  organization_id?: string | null;
+  action: AuditAction;
+  entity_type: AuditEntityType;
+  entity_id?: string | null;
+  details: any;
+  ip_address?: string;
+  created_at: string;
+  profiles?: {
+    name: string;
+    email: string;
+  };
+}
+
 interface LogActionParams {
   action: AuditAction;
   entityType: AuditEntityType;
@@ -37,9 +53,39 @@ interface LogActionParams {
   ipAddress?: string;
 }
 
+const LOCAL_AUDIT_KEY = 'axis_audit_logs';
 let auditEnabledCache: boolean | null = null;
 let lastCacheUpdate: number = 0;
-const CACHE_TTL = 60000; // 1 minuto
+const CACHE_TTL = 30000; // 30 segundos
+
+/**
+ * Lê os logs armazenados no LocalStorage
+ */
+export function getLocalAuditLogs(): AuditLogEntry[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_AUDIT_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.warn('[AuditLog] Erro ao ler LocalStorage:', e);
+    return [];
+  }
+}
+
+/**
+ * Salva um novo registro de log no LocalStorage (mantendo os 1.000 mais recentes)
+ */
+export function saveLocalAuditLog(entry: AuditLogEntry) {
+  if (typeof window === 'undefined') return;
+  try {
+    const existing = getLocalAuditLogs();
+    const filtered = existing.filter(item => item.id !== entry.id);
+    const updated = [entry, ...filtered].slice(0, 1000);
+    localStorage.setItem(LOCAL_AUDIT_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn('[AuditLog] Erro ao salvar log no LocalStorage:', e);
+  }
+}
 
 export function setBootstrapMode(enabled: boolean) {
   // Desativado bloqueio de bootstrap para garantir gravação 100% contínua
@@ -75,7 +121,7 @@ export async function isAuditEnabled(): Promise<boolean> {
 }
 
 /**
- * Registra uma ação no log de auditoria de forma assíncrona e não-bloqueante.
+ * Registra uma ação no log de auditoria de forma assíncrona, híbrida (Nuvem + LocalStorage) e não-bloqueante.
  */
 export async function logAction({ action, entityType, details = {}, entityId, userId, organizationId, ipAddress }: LogActionParams) {
   try {
@@ -83,23 +129,30 @@ export async function logAction({ action, entityType, details = {}, entityId, us
     if (!isEnabled) return;
 
     const client = getSupabase();
-    if (!client) return;
 
     let finalUserId = userId;
     let finalOrgId = organizationId;
+    let userName = 'Usuário Ativo';
+    let userEmail = 'usuario@sistema';
 
-    if (!finalUserId || !finalOrgId) {
+    if (client) {
       try {
         const { data: { user } } = await client.auth.getUser();
         if (!finalUserId) finalUserId = user?.id;
+        if (user?.email) userEmail = user.email;
 
-        if (!finalOrgId && finalUserId) {
+        if (finalUserId) {
           const { data: profile } = await client
             .from('profiles')
-            .select('organization_id')
+            .select('name, email, organization_id')
             .eq('id', finalUserId)
             .maybeSingle();
-          finalOrgId = profile?.organization_id;
+
+          if (profile) {
+            if (profile.name) userName = profile.name;
+            if (profile.email) userEmail = profile.email;
+            if (!finalOrgId) finalOrgId = profile.organization_id;
+          }
         }
       } catch (e) {}
     }
@@ -110,25 +163,66 @@ export async function logAction({ action, entityType, details = {}, entityId, us
     if (safeDetails.currentPassword) delete safeDetails.currentPassword;
 
     const clientIp = ipAddress || (typeof window !== 'undefined' ? 'Web App (Navegador)' : 'Servidor (Next.js)');
+    const logId = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : `log_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    const createdAt = new Date().toISOString();
 
-    const { error } = await client
-      .from('audit_logs')
-      .insert({
-        user_id: finalUserId || null,
-        organization_id: finalOrgId || null,
-        action,
-        entity_type: entityType,
-        entity_id: entityId || null,
-        details: safeDetails,
-        ip_address: clientIp
-      });
+    const logEntry: AuditLogEntry = {
+      id: logId,
+      user_id: finalUserId || null,
+      organization_id: finalOrgId || null,
+      action,
+      entity_type: entityType,
+      entity_id: entityId || null,
+      details: safeDetails,
+      ip_address: clientIp,
+      created_at: createdAt,
+      profiles: {
+        name: userName,
+        email: userEmail
+      }
+    };
 
-    if (error) {
-      console.error('[AuditLog] Erro ao salvar log no Supabase:', error.message);
-    } else {
-      console.log(`[AuditLog] Log registrado com sucesso: [${action}] em [${entityType}]`);
+    // 1. SALVAMENTO HÍBRIDO IMEDIATO NO LOCALSTORAGE
+    saveLocalAuditLog(logEntry);
+
+    // Dispara evento para atualização em tempo real da interface se a tela de auditoria estiver aberta
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('axis_audit_log_created', { detail: logEntry }));
     }
+
+    // 2. SINCRONIZAÇÃO EM SEGUNDO PLANO COM SUPABASE NA NUVEM
+    if (client) {
+      (async () => {
+        try {
+          const { error } = await client
+            .from('audit_logs')
+            .insert({
+              id: logId,
+              user_id: finalUserId || null,
+              organization_id: finalOrgId || null,
+              action,
+              entity_type: entityType,
+              entity_id: entityId || null,
+              details: safeDetails,
+              ip_address: clientIp,
+              created_at: createdAt
+            });
+
+          if (error) {
+            console.warn('[AuditLog] Aviso Supabase Sync:', error.message);
+          } else {
+            console.log(`[AuditLog] Log registrado com sucesso (Nuvem + Local): [${action}] -> ${entityType}`);
+          }
+        } catch (err) {
+          console.warn('[AuditLog] Erro Supabase Sync:', err);
+        }
+      })();
+    }
+
   } catch (err) {
-    console.error('[AuditLog] Erro crítico ao processar log:', err);
+    console.error('[AuditLog] Erro crítico em logAction:', err);
   }
 }
