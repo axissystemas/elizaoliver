@@ -37,7 +37,8 @@ import {
   ClipboardList,
   Copy,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, UserRole, ROLE_LABELS, ALL_PERMISSIONS, ROLE_PERMISSIONS } from '@/types/auth';
@@ -47,6 +48,7 @@ import EvaluationTemplatesModal from './EvaluationTemplatesModal';
 import { getWhatsAppSettings, saveWhatsAppSettings, WhatsAppSettings, DEFAULT_WHATSAPP_SETTINGS } from '@/lib/whatsapp';
 import { EvaluationTemplate, TemplateStep, TemplateField, DEFAULT_SYSTEM_TEMPLATES } from '@/types/evaluationTemplate';
 import { getEvaluationTemplates, saveEvaluationTemplates, deleteEvaluationTemplate } from '@/lib/evaluationTemplateService';
+import { logAction } from '@/lib/auditLogService';
 
 interface Profile {
   name: string;
@@ -130,6 +132,137 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [whatsAppSettings, setWhatsAppSettings] = useState<WhatsAppSettings>(() => getWhatsAppSettings());
   const [whatsAppSavedFeedback, setWhatsAppSavedFeedback] = useState(false);
+
+  // Estados de salvamento para Perfil e Clínica
+  const [isSavingClinic, setIsSavingClinic] = useState(false);
+  const [clinicFeedback, setClinicFeedback] = useState<{ type: 'error' | 'success', message: string } | null>(null);
+
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileFeedback, setProfileFeedback] = useState<{ type: 'error' | 'success', message: string } | null>(null);
+
+  // Carrega dados da clínica do Supabase se o usuário possuir organização vinculada
+  useEffect(() => {
+    async function loadClinicFromDatabase() {
+      if (!supabase || !user.organizationId) return;
+      try {
+        const { data } = await supabase
+          .from('organizations')
+          .select('name, metadata')
+          .eq('id', user.organizationId)
+          .single();
+
+        if (data) {
+          const meta = (data.metadata as any) || {};
+          const loadedClinic: Clinic = {
+            name: data.name || clinic.name,
+            address: meta.address || clinic.address,
+            phone: meta.phone || clinic.phone
+          };
+          setClinic(loadedClinic);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('auriculocare_clinic', JSON.stringify(loadedClinic));
+          }
+        }
+      } catch (err) {
+        console.warn('Aviso ao carregar dados da clínica do Supabase:', err);
+      }
+    }
+    loadClinicFromDatabase();
+  }, [user.organizationId]);
+
+  const handleSaveClinic = async () => {
+    setIsSavingClinic(true);
+    setClinicFeedback(null);
+
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auriculocare_clinic', JSON.stringify(clinic));
+      }
+
+      if (supabase && user.organizationId) {
+        const { error } = await supabase
+          .from('organizations')
+          .update({
+            name: clinic.name,
+            metadata: {
+              address: clinic.address,
+              phone: clinic.phone
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.organizationId);
+
+        if (error) {
+          console.warn('Aviso ao atualizar organização no Supabase:', error);
+        }
+      }
+
+      logAction({
+        action: 'UPDATE',
+        entityType: 'CLINIC',
+        entityId: user.organizationId || 'local',
+        details: clinic
+      }).catch(() => {});
+
+      setClinicFeedback({ type: 'success', message: 'Dados da clínica salvos com sucesso!' });
+
+      setTimeout(() => {
+        setIsClinicModalOpen(false);
+        setClinicFeedback(null);
+      }, 1200);
+
+    } catch (err: any) {
+      console.error('Erro ao salvar dados da clínica:', err);
+      setClinicFeedback({ type: 'error', message: err.message || 'Erro ao salvar dados.' });
+    } finally {
+      setIsSavingClinic(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    setProfileFeedback(null);
+
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auriculocare_profile', JSON.stringify(profile));
+      }
+
+      if (supabase && user.id) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            name: profile.name,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+
+        if (error) {
+          console.warn('Aviso ao atualizar perfil no Supabase:', error);
+        }
+      }
+
+      logAction({
+        action: 'UPDATE',
+        entityType: 'AUTH',
+        entityId: user.id,
+        details: profile
+      }).catch(() => {});
+
+      setProfileFeedback({ type: 'success', message: 'Perfil atualizado com sucesso!' });
+
+      setTimeout(() => {
+        setIsProfileModalOpen(false);
+        setProfileFeedback(null);
+      }, 1200);
+
+    } catch (err: any) {
+      console.error('Erro ao salvar perfil:', err);
+      setProfileFeedback({ type: 'error', message: err.message || 'Erro ao salvar perfil.' });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   // Estados para Gerenciador de Fichas de Avaliação Modulares
   const [isEvaluationTemplatesModalOpen, setIsEvaluationTemplatesModalOpen] = useState(false);
@@ -761,7 +894,7 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsProfileModalOpen(false)}
+              onClick={() => !isSavingProfile && setIsProfileModalOpen(false)}
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
             <motion.div 
@@ -772,11 +905,19 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
             >
               <div className="p-8 border-b border-outline-variant/10 flex justify-between items-center">
                 <h3 className="text-2xl font-bold font-headline text-on-surface">Editar Perfil</h3>
-                <button onClick={() => setIsProfileModalOpen(false)} className="p-2 hover:bg-surface-container-low rounded-full transition-all">
+                <button onClick={() => !isSavingProfile && setIsProfileModalOpen(false)} className="p-2 hover:bg-surface-container-low rounded-full transition-all">
                   <X size={24} />
                 </button>
               </div>
               <div className="p-8 space-y-6">
+                {profileFeedback && (
+                  <div className={`p-4 rounded-xl text-sm font-medium flex items-center gap-2 ${
+                    profileFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'
+                  }`}>
+                    {profileFeedback.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+                    {profileFeedback.message}
+                  </div>
+                )}
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-outline uppercase tracking-widest">Nome Completo</label>
                   <input 
@@ -805,10 +946,12 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                   />
                 </div>
                 <button 
-                  onClick={() => setIsProfileModalOpen(false)}
-                  className="w-full py-4 rounded-2xl bg-primary text-white font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                  onClick={handleSaveProfile}
+                  disabled={isSavingProfile}
+                  className="w-full py-4 rounded-2xl bg-primary text-white font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <Save size={20} /> Salvar Alterações
+                  {isSavingProfile ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                  {isSavingProfile ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
               </div>
             </motion.div>
@@ -824,7 +967,7 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsClinicModalOpen(false)}
+              onClick={() => !isSavingClinic && setIsClinicModalOpen(false)}
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
             <motion.div 
@@ -835,11 +978,19 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
             >
               <div className="p-8 border-b border-outline-variant/10 flex justify-between items-center">
                 <h3 className="text-2xl font-bold font-headline text-on-surface">Dados da Clínica</h3>
-                <button onClick={() => setIsClinicModalOpen(false)} className="p-2 hover:bg-surface-container-low rounded-full transition-all">
+                <button onClick={() => !isSavingClinic && setIsClinicModalOpen(false)} className="p-2 hover:bg-surface-container-low rounded-full transition-all">
                   <X size={24} />
                 </button>
               </div>
               <div className="p-8 space-y-6">
+                {clinicFeedback && (
+                  <div className={`p-4 rounded-xl text-sm font-medium flex items-center gap-2 ${
+                    clinicFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'
+                  }`}>
+                    {clinicFeedback.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+                    {clinicFeedback.message}
+                  </div>
+                )}
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-outline uppercase tracking-widest">Nome da Clínica</label>
                   <input 
@@ -868,10 +1019,12 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                   />
                 </div>
                 <button 
-                  onClick={() => setIsClinicModalOpen(false)}
-                  className="w-full py-4 rounded-2xl bg-primary text-white font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                  onClick={handleSaveClinic}
+                  disabled={isSavingClinic}
+                  className="w-full py-4 rounded-2xl bg-primary text-white font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <Save size={20} /> Salvar Dados
+                  {isSavingClinic ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                  {isSavingClinic ? 'Salvando...' : 'Salvar Dados'}
                 </button>
               </div>
             </motion.div>
