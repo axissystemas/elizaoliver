@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Upload, Check, Trash2, AlertTriangle, RefreshCw, FileText, 
-  ChevronRight, Info, History, Sparkles, Database, ShieldAlert, Download 
+  ChevronRight, Info, History, Sparkles, Database, ShieldAlert, Download, FileSpreadsheet 
 } from 'lucide-react';
 import { dietotherapyService } from '@/lib/dietotherapyService';
 import { FoodImportLine, ChineseDietFood } from '@/types/dietotherapy';
@@ -21,11 +21,28 @@ Animais;Carne de carneiro;Doce;Quente;BP, R
 Alimentos extras;Mel;Doce;Neutro;BP, P, IG`;
 
 export default function FoodImportModal({ onClose, onImportSuccess }: FoodImportModalProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<'upload' | 'review' | 'history'>('upload');
   const [inputText, setInputText] = useState('');
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [importHistory, setImportHistory] = useState<any[]>([]);
   const [importLines, setImportLines] = useState<FoodImportLine[]>([]);
   const [existingFoods, setExistingFoods] = useState<ChineseDietFood[]>([]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadedFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        setInputText(content);
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
   
   const [currentImportId, setCurrentImportId] = useState<string | null>(null);
   const [decisions, setDecisions] = useState<Record<string, { 
@@ -319,14 +336,37 @@ export default function FoodImportModal({ onClose, onImportSuccess }: FoodImport
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+                accept=".csv,.txt,text/csv" 
+                className="hidden" 
+              />
+
+              <div className="space-y-3">
                 <div className="flex justify-between items-center flex-wrap gap-2">
-                  <label className="text-xs font-bold text-outline uppercase tracking-wider">Colar Dados da Carga Inicial</label>
                   <div className="flex items-center gap-2">
+                    <label className="text-xs font-bold text-outline uppercase tracking-wider">Dados da Carga Inicial</label>
+                    {uploadedFileName && (
+                      <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        <FileSpreadsheet size={12} /> {uploadedFileName}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button 
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-sm flex items-center gap-2"
+                      title="Carregar arquivo .CSV do seu computador"
+                    >
+                      <Upload size={15} /> Carregar Arquivo CSV
+                    </button>
                     <button 
                       type="button"
                       onClick={handleDownloadTemplate}
-                      className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl font-bold transition-all shadow-sm flex items-center gap-1.5"
+                      className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold transition-all shadow-sm flex items-center gap-1.5"
                       title="Baixar planilha CSV com todos os 26 campos padronizados"
                     >
                       <Download size={14} /> Baixar Planilha Modelo (.CSV)
@@ -334,18 +374,21 @@ export default function FoodImportModal({ onClose, onImportSuccess }: FoodImport
                     <button 
                       type="button"
                       onClick={handleLoadSeed}
-                      className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-3.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5"
+                      className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-3.5 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5"
                     >
-                      <Sparkles size={14} /> Carregar Exemplo Prático
+                      <Sparkles size={14} /> Exemplo Prático
                     </button>
                   </div>
                 </div>
                 <textarea
                   value={inputText}
-                  onChange={e => setInputText(e.target.value)}
+                  onChange={e => {
+                    setInputText(e.target.value);
+                    if (uploadedFileName) setUploadedFileName(null);
+                  }}
                   rows={8}
                   className="w-full p-5 bg-surface-container-low rounded-2xl border border-outline-variant/15 text-xs font-mono outline-none focus:border-primary transition-all resize-none"
-                  placeholder="Categoria;Nome;Sabor;Natureza;Canais..."
+                  placeholder="Selecione um arquivo .CSV acima ou cole o conteúdo de dados (ex: Categoria;Nome;Sabor;Natureza;Canais)..."
                 />
               </div>
 
