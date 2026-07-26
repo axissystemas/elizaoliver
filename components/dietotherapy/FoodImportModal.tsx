@@ -3,7 +3,7 @@ import {
   X, Upload, Check, Trash2, AlertTriangle, RefreshCw, FileText, 
   ChevronRight, Info, History, Sparkles, Database, ShieldAlert, Download, FileSpreadsheet 
 } from 'lucide-react';
-import { dietotherapyService } from '@/lib/dietotherapyService';
+import { dietotherapyService, normalizeThermalNature } from '@/lib/dietotherapyService';
 import { FoodImportLine, ChineseDietFood } from '@/types/dietotherapy';
 
 interface FoodImportModalProps {
@@ -489,8 +489,23 @@ export default function FoodImportModal({ onClose, onImportSuccess }: FoodImport
                               {line.original_category}
                             </span>
                           </td>
-                          <td className="p-4 space-y-1">
-                            <div><span className="text-outline">Natureza:</span> <span className="font-bold">{line.original_thermal_nature}</span></div>
+                          <td className="p-4 space-y-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-outline">Natureza:</span> 
+                              <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md border ${
+                                (nature => {
+                                  const n = (nature || '').trim().toLowerCase();
+                                  if (n.includes('quente')) return 'bg-amber-100 text-amber-900 border-amber-300';
+                                  if (n.includes('morn')) return 'bg-orange-100 text-orange-900 border-orange-300';
+                                  if (n.includes('neutr')) return 'bg-emerald-100 text-emerald-900 border-emerald-300';
+                                  if (n.includes('fresc')) return 'bg-sky-100 text-sky-900 border-sky-300';
+                                  if (n.includes('fri')) return 'bg-indigo-100 text-indigo-900 border-indigo-300';
+                                  return 'bg-slate-100 text-slate-900 border-slate-300';
+                                })(line.original_thermal_nature)
+                              }`}>
+                                {normalizeThermalNature(line.original_thermal_nature)}
+                              </span>
+                            </div>
                             <div><span className="text-outline">Sabores:</span> <span className="font-bold">{line.original_flavors || '-'}</span></div>
                             <div><span className="text-outline">Canais:</span> <span className="font-bold text-primary">{line.original_channels || '-'}</span></div>
                             {line.inconsistency_notes && (

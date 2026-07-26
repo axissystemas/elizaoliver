@@ -427,7 +427,7 @@ export const dietotherapyService = {
           used_part: line.used_part || undefined,
           image_url: line.image_url || undefined,
           description: line.description || undefined,
-          thermal_nature: (line.original_thermal_nature || 'Neutro') as ThermalNature,
+          thermal_nature: normalizeThermalNature(line.original_thermal_nature || 'Neutro'),
           energy_direction: line.energy_direction || 'Neutro',
           flavors: splitFlavors,
           channels: expandedChannels,
