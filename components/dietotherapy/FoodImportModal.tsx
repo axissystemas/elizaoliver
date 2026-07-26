@@ -20,6 +20,22 @@ Frutas;Maçã;Doce, Azedo;Fresco;C, Baço, Pulmão
 Animais;Carne de carneiro;Doce;Quente;BP, R
 Alimentos extras;Mel;Doce;Neutro;BP, P, IG`;
 
+function fixEncodingText(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/F[\uFFFD\?]+gado/gi, 'Fígado')
+    .replace(/ba[\uFFFD\?]+o/gi, 'baço')
+    .replace(/est[\uFFFD\?]+mago/gi, 'estômago')
+    .replace(/Pulm[\uFFFD\?]+o/gi, 'Pulmão')
+    .replace(/Corac[\uFFFD\?]+o/gi, 'Coração')
+    .replace(/Cor[\uFFFD\?]+o/gi, 'Coração')
+    .replace(/Gel[\uFFFD\?]+ia/gi, 'Geleia')
+    .replace(/Ma[\uFFFD\?]+/gi, 'Maçã')
+    .replace(/Feij[\uFFFD\?]+o/gi, 'Feijão')
+    .replace(/Hortel[\uFFFD\?]+/gi, 'Hortelã')
+    .replace(/[\uFFFD]/g, '');
+}
+
 export default function FoodImportModal({ onClose, onImportSuccess }: FoodImportModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<'upload' | 'review' | 'history'>('upload');
@@ -36,12 +52,16 @@ export default function FoodImportModal({ onClose, onImportSuccess }: FoodImport
     setUploadedFileName(file.name);
     const reader = new FileReader();
     reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (content) {
-        setInputText(content);
+      const buffer = event.target?.result as ArrayBuffer;
+      if (buffer) {
+        let text = new TextDecoder('utf-8').decode(buffer);
+        if (text.includes('\uFFFD') || text.includes('')) {
+          text = new TextDecoder('iso-8859-1').decode(buffer);
+        }
+        setInputText(fixEncodingText(text));
       }
     };
-    reader.readAsText(file, 'UTF-8');
+    reader.readAsArrayBuffer(file);
   };
   
   const [currentImportId, setCurrentImportId] = useState<string | null>(null);
@@ -101,7 +121,8 @@ export default function FoodImportModal({ onClose, onImportSuccess }: FoodImport
     }
     setIsProcessing(true);
     try {
-      const rawRows = inputText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      const sanitizedText = fixEncodingText(inputText);
+      const rawRows = sanitizedText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
       const parsedLines: any[] = [];
       const delimiter = ';';
 
