@@ -99,6 +99,30 @@ export interface FoodImportLine {
   original_thermal_nature: string;
   original_flavors: string;
   original_channels: string;
+
+  // Extended fields from complete import CSV template
+  is_active?: boolean;
+  scientific_name?: string;
+  used_part?: string;
+  synonyms?: string[];
+  image_url?: string;
+  description?: string;
+  energy_direction?: string;
+  therapeutic_functions?: string[];
+  indicated_patterns?: string[];
+  caution_patterns?: string[];
+  clinical_notes?: string;
+  culinary_notes?: string;
+  preparation_modes?: string[];
+  contraindications?: string;
+  allergens?: string;
+  restrictions?: string;
+  source_title?: string;
+  author?: string;
+  edition?: string;
+  page?: string;
+  publication_year?: number;
+
   normalized_name: string;
   possible_duplicate_food_id?: string;
   review_decision: 'pending' | 'create_new' | 'link_to_existing' | 'add_synonym' | 'discard';

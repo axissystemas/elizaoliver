@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, Upload, Check, Trash2, AlertTriangle, RefreshCw, FileText, 
-  ChevronRight, Info, History, Sparkles, Database, ShieldAlert 
+  ChevronRight, Info, History, Sparkles, Database, ShieldAlert, Download 
 } from 'lucide-react';
 import { dietotherapyService } from '@/lib/dietotherapyService';
 import { FoodImportLine, ChineseDietFood } from '@/types/dietotherapy';
@@ -59,8 +59,22 @@ export default function FoodImportModal({ onClose, onImportSuccess }: FoodImport
     loadExistingFoods();
   }, []);
 
+  const handleDownloadTemplate = () => {
+    const link = document.createElement('a');
+    link.href = '/modelo_importacao_dietoterapia.csv';
+    link.download = 'modelo_importacao_dietoterapia.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleLoadSeed = () => {
     setInputText(DEFAULT_CSV_SEED);
+  };
+
+  const splitList = (str?: string) => {
+    if (!str) return [];
+    return str.split(/[,;|]/).map(s => s.trim()).filter(Boolean);
   };
 
   const handleParseCSV = async () => {
@@ -70,21 +84,92 @@ export default function FoodImportModal({ onClose, onImportSuccess }: FoodImport
     }
     setIsProcessing(true);
     try {
-      const rows = inputText.split('\n');
+      const rawRows = inputText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
       const parsedLines: any[] = [];
-      
-      // Parse header to find column indexes
       const delimiter = ';';
+
+      let headerCols: string[] = [];
+      let isFullHeader = false;
+
+      let firstRowStr = rawRows[0] || '';
+      if (firstRowStr.charCodeAt(0) === 0xFEFF) {
+        firstRowStr = firstRowStr.slice(1);
+      }
+
+      const firstRowCols = firstRowStr.split(delimiter).map(c => c.trim().toLowerCase());
+      if (firstRowCols.includes('categoria') || firstRowCols.includes('nome')) {
+        headerCols = firstRowCols;
+        isFullHeader = firstRowCols.includes('direcao_energetica') || firstRowCols.includes('nome_cientifico') || firstRowCols.length > 5;
+      }
+
+      const getColIdx = (colName: string) => headerCols.indexOf(colName.toLowerCase());
+
       let rowNum = 1;
-      
-      for (const row of rows) {
-        if (rowNum === 1 || !row.trim()) {
-          rowNum++;
-          continue; // Skip header
+      for (let i = 0; i < rawRows.length; i++) {
+        let rowStr = rawRows[i];
+        if (i === 0 && rowStr.charCodeAt(0) === 0xFEFF) {
+          rowStr = rowStr.slice(1);
         }
-        
-        const cols = row.split(delimiter).map(c => c.trim());
-        if (cols.length >= 2) {
+
+        if (!rowStr.trim()) {
+          rowNum++;
+          continue;
+        }
+
+        if (i === 0 && headerCols.length > 0) {
+          rowNum++;
+          continue; // Skip header row
+        }
+
+        const cols = rowStr.split(delimiter).map(c => c.trim());
+        if (cols.length < 2) {
+          rowNum++;
+          continue;
+        }
+
+        if (isFullHeader) {
+          const getVal = (name: string) => {
+            const idx = getColIdx(name);
+            return idx !== -1 && cols[idx] !== undefined ? cols[idx] : '';
+          };
+
+          const nameVal = getVal('nome') || cols[1] || '';
+          if (!nameVal) {
+            rowNum++;
+            continue;
+          }
+
+          parsedLines.push({
+            row_number: rowNum,
+            original_name: nameVal,
+            original_category: getVal('categoria') || cols[0] || 'Outros',
+            original_thermal_nature: getVal('natureza_termica') || cols[8] || 'Neutro',
+            original_flavors: getVal('sabores') || cols[10] || '',
+            original_channels: getVal('canais_meridianos') || cols[11] || '',
+
+            is_active: getVal('ativo').toLowerCase() !== 'não' && getVal('ativo').toLowerCase() !== 'nao',
+            scientific_name: getVal('nome_cientifico'),
+            used_part: getVal('parte_utilizada'),
+            synonyms: splitList(getVal('sinonimos')),
+            image_url: getVal('imagem_url'),
+            description: getVal('descricao'),
+            energy_direction: getVal('direcao_energetica') || 'Neutro',
+            therapeutic_functions: splitList(getVal('funcoes_terapeuticas')),
+            indicated_patterns: splitList(getVal('padroes_indicados')),
+            caution_patterns: splitList(getVal('padroes_cautela_contraindicacao')),
+            clinical_notes: getVal('observacoes_clinicas'),
+            culinary_notes: getVal('observacoes_culinarias'),
+            preparation_modes: splitList(getVal('modos_preparo')),
+            contraindications: getVal('contraindicacoes_gerais'),
+            allergens: getVal('alergenicos'),
+            restrictions: getVal('restricoes_alimentares'),
+            source_title: getVal('titulo_obra_referencia'),
+            author: getVal('autor_referencia'),
+            edition: getVal('edicao_referencia'),
+            page: getVal('pagina_referencia'),
+            publication_year: getVal('ano_publicacao_referencia') ? Number(getVal('ano_publicacao_referencia')) : undefined
+          });
+        } else {
           parsedLines.push({
             row_number: rowNum,
             original_name: cols[1] || '',
@@ -111,11 +196,9 @@ export default function FoodImportModal({ onClose, onImportSuccess }: FoodImport
         errors: res.errorCount
       });
       
-      // Load processed lines
       const lines = await dietotherapyService.getImportLines(res.importId);
       setImportLines(lines);
       
-      // Set default decisions
       const initialDecisions: Record<string, any> = {};
       lines.forEach(line => {
         initialDecisions[line.id] = {
@@ -227,22 +310,35 @@ export default function FoodImportModal({ onClose, onImportSuccess }: FoodImport
             <div className="space-y-6">
               <div className="bg-emerald-50/50 border border-emerald-100 p-6 rounded-2xl flex items-start gap-4 text-emerald-800 text-xs">
                 <Info className="text-emerald-600 shrink-0 mt-0.5" size={18} />
-                <div className="space-y-1 leading-relaxed">
+                <div className="space-y-1.5 leading-relaxed">
                   <p className="font-bold text-sm">Como funciona a importação de alimentos?</p>
-                  <p>Cole abaixo os registros da sua tabela ou planilha de alimentos separando as colunas por ponto e vírgula (;) no padrão: <strong>Categoria;Nome;Sabor;Natureza;Canais</strong>.</p>
-                  <p>O sistema irá higienizar o texto original, separar os sabores compostos e expandir as abreviações dos canais (ex: <em>BP</em> vira <em>Baço</em>) antes de solicitar sua aprovação final.</p>
+                  <p>
+                    Você pode importar alimentos colando dados no formato simplificado (<strong>Categoria;Nome;Sabor;Natureza;Canais</strong>) ou baixando nossa <strong>Planilha Modelo Completa (.CSV)</strong> com os 26 campos (Identificação, MTC, Cuidados, Modos de Preparo e Bibliografia).
+                  </p>
+                  <p>O sistema higieniza automaticamente os textos, separa listas e expande abreviações de meridianos antes da aprovação final.</p>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center flex-wrap gap-2">
                   <label className="text-xs font-bold text-outline uppercase tracking-wider">Colar Dados da Carga Inicial</label>
-                  <button 
-                    onClick={handleLoadSeed}
-                    className="text-[10px] bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg font-black transition-all"
-                  >
-                    🌱 Carregar Exemplo Prático
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      type="button"
+                      onClick={handleDownloadTemplate}
+                      className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl font-bold transition-all shadow-sm flex items-center gap-1.5"
+                      title="Baixar planilha CSV com todos os 26 campos padronizados"
+                    >
+                      <Download size={14} /> Baixar Planilha Modelo (.CSV)
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={handleLoadSeed}
+                      className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-3.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5"
+                    >
+                      <Sparkles size={14} /> Carregar Exemplo Prático
+                    </button>
+                  </div>
                 </div>
                 <textarea
                   value={inputText}
