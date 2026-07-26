@@ -394,7 +394,7 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
   }
 
   return (
-    <div className="p-10 space-y-8 relative max-w-7xl mx-auto">
+    <div className="w-full h-full p-6 md:p-8 space-y-6 relative flex flex-col flex-1 min-h-0">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
@@ -457,7 +457,7 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
       </div>
 
       {/* Control Panel: Search & Filters */}
-      <div className="bg-white rounded-3xl p-6 shadow-xl shadow-primary/5 border border-outline-variant/10 space-y-6">
+      <div className="bg-white rounded-3xl p-6 shadow-xl shadow-primary/5 border border-outline-variant/10 space-y-6 flex-1 flex flex-col min-h-0 w-full">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search Input */}
           <div className="relative md:col-span-2">
@@ -590,17 +590,17 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
           </div>
         </div>
 
-        {/* Logs Table with internal scrollbar and max height */}
-        <div className="overflow-auto max-h-[385px] rounded-2xl border border-outline-variant/20 custom-scrollbar shadow-inner relative">
-          <table className="w-full text-left border-collapse">
+        {/* Logs Table with dynamic auto-adjusting height and width */}
+        <div className="overflow-auto flex-1 min-h-[350px] max-h-[calc(100vh-270px)] rounded-2xl border border-outline-variant/20 custom-scrollbar shadow-inner relative w-full">
+          <table className="w-full text-left border-collapse min-w-full">
             <thead className="sticky top-0 z-10 bg-surface-container-low border-b border-outline-variant/20 shadow-sm">
               <tr className="text-outline text-[11px] uppercase tracking-widest font-bold">
-                <th className="px-6 py-4 bg-surface-container-low">Data / Hora</th>
-                <th className="px-6 py-4 bg-surface-container-low">Usuário</th>
-                <th className="px-6 py-4 bg-surface-container-low">Ação</th>
-                <th className="px-6 py-4 bg-surface-container-low">Módulo</th>
-                <th className="px-6 py-4 bg-surface-container-low">Detalhes</th>
-                <th className="px-6 py-4 text-right bg-surface-container-low">Inspeção</th>
+                <th className="px-6 py-4 bg-surface-container-low w-44 whitespace-nowrap">Data / Hora</th>
+                <th className="px-6 py-4 bg-surface-container-low w-64 whitespace-nowrap">Usuário</th>
+                <th className="px-6 py-4 bg-surface-container-low w-52 whitespace-nowrap">Ação</th>
+                <th className="px-6 py-4 bg-surface-container-low w-28 whitespace-nowrap">Módulo</th>
+                <th className="px-6 py-4 bg-surface-container-low w-auto min-w-[320px]">Detalhes</th>
+                <th className="px-6 py-4 text-right bg-surface-container-low w-28 whitespace-nowrap">Inspeção</th>
               </tr>
             </thead>
             <tbody>
