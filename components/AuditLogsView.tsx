@@ -1,18 +1,32 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Search, Shield, RefreshCw, Trash2, Calendar, User as UserIcon, Download } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Search, 
+  Shield, 
+  RefreshCw, 
+  Calendar, 
+  User as UserIcon, 
+  Download, 
+  Eye, 
+  X, 
+  Filter, 
+  Lock,
+  FileCode
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@/types/auth';
 
 interface AuditLog {
   id: string;
   user_id: string;
+  organization_id?: string;
   action: string;
   entity_type: string;
   entity_id: string;
   details: any;
+  ip_address?: string;
   created_at: string;
   profiles?: {
     name: string;
@@ -24,11 +38,42 @@ interface AuditLogsViewProps {
   user?: User | null;
 }
 
+const MODULE_OPTIONS = [
+  { id: 'ALL', label: 'Todos os Módulos' },
+  { id: 'AUTH', label: 'Usuários / Autenticação' },
+  { id: 'PATIENTS', label: 'Pacientes' },
+  { id: 'FINANCIAL', label: 'Financeiro' },
+  { id: 'APPOINTMENTS', label: 'Agenda / Consultas' },
+  { id: 'EVALUATIONS', label: 'Avaliações' },
+  { id: 'INVENTORY', label: 'Estoque' },
+  { id: 'BILLING', label: 'Faturamento' },
+  { id: 'DIETOTHERAPY', label: 'Dietoterapia MTC' },
+  { id: 'CLINIC', label: 'Dados da Clínica' },
+  { id: 'SYSTEM', label: 'Configurações do Sistema' }
+];
+
+const ACTION_OPTIONS = [
+  { id: 'ALL', label: 'Todas as Ações' },
+  { id: 'CREATE', label: 'Criação' },
+  { id: 'INSERT', label: 'Inserção (DB)' },
+  { id: 'UPDATE', label: 'Atualização' },
+  { id: 'DELETE', label: 'Exclusão' },
+  { id: 'INACTIVATE', label: 'Inativação' },
+  { id: 'ACTIVATE', label: 'Reativação' },
+  { id: 'LOGIN', label: 'Acesso / Login' },
+  { id: 'LOGOUT', label: 'Saída / Logout' },
+  { id: 'EXPORT', label: 'Exportação' },
+  { id: 'IMPORT', label: 'Importação' }
+];
+
 export default function AuditLogsView({ user }: AuditLogsViewProps) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('ALL');
+  const [actionFilter, setActionFilter] = useState('ALL');
+  const [periodFilter, setPeriodFilter] = useState<'all' | 'today' | '7d' | '30d'>('all');
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
   const fetchLogs = async () => {
     if (!supabase) return;
@@ -50,9 +95,13 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
         query = query.eq('entity_type', filterType);
       }
 
+      if (actionFilter !== 'ALL') {
+        query = query.eq('action', actionFilter);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
-      setLogs(data as any);
+      setLogs((data as any) || []);
     } catch (err) {
       console.error('Erro ao buscar logs:', err);
     } finally {
@@ -62,35 +111,22 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
 
   useEffect(() => {
     fetchLogs();
-  }, [filterType]);
-
-  const handleClearLogs = async () => {
-    if (!supabase || user?.role !== 'ADMIN') return;
-    const confirm = window.confirm('Tem certeza que deseja apagar permanentemente todos os logs? Esta ação não pode ser desfeita.');
-    if (!confirm) return;
-
-    try {
-      const { error } = await supabase.from('audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      if (error) throw error;
-      fetchLogs();
-    } catch (err) {
-      console.error('Erro ao limpar logs:', err);
-      alert('Erro ao limpar logs.');
-    }
-  };
+  }, [filterType, actionFilter]);
 
   const handleExportCSV = () => {
-    const headers = ['ID', 'Data/Hora', 'Usuario', 'Email', 'Acao', 'Modulo', 'Detalhes'];
+    const headers = ['ID', 'Data/Hora', 'Usuario', 'Email', 'Acao', 'Modulo', 'ID Entidade', 'IP / Origem', 'Detalhes'];
     
     const csvRows = filteredLogs.map(log => {
       const detailsStr = typeof log.details === 'object' ? JSON.stringify(log.details).replace(/"/g, '""') : String(log.details || '').replace(/"/g, '""');
       return [
         log.id,
         new Date(log.created_at).toLocaleString('pt-BR'),
-        log.profiles?.name || 'Sistema / Anon',
+        log.profiles?.name || 'Sistema / Auto',
         log.profiles?.email || 'N/A',
         getActionLabel(log.action),
         log.entity_type,
+        log.entity_id || 'N/A',
+        log.ip_address || 'N/A',
         detailsStr
       ].map(value => `"${value}"`).join(',');
     });
@@ -108,21 +144,34 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
   };
 
   const getActionColor = (action: string) => {
-    switch (action) {
-      case 'DELETE': return 'text-rose-600 bg-rose-50';
-      case 'CREATE': return 'text-emerald-600 bg-emerald-50';
-      case 'UPDATE': return 'text-blue-600 bg-blue-50';
-      case 'LOGIN': return 'text-purple-600 bg-purple-50';
-      default: return 'text-slate-600 bg-slate-50';
+    switch (action?.toUpperCase()) {
+      case 'DELETE': return 'text-rose-600 bg-rose-50 border-rose-200';
+      case 'CREATE':
+      case 'INSERT': return 'text-emerald-600 bg-emerald-50 border-emerald-200';
+      case 'UPDATE': return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'INACTIVATE': return 'text-amber-600 bg-amber-50 border-amber-200';
+      case 'ACTIVATE': return 'text-teal-600 bg-teal-50 border-teal-200';
+      case 'LOGIN': return 'text-purple-600 bg-purple-50 border-purple-200';
+      case 'EXPORT':
+      case 'IMPORT': return 'text-indigo-600 bg-indigo-50 border-indigo-200';
+      default: return 'text-slate-600 bg-slate-50 border-slate-200';
     }
   };
 
   const getActionLabel = (action: string) => {
-    switch (action) {
+    switch (action?.toUpperCase()) {
       case 'DELETE': return 'Exclusão';
       case 'CREATE': return 'Criação';
+      case 'INSERT': return 'Inserção (DB)';
       case 'UPDATE': return 'Atualização';
-      case 'LOGIN': return 'Acesso';
+      case 'INACTIVATE': return 'Inativação';
+      case 'ACTIVATE': return 'Reativação';
+      case 'LOGIN': return 'Acesso / Login';
+      case 'LOGOUT': return 'Saída';
+      case 'EXPORT': return 'Exportação';
+      case 'IMPORT': return 'Importação';
+      case 'PERMISSION_CHANGE': return 'Permissões';
+      case 'SETTINGS_CHANGE': return 'Configurações';
       default: return action;
     }
   };
@@ -130,9 +179,33 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
   const filteredLogs = logs.filter(log => {
     const searchStr = searchTerm.toLowerCase();
     const userName = log.profiles?.name?.toLowerCase() || '';
-    const detailsStr = JSON.stringify(log.details).toLowerCase();
+    const userEmail = log.profiles?.email?.toLowerCase() || '';
+    const detailsStr = JSON.stringify(log.details || '').toLowerCase();
+    const entityStr = (log.entity_id || '').toLowerCase();
+
+    const matchesSearch = userName.includes(searchStr) || 
+                          userEmail.includes(searchStr) || 
+                          detailsStr.includes(searchStr) || 
+                          entityStr.includes(searchStr);
     
-    return userName.includes(searchStr) || detailsStr.includes(searchStr);
+    if (!matchesSearch) return false;
+
+    if (periodFilter !== 'all') {
+      const logDate = new Date(log.created_at);
+      const now = new Date();
+      if (periodFilter === 'today') {
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        if (logDate < todayStart) return false;
+      } else if (periodFilter === '7d') {
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        if (logDate < sevenDaysAgo) return false;
+      } else if (periodFilter === '30d') {
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        if (logDate < thirtyDaysAgo) return false;
+      }
+    }
+
+    return true;
   });
 
   if (user?.role !== 'ADMIN') {
@@ -149,126 +222,279 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
 
   return (
     <div className="p-10 space-y-8 relative max-w-7xl mx-auto">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h2 className="text-4xl font-bold font-headline text-on-surface">Auditoria de Sistema</h2>
-          <p className="text-on-surface-variant text-lg mt-2 font-medium">Histórico de ações críticas e rastreamento de dados.</p>
+          <div className="flex items-center gap-3">
+            <h2 className="text-4xl font-bold font-headline text-on-surface">Auditoria de Sistema</h2>
+            <span className="px-3 py-1 bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold rounded-full flex items-center gap-1.5">
+              <Lock size={12} /> Append-Only Imutável
+            </span>
+          </div>
+          <p className="text-on-surface-variant text-lg mt-2 font-medium">Histórico contínuo de ações clínicas, financeiras e administrativas.</p>
         </div>
 
         <div className="flex items-center gap-3">
           <button 
             onClick={fetchLogs}
-            className="px-6 py-3 rounded-2xl bg-surface-container-low text-on-surface font-bold hover:bg-surface-container transition-colors flex items-center gap-3"
+            className="px-5 py-3 rounded-2xl bg-surface-container-low text-on-surface font-bold hover:bg-surface-container transition-colors flex items-center gap-2"
           >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} /> Atualizar
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> Atualizar
           </button>
           
           <button 
             onClick={handleExportCSV}
             disabled={filteredLogs.length === 0}
-            className="px-6 py-3 rounded-2xl bg-indigo-50 text-indigo-600 font-bold hover:bg-indigo-100 transition-colors flex items-center gap-3 border border-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-3 rounded-2xl bg-indigo-50 text-indigo-600 font-bold hover:bg-indigo-100 transition-colors flex items-center gap-2 border border-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download size={20} /> Exportar CSV
-          </button>
-          
-          <button 
-            onClick={handleClearLogs}
-            className="px-6 py-3 rounded-2xl bg-rose-50 text-rose-600 font-bold hover:bg-rose-100 transition-colors flex items-center gap-3 border border-rose-100"
-          >
-            <Trash2 size={20} /> Limpar Todos
+            <Download size={18} /> Exportar CSV
           </button>
         </div>
       </div>
 
+      {/* Control Panel: Search & Filters */}
       <div className="bg-white rounded-3xl p-6 shadow-xl shadow-primary/5 border border-outline-variant/10 space-y-6">
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-outline" size={20} />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Search Input */}
+          <div className="relative md:col-span-2">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-outline" size={18} />
             <input 
               type="text" 
-              placeholder="Buscar por usuário ou detalhes..." 
+              placeholder="Buscar por usuário, e-mail ou detalhes..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-surface-container-low rounded-xl border-none outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
+              className="w-full pl-11 pr-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium text-sm"
             />
           </div>
 
-          <div className="flex bg-surface-container-low p-1 rounded-xl w-full md:w-auto overflow-x-auto">
-            {['ALL', 'FINANCIAL', 'PATIENTS', 'INVENTORY', 'AUTH'].map(type => (
-              <button
-                key={type}
-                onClick={() => setFilterType(type)}
-                className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-all ${filterType === type ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
-              >
-                {type === 'ALL' ? 'Todos' : type}
-              </button>
-            ))}
+          {/* Module Filter Select */}
+          <div>
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none focus:ring-2 focus:ring-primary/20 font-bold text-xs uppercase tracking-wider text-on-surface cursor-pointer"
+            >
+              {MODULE_OPTIONS.map(mod => (
+                <option key={mod.id} value={mod.id}>{mod.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Action Filter Select */}
+          <div>
+            <select
+              value={actionFilter}
+              onChange={(e) => setActionFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none focus:ring-2 focus:ring-primary/20 font-bold text-xs uppercase tracking-wider text-on-surface cursor-pointer"
+            >
+              {ACTION_OPTIONS.map(act => (
+                <option key={act.id} value={act.id}>{act.label}</option>
+              ))}
+            </select>
           </div>
         </div>
 
+        {/* Period Filter Tabs */}
+        <div className="flex items-center justify-between border-t border-outline-variant/10 pt-4 flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-outline" />
+            <span className="text-xs font-bold uppercase tracking-wider text-outline">Período:</span>
+            <div className="flex gap-1 bg-surface-container-low p-1 rounded-xl">
+              {[
+                { id: 'all', label: 'Todos' },
+                { id: 'today', label: 'Hoje' },
+                { id: '7d', label: 'Últimos 7 dias' },
+                { id: '30d', label: 'Últimos 30 dias' }
+              ].map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setPeriodFilter(p.id as any)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    periodFilter === p.id 
+                      ? 'bg-white text-primary shadow-sm' 
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-xs font-bold text-outline uppercase tracking-wider">
+            Exibindo <span className="text-primary">{filteredLogs.length}</span> registros de auditoria
+          </p>
+        </div>
+
+        {/* Logs Table */}
         <div className="overflow-x-auto rounded-2xl border border-outline-variant/20">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-surface-container-low border-b border-outline-variant/20 text-outline text-xs uppercase tracking-widest font-bold">
-                <th className="px-6 py-4">Data/Hora</th>
+              <tr className="bg-surface-container-low border-b border-outline-variant/20 text-outline text-[11px] uppercase tracking-widest font-bold">
+                <th className="px-6 py-4">Data / Hora</th>
                 <th className="px-6 py-4">Usuário</th>
                 <th className="px-6 py-4">Ação</th>
                 <th className="px-6 py-4">Módulo</th>
                 <th className="px-6 py-4">Detalhes</th>
+                <th className="px-6 py-4 text-right">Inspeção</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-outline font-medium">
-                    <RefreshCw className="w-8 h-8 mx-auto animate-spin mb-2" />
-                    Carregando logs...
+                  <td colSpan={6} className="py-12 text-center text-outline font-medium">
+                    <RefreshCw className="w-8 h-8 mx-auto animate-spin mb-2 text-primary" />
+                    Carregando histórico de auditoria...
                   </td>
                 </tr>
               ) : filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-outline font-medium">Nenhum log encontrado.</td>
+                  <td colSpan={6} className="py-12 text-center text-outline font-medium">
+                    Nenhum evento encontrado para os filtros aplicados.
+                  </td>
                 </tr>
               ) : (
                 filteredLogs.map(log => (
-                  <motion.tr 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                  <tr 
                     key={log.id} 
                     className="border-b border-outline-variant/5 hover:bg-surface-container-low/50 transition-colors"
                   >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-on-surface font-medium text-sm">
-                        <Calendar size={16} className="text-outline" />
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2 text-on-surface font-medium text-xs">
+                        <Calendar size={14} className="text-outline shrink-0" />
                         {new Date(log.created_at).toLocaleString('pt-BR')}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 font-bold text-on-surface">
-                        <UserIcon size={16} className="text-primary" />
-                        {log.profiles?.name || 'Sistema / Anon'}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2 font-bold text-on-surface text-sm">
+                        <UserIcon size={14} className="text-primary shrink-0" />
+                        <span>{log.profiles?.name || 'Sistema / Auto'}</span>
                       </div>
+                      {log.profiles?.email && (
+                        <p className="text-[11px] text-on-surface-variant font-medium ml-5">{log.profiles.email}</p>
+                      )}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${getActionColor(log.action)}`}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wider ${getActionColor(log.action)}`}>
                         {getActionLabel(log.action)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-bold text-on-surface-variant text-sm">
+                    <td className="px-6 py-4 whitespace-nowrap font-bold text-on-surface-variant text-xs">
                       {log.entity_type}
                     </td>
-                    <td className="px-6 py-4 text-sm text-on-surface-variant">
-                      <div className="max-w-xs md:max-w-md break-words font-medium">
-                        {log.details?.summary || JSON.stringify(log.details)}
+                    <td className="px-6 py-4 text-xs text-on-surface-variant">
+                      <div className="max-w-xs md:max-w-md truncate font-medium">
+                        {log.details?.summary || (typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details || '-'))}
                       </div>
                     </td>
-                  </motion.tr>
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => setSelectedLog(log)}
+                        className="px-3 py-1.5 bg-surface-container text-primary font-bold text-xs rounded-xl hover:bg-primary/10 transition-colors inline-flex items-center gap-1.5"
+                      >
+                        <Eye size={14} /> Detalhes
+                      </button>
+                    </td>
+                  </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Payload JSON Inspector Modal */}
+      <AnimatePresence>
+        {selectedLog && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedLog(null)}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              {/* Modal Header */}
+              <div className="p-6 md:p-8 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-lowest">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
+                    <FileCode size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold font-headline text-on-surface">Inspeção Detalhada do Evento</h3>
+                    <p className="text-xs text-on-surface-variant font-medium">ID: {selectedLog.id}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedLog(null)} 
+                  className="p-2 hover:bg-surface-container-low rounded-full transition-all text-outline"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 md:p-8 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
+                {/* Meta info grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-surface-container-low p-4 rounded-2xl border border-outline-variant/10 text-xs">
+                  <div>
+                    <p className="font-bold text-outline uppercase tracking-wider text-[10px]">Data / Hora</p>
+                    <p className="font-bold text-on-surface mt-0.5">{new Date(selectedLog.created_at).toLocaleString('pt-BR')}</p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-outline uppercase tracking-wider text-[10px]">Usuário Responsável</p>
+                    <p className="font-bold text-on-surface mt-0.5">{selectedLog.profiles?.name || 'Sistema / Auto'}</p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-outline uppercase tracking-wider text-[10px]">E-mail</p>
+                    <p className="font-bold text-on-surface mt-0.5">{selectedLog.profiles?.email || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-outline uppercase tracking-wider text-[10px]">Ação Executada</p>
+                    <span className={`inline-block px-2 py-0.5 mt-0.5 font-bold rounded text-[10px] uppercase border ${getActionColor(selectedLog.action)}`}>
+                      {getActionLabel(selectedLog.action)}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-bold text-outline uppercase tracking-wider text-[10px]">Módulo Afetado</p>
+                    <p className="font-bold text-on-surface mt-0.5">{selectedLog.entity_type}</p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-outline uppercase tracking-wider text-[10px]">Origem / IP</p>
+                    <p className="font-bold text-on-surface mt-0.5">{selectedLog.ip_address || 'Navegador'}</p>
+                  </div>
+                </div>
+
+                {/* JSON Payload Viewer */}
+                <div>
+                  <h4 className="text-xs font-bold text-outline uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <span>Payload de Dados (JSON / Diff)</span>
+                  </h4>
+                  <pre className="p-4 bg-slate-900 text-slate-100 rounded-2xl text-xs font-mono overflow-x-auto leading-relaxed border border-slate-800 shadow-inner">
+                    {JSON.stringify(selectedLog.details, null, 2)}
+                  </pre>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-6 border-t border-outline-variant/10 bg-surface-container-lowest flex justify-end">
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  className="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:scale-[1.02] active:scale-95 transition-all text-sm shadow-md"
+                >
+                  Fechar Inspeção
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
