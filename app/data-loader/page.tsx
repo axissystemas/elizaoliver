@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { normalizeThermalNature } from "@/lib/dietotherapyService";
 
 type Category = "chinese_diet_foods" | "procedures" | "medical_supplies" | "inventory" | "patients";
 
@@ -359,7 +360,7 @@ export default function DataLoaderPage() {
             name,
             normalized_name: name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(),
             category: row.category?.toString() || "Outros",
-            thermal_nature: row.thermal_nature?.toString() || "Neutro",
+            thermal_nature: normalizeThermalNature(row.thermal_nature?.toString()),
             energy_direction: row.energy_direction?.toString() || "Neutro",
             flavors: parseArr(row.flavors),
             channels: parseArr(row.channels),

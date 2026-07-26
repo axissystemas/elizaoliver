@@ -10,14 +10,13 @@ interface FoodDetailModalProps {
 export default function FoodDetailModal({ food, onClose }: FoodDetailModalProps) {
   // Cores de fundo baseadas na natureza térmica
   const getThermalBg = (nature: string) => {
-    switch (nature) {
-      case 'Quente': return 'bg-amber-100 text-amber-900 border-amber-300';
-      case 'Morno': return 'bg-orange-100 text-orange-900 border-orange-300';
-      case 'Neutro': return 'bg-emerald-100 text-emerald-900 border-emerald-300';
-      case 'Fresco': return 'bg-sky-100 text-sky-900 border-sky-300';
-      case 'Frio': return 'bg-indigo-100 text-indigo-900 border-indigo-300';
-      default: return 'bg-slate-100 text-slate-900 border-slate-300';
-    }
+    const n = (nature || '').trim().toLowerCase();
+    if (n.includes('quente')) return 'bg-amber-100 text-amber-900 border-amber-300';
+    if (n.includes('morn')) return 'bg-orange-100 text-orange-900 border-orange-300';
+    if (n.includes('neutr')) return 'bg-emerald-100 text-emerald-900 border-emerald-300';
+    if (n.includes('fresc')) return 'bg-sky-100 text-sky-900 border-sky-300';
+    if (n.includes('fri')) return 'bg-indigo-100 text-indigo-900 border-indigo-300';
+    return 'bg-slate-100 text-slate-900 border-slate-300';
   };
 
   return (

@@ -150,14 +150,13 @@ export default function DietotherapyView({ user }: DietotherapyViewProps) {
   const paginatedFoods = foods.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const getThermalBadgeClass = (nature: string) => {
-    switch (nature) {
-      case 'Quente': return 'bg-amber-100 text-amber-900 border-amber-200';
-      case 'Morno': return 'bg-orange-100 text-orange-900 border-orange-200';
-      case 'Neutro': return 'bg-emerald-100 text-emerald-900 border-emerald-200';
-      case 'Fresco': return 'bg-sky-100 text-sky-900 border-sky-200';
-      case 'Frio': return 'bg-indigo-100 text-indigo-900 border-indigo-200';
-      default: return 'bg-slate-100 text-slate-900';
-    }
+    const n = (nature || '').trim().toLowerCase();
+    if (n.includes('quente')) return 'bg-amber-100 text-amber-900 border-amber-200';
+    if (n.includes('morn')) return 'bg-orange-100 text-orange-900 border-orange-200';
+    if (n.includes('neutr')) return 'bg-emerald-100 text-emerald-900 border-emerald-200';
+    if (n.includes('fresc')) return 'bg-sky-100 text-sky-900 border-sky-200';
+    if (n.includes('fri')) return 'bg-indigo-100 text-indigo-900 border-indigo-200';
+    return 'bg-slate-100 text-slate-900 border-slate-200';
   };
 
   const getDirectionBadge = (direction?: string) => {

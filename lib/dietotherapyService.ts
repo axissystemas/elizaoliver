@@ -63,18 +63,46 @@ const LOCAL_STORAGE_KEY = 'axis_gc_dietotherapy_foods';
 const LOCAL_STORAGE_IMPORTS_KEY = 'axis_gc_dietotherapy_imports';
 const LOCAL_STORAGE_PRESCRIPTIONS_KEY = 'axis_gc_dietotherapy_prescriptions';
 
+export function normalizeThermalNature(raw: string): ThermalNature {
+  if (!raw) return 'Neutro';
+  const norm = raw.toString().trim().toLowerCase();
+  if (norm.includes('quente')) return 'Quente';
+  if (norm.includes('morn')) return 'Morno';
+  if (norm.includes('fresc')) return 'Fresco';
+  if (norm.includes('fri')) return 'Frio';
+  if (norm.includes('neutr')) return 'Neutro';
+  return 'Neutro';
+}
+
 function getLocalFoods(): ChineseDietFood[] {
   if (typeof window === 'undefined') return INITIAL_MOCK_FOODS;
   const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-  if (!stored) {
+  let foods = INITIAL_MOCK_FOODS;
+  if (stored) {
+    try {
+      foods = JSON.parse(stored);
+    } catch (e) {
+      foods = INITIAL_MOCK_FOODS;
+    }
+  } else {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_MOCK_FOODS));
-    return INITIAL_MOCK_FOODS;
   }
-  try {
-    return JSON.parse(stored);
-  } catch (e) {
-    return INITIAL_MOCK_FOODS;
+
+  let updated = false;
+  const sanitized = foods.map(f => {
+    const normNature = normalizeThermalNature(f.thermal_nature);
+    if (normNature !== f.thermal_nature) {
+      updated = true;
+      return { ...f, thermal_nature: normNature };
+    }
+    return f;
+  });
+
+  if (updated) {
+    saveLocalFoods(sanitized);
   }
+
+  return sanitized;
 }
 
 function saveLocalFoods(foods: ChineseDietFood[]) {
