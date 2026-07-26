@@ -82,6 +82,8 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [auditEnabled, setAuditEnabled] = useState(true);
   const [isTogglingAudit, setIsTogglingAudit] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   useEffect(() => {
     async function fetchAuditStatus() {
@@ -371,6 +373,14 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
     return true;
   });
 
+  const totalPages = itemsPerPage === -1 ? 1 : Math.ceil(filteredLogs.length / itemsPerPage);
+  const currentSafePage = Math.min(currentPage, totalPages || 1);
+  const startIdx = itemsPerPage === -1 ? 0 : (currentSafePage - 1) * itemsPerPage;
+  const endIdx = itemsPerPage === -1 ? filteredLogs.length : Math.min(startIdx + itemsPerPage, filteredLogs.length);
+  const paginatedLogs = itemsPerPage === -1 
+    ? filteredLogs 
+    : filteredLogs.slice(startIdx, endIdx);
+
   if (user?.role !== 'ADMIN') {
     return (
       <div className="flex h-full items-center justify-center p-8">
@@ -456,7 +466,10 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
               type="text" 
               placeholder="Buscar por usuário, e-mail ou detalhes..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full pl-11 pr-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium text-sm"
             />
           </div>
@@ -465,7 +478,10 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
           <div>
             <select
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
+              onChange={(e) => {
+                setFilterType(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none focus:ring-2 focus:ring-primary/20 font-bold text-xs uppercase tracking-wider text-on-surface cursor-pointer"
             >
               {MODULE_OPTIONS.map(mod => (
@@ -478,7 +494,10 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
           <div>
             <select
               value={actionFilter}
-              onChange={(e) => setActionFilter(e.target.value)}
+              onChange={(e) => {
+                setActionFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full px-4 py-3 bg-surface-container-low rounded-xl border border-outline-variant/10 outline-none focus:ring-2 focus:ring-primary/20 font-bold text-xs uppercase tracking-wider text-on-surface cursor-pointer"
             >
               {ACTION_OPTIONS.map(act => (
@@ -488,49 +507,100 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
           </div>
         </div>
 
-        {/* Period Filter Tabs */}
+        {/* Period Filter & Pagination Control Bar */}
         <div className="flex items-center justify-between border-t border-outline-variant/10 pt-4 flex-wrap gap-4">
-          <div className="flex items-center gap-2">
-            <Filter size={16} className="text-outline" />
-            <span className="text-xs font-bold uppercase tracking-wider text-outline">Período:</span>
-            <div className="flex gap-1 bg-surface-container-low p-1 rounded-xl">
-              {[
-                { id: 'all', label: 'Todos' },
-                { id: 'today', label: 'Hoje' },
-                { id: '7d', label: 'Últimos 7 dias' },
-                { id: '30d', label: 'Últimos 30 dias' }
-              ].map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => setPeriodFilter(p.id as any)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    periodFilter === p.id 
-                      ? 'bg-white text-primary shadow-sm' 
-                      : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Filter size={16} className="text-outline" />
+              <span className="text-xs font-bold uppercase tracking-wider text-outline">Período:</span>
+              <div className="flex gap-1 bg-surface-container-low p-1 rounded-xl">
+                {[
+                  { id: 'all', label: 'Todos' },
+                  { id: 'today', label: 'Hoje' },
+                  { id: '7d', label: 'Últimos 7 dias' },
+                  { id: '30d', label: 'Últimos 30 dias' }
+                ].map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setPeriodFilter(p.id as any);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      periodFilter === p.id 
+                        ? 'bg-white text-primary shadow-sm' 
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Rows Per Page Selector */}
+            <div className="flex items-center gap-2 border-l border-outline-variant/10 pl-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-outline">Exibir:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-3 py-1.5 bg-surface-container-low rounded-xl border border-outline-variant/10 font-bold text-xs text-on-surface outline-none cursor-pointer"
+              >
+                <option value={5}>5 por página</option>
+                <option value={10}>10 por página</option>
+                <option value={25}>25 por página</option>
+                <option value={50}>50 por página</option>
+                <option value={-1}>Todos</option>
+              </select>
             </div>
           </div>
 
-          <p className="text-xs font-bold text-outline uppercase tracking-wider">
-            Exibindo <span className="text-primary">{filteredLogs.length}</span> registros de auditoria
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-xs font-bold text-outline uppercase tracking-wider">
+              Exibindo <span className="text-primary">{filteredLogs.length > 0 ? `${startIdx + 1}-${endIdx}` : 0}</span> de <span className="text-primary">{filteredLogs.length}</span> registros
+            </p>
+
+            {/* Page Buttons */}
+            {itemsPerPage !== -1 && totalPages > 1 && (
+              <div className="flex items-center gap-1.5 bg-surface-container-low p-1 rounded-xl">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentSafePage <= 1}
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-on-surface shadow-sm disabled:opacity-40 disabled:shadow-none hover:bg-surface-container transition-all"
+                  title="Página Anterior"
+                >
+                  Anterior
+                </button>
+                <span className="px-2 text-xs font-bold text-on-surface-variant">
+                  {currentSafePage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentSafePage >= totalPages}
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-on-surface shadow-sm disabled:opacity-40 disabled:shadow-none hover:bg-surface-container transition-all"
+                  title="Próxima Página"
+                >
+                  Próximo
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Logs Table */}
-        <div className="overflow-x-auto rounded-2xl border border-outline-variant/20">
+        {/* Logs Table with internal scrollbar and max height */}
+        <div className="overflow-auto max-h-[385px] rounded-2xl border border-outline-variant/20 custom-scrollbar shadow-inner relative">
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-surface-container-low border-b border-outline-variant/20 text-outline text-[11px] uppercase tracking-widest font-bold">
-                <th className="px-6 py-4">Data / Hora</th>
-                <th className="px-6 py-4">Usuário</th>
-                <th className="px-6 py-4">Ação</th>
-                <th className="px-6 py-4">Módulo</th>
-                <th className="px-6 py-4">Detalhes</th>
-                <th className="px-6 py-4 text-right">Inspeção</th>
+            <thead className="sticky top-0 z-10 bg-surface-container-low border-b border-outline-variant/20 shadow-sm">
+              <tr className="text-outline text-[11px] uppercase tracking-widest font-bold">
+                <th className="px-6 py-4 bg-surface-container-low">Data / Hora</th>
+                <th className="px-6 py-4 bg-surface-container-low">Usuário</th>
+                <th className="px-6 py-4 bg-surface-container-low">Ação</th>
+                <th className="px-6 py-4 bg-surface-container-low">Módulo</th>
+                <th className="px-6 py-4 bg-surface-container-low">Detalhes</th>
+                <th className="px-6 py-4 text-right bg-surface-container-low">Inspeção</th>
               </tr>
             </thead>
             <tbody>
@@ -541,14 +611,14 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
                     Carregando histórico de auditoria...
                   </td>
                 </tr>
-              ) : filteredLogs.length === 0 ? (
+              ) : paginatedLogs.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-outline font-medium">
                     Nenhum evento encontrado para os filtros aplicados.
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map(log => {
+                paginatedLogs.map(log => {
                   const userInfo = getUserDisplayInfo(log);
                   return (
                     <tr 
