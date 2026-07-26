@@ -115,6 +115,7 @@ export const dietotherapyService = {
     caution_pattern?: string;
     preparation_mode?: string;
     editorial_status?: string;
+    energy_direction?: string;
     source?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
@@ -132,6 +133,7 @@ export const dietotherapyService = {
         f.category.toLowerCase().includes(term) ||
         f.flavors.some(fv => fv.toLowerCase().includes(term)) ||
         f.thermal_nature.toLowerCase().includes(term) ||
+        (f.energy_direction && f.energy_direction.toLowerCase().includes(term)) ||
         f.channels.some(ch => ch.toLowerCase().includes(term)) ||
         f.therapeutic_functions.some(fn => fn.toLowerCase().includes(term)) ||
         f.indicated_patterns.some(ind => ind.toLowerCase().includes(term))
@@ -144,6 +146,9 @@ export const dietotherapyService = {
     }
     if (filters.thermal_nature && filters.thermal_nature !== 'Todos') {
       foods = foods.filter(f => f.thermal_nature === filters.thermal_nature);
+    }
+    if (filters.energy_direction && filters.energy_direction !== 'Todos') {
+      foods = foods.filter(f => f.energy_direction === filters.energy_direction);
     }
     if (filters.flavor && filters.flavor !== 'Todos') {
       foods = foods.filter(f => f.flavors.includes(filters.flavor!));

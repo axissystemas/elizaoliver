@@ -15,7 +15,13 @@ import {
   Clock,
   Eye,
   AlertCircle,
-  Upload
+  Upload,
+  Compass,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChineseDietFood, ThermalNature, EditorialStatus } from '@/types/dietotherapy';
@@ -32,6 +38,7 @@ interface DietotherapyViewProps {
 
 const CATEGORIES = ['Todos', 'raízes', 'leguminosas', 'folhas', 'cereais', 'frutas', 'animais', 'alimentos extras'];
 const NATURES = ['Todos', 'Quente', 'Morno', 'Neutro', 'Fresco', 'Frio'];
+const DIRECTIONS = ['Todos', 'Ascendente', 'Descendente', 'Flutuante', 'Afundante', 'Neutro'];
 const FLAVORS = ['Todos', 'Doce', 'Picante', 'Amargo', 'Azedo', 'Salgado', 'Adstringente'];
 const CHANNELS = ['Todos', 'Baço', 'Estômago', 'Fígado', 'Coração', 'Pulmão', 'Rim', 'Vesícula Biliar', 'Intestino Grosso', 'Intestino Delgado', 'Bexiga'];
 const PREP_MODES = ['Todos', 'Cozido', 'Sopa', 'Assado', 'Vapor', 'Cru', 'Chá'];
@@ -47,6 +54,7 @@ export default function DietotherapyView({ user }: DietotherapyViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [selectedNature, setSelectedNature] = useState('Todos');
+  const [selectedDirection, setSelectedDirection] = useState('Todos');
   const [selectedFlavor, setSelectedFlavor] = useState('Todos');
   const [selectedChannel, setSelectedChannel] = useState('Todos');
   const [selectedFunction, setSelectedFunction] = useState('Todos');
@@ -82,6 +90,7 @@ export default function DietotherapyView({ user }: DietotherapyViewProps) {
         searchTerm,
         category: selectedCategory,
         thermal_nature: selectedNature,
+        energy_direction: selectedDirection,
         flavor: selectedFlavor,
         channel: selectedChannel,
         therapeutic_function: selectedFunction !== 'Todos' ? selectedFunction : undefined,
@@ -100,7 +109,7 @@ export default function DietotherapyView({ user }: DietotherapyViewProps) {
       setLoading(false);
     }
   }, [
-    searchTerm, selectedCategory, selectedNature, selectedFlavor, selectedChannel, 
+    searchTerm, selectedCategory, selectedNature, selectedDirection, selectedFlavor, selectedChannel, 
     selectedFunction, selectedIndication, selectedCaution, selectedPrepMode, 
     selectedStatus, selectedSource, sortBy, sortOrder
   ]);
@@ -114,6 +123,7 @@ export default function DietotherapyView({ user }: DietotherapyViewProps) {
     setSearchTerm('');
     setSelectedCategory('Todos');
     setSelectedNature('Todos');
+    setSelectedDirection('Todos');
     setSelectedFlavor('Todos');
     setSelectedChannel('Todos');
     setSelectedFunction('Todos');
@@ -148,6 +158,36 @@ export default function DietotherapyView({ user }: DietotherapyViewProps) {
       case 'Frio': return 'bg-indigo-100 text-indigo-900 border-indigo-200';
       default: return 'bg-slate-100 text-slate-900';
     }
+  };
+
+  const getDirectionBadge = (direction?: string) => {
+    const dir = direction || 'Neutro';
+    let icon = <Compass size={11} className="shrink-0 text-purple-600" />;
+    let color = 'bg-purple-50 text-purple-700 border-purple-200/80';
+
+    if (dir.toLowerCase().includes('ascend') || dir.toLowerCase().includes('subir')) {
+      icon = <ArrowUp size={11} className="shrink-0 text-amber-600" />;
+      color = 'bg-amber-50 text-amber-900 border-amber-200/80';
+    } else if (dir.toLowerCase().includes('descend') || dir.toLowerCase().includes('descer')) {
+      icon = <ArrowDown size={11} className="shrink-0 text-sky-600" />;
+      color = 'bg-sky-50 text-sky-900 border-sky-200/80';
+    } else if (dir.toLowerCase().includes('flutua') || dir.toLowerCase().includes('superf')) {
+      icon = <ArrowUpRight size={11} className="shrink-0 text-emerald-600" />;
+      color = 'bg-emerald-50 text-emerald-900 border-emerald-200/80';
+    } else if (dir.toLowerCase().includes('afunda') || dir.toLowerCase().includes('profund')) {
+      icon = <ArrowDownRight size={11} className="shrink-0 text-indigo-600" />;
+      color = 'bg-indigo-50 text-indigo-900 border-indigo-200/80';
+    } else if (dir.toLowerCase().includes('neutr') || dir.toLowerCase().includes('centr')) {
+      icon = <Minus size={11} className="shrink-0 text-slate-500" />;
+      color = 'bg-slate-50 text-slate-800 border-slate-200/80';
+    }
+
+    return (
+      <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border flex items-center gap-1 shadow-2xs ${color}`}>
+        {icon}
+        <span>Direção: <strong className="font-extrabold">{dir}</strong></span>
+      </span>
+    );
   };
 
   return (
@@ -262,6 +302,18 @@ export default function DietotherapyView({ user }: DietotherapyViewProps) {
                   className="w-full p-3 bg-surface-container-low rounded-xl border border-outline-variant/10 text-xs font-semibold text-on-surface"
                 >
                   {NATURES.map(n => <option key={n} value={n}>{n === 'Todos' ? 'Todas' : n}</option>)}
+                </select>
+              </div>
+
+              {/* Direção Energética */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-outline uppercase tracking-wider">Direção Energética</label>
+                <select 
+                  value={selectedDirection} 
+                  onChange={e => { setSelectedDirection(e.target.value); setCurrentPage(1); }}
+                  className="w-full p-3 bg-surface-container-low rounded-xl border border-outline-variant/10 text-xs font-semibold text-on-surface"
+                >
+                  {DIRECTIONS.map(d => <option key={d} value={d}>{d === 'Todos' ? 'Todas as Direções' : d}</option>)}
                 </select>
               </div>
 
@@ -423,11 +475,12 @@ export default function DietotherapyView({ user }: DietotherapyViewProps) {
                     </span>
                   </div>
 
-                  {/* Category Chip */}
-                  <div className="mt-3">
+                  {/* Category & Direção Energética Chips */}
+                  <div className="mt-3 flex items-center gap-2 flex-wrap">
                     <span className="px-2.5 py-1 bg-surface-container-low text-on-surface-variant text-[10px] font-bold rounded-lg border border-outline-variant/10 uppercase tracking-wide">
                       {food.category}
                     </span>
+                    {getDirectionBadge(food.energy_direction)}
                   </div>
 
                   {/* Flavors and Tropisms */}

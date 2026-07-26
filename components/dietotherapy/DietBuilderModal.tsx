@@ -759,7 +759,7 @@ export default function DietBuilderModal({ onClose, onSave, user, preloadedEval 
                     <div key={food.id} className="bg-white p-4 rounded-2xl border border-outline-variant/10 flex justify-between items-center shadow-sm">
                       <div>
                         <span className="font-bold text-sm text-on-surface">{food.name}</span>
-                        <span className="text-[9px] uppercase font-bold text-outline block mt-0.5">{food.category} | {food.thermal_nature} | {food.flavors.join(', ')}</span>
+                        <span className="text-[9px] uppercase font-bold text-outline block mt-0.5">{food.category} | {food.thermal_nature} {food.energy_direction ? `| Direção: ${food.energy_direction}` : ''} | {food.flavors.join(', ')}</span>
                       </div>
                       
                       <div className="flex gap-2">
