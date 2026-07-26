@@ -257,6 +257,26 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
     document.body.removeChild(link);
   };
 
+  const getUserDisplayInfo = (log: AuditLog) => {
+    let name = log.profiles?.name || log.details?.user_name || log.details?.userName || log.details?.name;
+    let email = log.profiles?.email || log.details?.user_email || log.details?.userEmail || log.details?.email;
+
+    if ((!name || name === 'Usuário Ativo' || name === 'Sistema / Auto') && email && email !== 'usuario@sistema') {
+      const parts = email.split('@')[0];
+      name = parts.charAt(0).toUpperCase() + parts.slice(1);
+    }
+
+    if (!name || name === 'Usuário Ativo') {
+      name = 'Administrador do Sistema';
+    }
+
+    if (!email || email === 'usuario@sistema') {
+      email = log.user_id ? `ID: ${log.user_id.substring(0, 8)}...` : 'Sessão Ativa';
+    }
+
+    return { name, email };
+  };
+
   const getActionColor = (action: string) => {
     switch (action?.toUpperCase()) {
       case 'DELETE': return 'text-rose-600 bg-rose-50 border-rose-200';
@@ -499,49 +519,52 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map(log => (
-                  <tr 
-                    key={log.id} 
-                    className="border-b border-outline-variant/5 hover:bg-surface-container-low/50 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2 text-on-surface font-medium text-xs">
-                        <Calendar size={14} className="text-outline shrink-0" />
-                        {new Date(log.created_at).toLocaleString('pt-BR')}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2 font-bold text-on-surface text-sm">
-                        <UserIcon size={14} className="text-primary shrink-0" />
-                        <span>{log.profiles?.name || 'Sistema / Auto'}</span>
-                      </div>
-                      {log.profiles?.email && (
-                        <p className="text-[11px] text-on-surface-variant font-medium ml-5">{log.profiles.email}</p>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wider ${getActionColor(log.action)}`}>
-                        {getActionLabel(log.action)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-bold text-on-surface-variant text-xs">
-                      {log.entity_type}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-on-surface-variant">
-                      <div className="max-w-xs md:max-w-md truncate font-medium">
-                        {log.details?.summary || (typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details || '-'))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => setSelectedLog(log)}
-                        className="px-3 py-1.5 bg-surface-container text-primary font-bold text-xs rounded-xl hover:bg-primary/10 transition-colors inline-flex items-center gap-1.5"
-                      >
-                        <Eye size={14} /> Detalhes
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                filteredLogs.map(log => {
+                  const userInfo = getUserDisplayInfo(log);
+                  return (
+                    <tr 
+                      key={log.id} 
+                      className="border-b border-outline-variant/5 hover:bg-surface-container-low/50 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2 text-on-surface font-medium text-xs">
+                          <Calendar size={14} className="text-outline shrink-0" />
+                          {new Date(log.created_at).toLocaleString('pt-BR')}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2 font-bold text-on-surface text-sm">
+                          <UserIcon size={14} className="text-primary shrink-0" />
+                          <span>{userInfo.name}</span>
+                        </div>
+                        {userInfo.email && (
+                          <p className="text-[11px] text-on-surface-variant font-medium ml-5">{userInfo.email}</p>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wider ${getActionColor(log.action)}`}>
+                          {getActionLabel(log.action)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap font-bold text-on-surface-variant text-xs">
+                        {log.entity_type}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-on-surface-variant">
+                        <div className="max-w-xs md:max-w-md truncate font-medium">
+                          {log.details?.summary || (typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details || '-'))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <button
+                          onClick={() => setSelectedLog(log)}
+                          className="px-3 py-1.5 bg-surface-container text-primary font-bold text-xs rounded-xl hover:bg-primary/10 transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <Eye size={14} /> Detalhes
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -550,56 +573,58 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
 
       {/* Payload JSON Inspector Modal */}
       <AnimatePresence>
-        {selectedLog && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedLog(null)}
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
-            >
-              {/* Modal Header */}
-              <div className="p-6 md:p-8 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-lowest">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
-                    <FileCode size={24} />
+        {selectedLog && (() => {
+          const modalUserInfo = getUserDisplayInfo(selectedLog);
+          return (
+            <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedLog(null)}
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+              >
+                {/* Modal Header */}
+                <div className="p-6 md:p-8 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-lowest">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
+                      <FileCode size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold font-headline text-on-surface">Inspeção Detalhada do Evento</h3>
+                      <p className="text-xs text-on-surface-variant font-medium">ID: {selectedLog.id}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold font-headline text-on-surface">Inspeção Detalhada do Evento</h3>
-                    <p className="text-xs text-on-surface-variant font-medium">ID: {selectedLog.id}</p>
-                  </div>
+                  <button 
+                    onClick={() => setSelectedLog(null)} 
+                    className="p-2 hover:bg-surface-container-low rounded-full transition-all text-outline"
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
-                <button 
-                  onClick={() => setSelectedLog(null)} 
-                  className="p-2 hover:bg-surface-container-low rounded-full transition-all text-outline"
-                >
-                  <X size={20} />
-                </button>
-              </div>
 
-              {/* Modal Body */}
-              <div className="p-6 md:p-8 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
-                {/* Meta info grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-surface-container-low p-4 rounded-2xl border border-outline-variant/10 text-xs">
-                  <div>
-                    <p className="font-bold text-outline uppercase tracking-wider text-[10px]">Data / Hora</p>
-                    <p className="font-bold text-on-surface mt-0.5">{new Date(selectedLog.created_at).toLocaleString('pt-BR')}</p>
-                  </div>
-                  <div>
-                    <p className="font-bold text-outline uppercase tracking-wider text-[10px]">Usuário Responsável</p>
-                    <p className="font-bold text-on-surface mt-0.5">{selectedLog.profiles?.name || 'Sistema / Auto'}</p>
-                  </div>
-                  <div>
-                    <p className="font-bold text-outline uppercase tracking-wider text-[10px]">E-mail</p>
-                    <p className="font-bold text-on-surface mt-0.5">{selectedLog.profiles?.email || 'N/A'}</p>
-                  </div>
+                {/* Modal Body */}
+                <div className="p-6 md:p-8 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
+                  {/* Meta info grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-surface-container-low p-4 rounded-2xl border border-outline-variant/10 text-xs">
+                    <div>
+                      <p className="font-bold text-outline uppercase tracking-wider text-[10px]">Data / Hora</p>
+                      <p className="font-bold text-on-surface mt-0.5">{new Date(selectedLog.created_at).toLocaleString('pt-BR')}</p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-outline uppercase tracking-wider text-[10px]">Usuário Responsável</p>
+                      <p className="font-bold text-on-surface mt-0.5">{modalUserInfo.name}</p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-outline uppercase tracking-wider text-[10px]">E-mail</p>
+                      <p className="font-bold text-on-surface mt-0.5">{modalUserInfo.email}</p>
+                    </div>
                   <div>
                     <p className="font-bold text-outline uppercase tracking-wider text-[10px]">Ação Executada</p>
                     <span className={`inline-block px-2 py-0.5 mt-0.5 font-bold rounded text-[10px] uppercase border ${getActionColor(selectedLog.action)}`}>
@@ -638,7 +663,8 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
               </div>
             </motion.div>
           </div>
-        )}
+        );
+      })()}
       </AnimatePresence>
     </div>
   );

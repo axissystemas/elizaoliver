@@ -132,14 +132,32 @@ export async function logAction({ action, entityType, details = {}, entityId, us
 
     let finalUserId = userId;
     let finalOrgId = organizationId;
-    let userName = 'Usuário Ativo';
-    let userEmail = 'usuario@sistema';
+    let userName = details?.user_name || details?.userName || '';
+    let userEmail = details?.user_email || details?.userEmail || '';
 
+    // 1. Tenta carregar do LocalStorage do navegador (perfil ativo da sessão)
+    if (typeof window !== 'undefined') {
+      try {
+        const savedProfile = localStorage.getItem('auriculocare_profile');
+        if (savedProfile) {
+          const parsed = JSON.parse(savedProfile);
+          if (parsed.name && !userName) userName = parsed.name;
+          if (parsed.email && !userEmail) userEmail = parsed.email;
+        }
+      } catch (e) {}
+    }
+
+    // 2. Tenta obter dados do usuário do Supabase Auth e perfil
     if (client) {
       try {
         const { data: { user } } = await client.auth.getUser();
         if (!finalUserId) finalUserId = user?.id;
-        if (user?.email) userEmail = user.email;
+        if (user?.email && !userEmail) userEmail = user.email;
+
+        const userMetaData = user?.user_metadata || {};
+        if (!userName && (userMetaData.full_name || userMetaData.name)) {
+          userName = userMetaData.full_name || userMetaData.name;
+        }
 
         if (finalUserId) {
           const { data: profile } = await client
@@ -155,6 +173,17 @@ export async function logAction({ action, entityType, details = {}, entityId, us
           }
         }
       } catch (e) {}
+    }
+
+    // 3. Fallbacks de nome de usuário para garantir identificação clara
+    if (!userName && userEmail) {
+      userName = userEmail.split('@')[0];
+    }
+    if (!userName) {
+      userName = 'Administrador do Sistema';
+    }
+    if (!userEmail) {
+      userEmail = finalUserId ? `ID: ${finalUserId.substring(0, 8)}` : 'Sessão Ativa';
     }
 
     const safeDetails = { ...details };
