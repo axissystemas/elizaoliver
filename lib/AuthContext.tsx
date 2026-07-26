@@ -66,6 +66,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data) {
+        if (data.is_active === false) {
+          console.warn('Conta inativa detectada para o usuário:', data.email);
+          setUser(null);
+          setSession(null);
+          if (supabase) {
+            await supabase.auth.signOut().catch(() => {});
+          }
+          throw new Error('Sua conta foi inativada pelo administrador da clínica.');
+        }
+
         const rawRole = data.role as UserRole;
         const isAdmin = rawRole === 'ADMIN';
         const role = rawRole;
@@ -92,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: role,
           avatar: data.avatar_url || undefined,
           permissions: finalPermissions,
+          is_active: data.is_active !== false,
           organizationId: data.organization_id,
           organization: data.organization ? {
             name: data.organization.name,
@@ -114,10 +125,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(userData);
       }
     } catch (error: any) {
-      // Se o erro for especificamente que o perfil não existe no banco (PGRST116),
-      // significa que o usuário foi excluído. Deslogamos o usuário por segurança.
-      if (error?.code === 'PGRST116') {
-        console.error('Perfil não encontrado. O usuário foi desativado ou excluído.');
+      // Se o erro for especificamente conta inativa ou perfil não encontrado no banco (PGRST116)
+      if (error?.message?.includes('inativada') || error?.code === 'PGRST116') {
+        console.error('Perfil inativo ou não encontrado. O usuário foi desativado ou excluído.');
         setUser(null);
         setSession(null);
         if (supabase) {

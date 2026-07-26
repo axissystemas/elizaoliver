@@ -1353,6 +1353,7 @@ export type Database = {
           created_at: string | null
           email: string
           id: string
+          is_active: boolean | null
           name: string
           organization_id: string | null
           permissions: string[] | null
@@ -1364,6 +1365,7 @@ export type Database = {
           created_at?: string | null
           email: string
           id: string
+          is_active?: boolean | null
           name: string
           organization_id?: string | null
           permissions?: string[] | null
@@ -1375,6 +1377,7 @@ export type Database = {
           created_at?: string | null
           email?: string
           id?: string
+          is_active?: boolean | null
           name?: string
           organization_id?: string | null
           permissions?: string[] | null

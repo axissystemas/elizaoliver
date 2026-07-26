@@ -21,6 +21,8 @@ export interface User {
     externalId?: string;
     entitlements: string[];
   };
+  /** Marcado como false se a conta do usuário foi desativada pelo administrador */
+  is_active?: boolean;
   /** Marcado como true quando logado via credenciais nativas do .env (bypass Supabase) */
   isNativeAdmin?: boolean;
 }

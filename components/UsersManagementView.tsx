@@ -11,14 +11,18 @@ import {
   X,
   Shield,
   Search,
-  Loader2
+  Loader2,
+  Power,
+  UserCheck,
+  UserX,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, UserRole, ROLE_LABELS, ALL_PERMISSIONS, ROLE_PERMISSIONS, ADMIN_PERMISSIONS } from '@/types/auth';
 import { getSupabase } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import ConfirmationModal from './ConfirmationModal';
-import { deleteUserAction } from '@/app/actions/adminSaaS';
+import { deleteUserAction, toggleUserActiveAction } from '@/app/actions/adminSaaS';
 import { logAction } from '@/lib/auditLogService';
 
 // Centralized supabase config access
@@ -49,9 +53,12 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [userToInactivate, setUserToInactivate] = useState<User | null>(null);
+  const [isTogglingStatus, setIsTogglingStatus] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState(false);
@@ -98,7 +105,8 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
               email: p.email,
               role: role,
               avatar: p.avatar_url || undefined,
-              permissions: permissions
+              permissions: permissions,
+              is_active: p.is_active !== false
             };
           });
           // Filter out current user from the list as it's shown separately
@@ -114,10 +122,15 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
     fetchUsers();
   }, [user.id]);
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          u.email.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (statusFilter === 'active') return u.is_active !== false;
+    if (statusFilter === 'inactive') return u.is_active === false;
+    return true;
+  });
 
   const handleSaveUser = async () => {
     if (!userFormData.name || !userFormData.email || (!editingUser && !userFormData.password)) {
@@ -306,6 +319,39 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
     setIsFormOpen(true);
   };
 
+  const handleToggleUserStatus = async (u: User) => {
+    if (u.id === user.id) {
+      alert('Você não pode inativar seu próprio usuário.');
+      return;
+    }
+
+    const targetNewStatus = !(u.is_active !== false);
+    setIsTogglingStatus(u.id);
+    setGeneralError(null);
+
+    try {
+      await toggleUserActiveAction(u.id, targetNewStatus);
+      
+      setUsers(prevUsers => prevUsers.map(item => 
+        item.id === u.id ? { ...item, is_active: targetNewStatus } : item
+      ));
+
+      logAction({
+        action: targetNewStatus ? 'ACTIVATE' as any : 'INACTIVATE' as any,
+        entityType: 'AUTH',
+        entityId: u.id,
+        details: { name: u.name, email: u.email, is_active: targetNewStatus }
+      }).catch(() => {});
+
+    } catch (err: any) {
+      console.error('Error toggling user active status:', err);
+      setGeneralError(`Erro ao alterar status do usuário: ${err.message || 'Erro desconhecido'}`);
+    } finally {
+      setIsTogglingStatus(null);
+      setUserToInactivate(null);
+    }
+  };
+
   const handleDeleteUser = (u: User) => {
     if (u.id === user.id) {
       alert('Você não pode excluir seu próprio usuário.');
@@ -337,6 +383,10 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
         await deleteUserAction(u.id);
         console.log('Usuário excluído com sucesso via Server Action.');
       } catch (saError: any) {
+        if (saError.message === 'RESTRICTION') {
+          throw saError;
+        }
+
         console.warn('Server Action deleteUserAction falhou ou indisponível, tentando fallback RPC:', saError);
         
         // 2. Fallback via RPC Supabase
@@ -373,7 +423,8 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
       if (err.message === 'TIMEOUT') {
         setGeneralError('A operação demorou muito e foi cancelada. O banco de dados pode estar sobrecarregado. Tente novamente em instantes.');
       } else if (err.message === 'RESTRICTION') {
-        setGeneralError(`Não é possível excluir "${u.name}" porque existem registros vinculados a este usuário (pacientes, agendamentos, etc.). Considere apenas remover suas permissões de acesso.`);
+        setUserToInactivate(u);
+        setGeneralError(`Não é possível excluir "${u.name}" permanentemente pois existem registros vinculados a este usuário (pacientes, agendamentos, etc.). Você pode inativar seu acesso no modal abaixo.`);
       } else {
         let errorMessage = err.message || 'Erro desconhecido';
         if (err.code) errorMessage += ` (Código: ${err.code})`;
@@ -391,10 +442,10 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
       {generalError && (
         <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center justify-between gap-3 text-rose-600 text-sm font-medium animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-3">
-            <X size={18} className="shrink-0" />
-            <p>{generalError}</p>
+            <AlertTriangle size={20} className="shrink-0 text-rose-500" />
+            <p className="flex-1">{generalError}</p>
           </div>
-          <button onClick={() => setGeneralError(null)} className="p-1 hover:bg-rose-100 rounded-full transition-all">
+          <button onClick={() => setGeneralError(null)} className="p-1 hover:bg-rose-100 rounded-full transition-all shrink-0">
             <X size={14} />
           </button>
         </div>
@@ -404,7 +455,7 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
       <section className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h2 className="text-4xl font-bold font-headline text-on-surface">Gestão de Equipe</h2>
-          <p className="text-on-surface-variant text-lg mt-2 font-medium">Gerencie os profissionais e permissões da sua clínica.</p>
+          <p className="text-on-surface-variant text-lg mt-2 font-medium">Gerencie os profissionais, status de login e permissões da sua clínica.</p>
         </div>
         {canCreate && (
           <button 
@@ -428,51 +479,92 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
         )}
       </section>
 
-      {/* Stats & Search */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-[2rem] border border-outline-variant/10 shadow-sm">
+      {/* Stats & Search Filters */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <button 
+          onClick={() => setStatusFilter('all')}
+          className={`p-5 rounded-[2rem] border text-left transition-all ${
+            statusFilter === 'all' 
+              ? 'bg-primary/5 border-primary shadow-sm' 
+              : 'bg-white border-outline-variant/10 hover:border-primary/30'
+          }`}
+        >
           <p className="text-xs font-bold text-outline uppercase tracking-widest mb-1">Total de Membros</p>
           <p className="text-3xl font-black text-primary">{users.length + 1}</p>
-        </div>
-        <div className="md:col-span-2 bg-white p-4 rounded-[2rem] border border-outline-variant/10 shadow-sm flex items-center gap-4 px-8">
-          <Search className="text-outline" size={24} />
+        </button>
+
+        <button 
+          onClick={() => setStatusFilter('active')}
+          className={`p-5 rounded-[2rem] border text-left transition-all ${
+            statusFilter === 'active' 
+              ? 'bg-emerald-50 border-emerald-500 shadow-sm' 
+              : 'bg-white border-outline-variant/10 hover:border-emerald-300'
+          }`}
+        >
+          <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Ativos</p>
+          <p className="text-3xl font-black text-emerald-600">
+            {users.filter(u => u.is_active !== false).length + (user.is_active !== false ? 1 : 0)}
+          </p>
+        </button>
+
+        <button 
+          onClick={() => setStatusFilter('inactive')}
+          className={`p-5 rounded-[2rem] border text-left transition-all ${
+            statusFilter === 'inactive' 
+              ? 'bg-rose-50 border-rose-500 shadow-sm' 
+              : 'bg-white border-outline-variant/10 hover:border-rose-300'
+          }`}
+        >
+          <p className="text-xs font-bold text-rose-500 uppercase tracking-widest mb-1">Inativos</p>
+          <p className="text-3xl font-black text-rose-500">
+            {users.filter(u => u.is_active === false).length}
+          </p>
+        </button>
+
+        <div className="bg-white p-4 rounded-[2rem] border border-outline-variant/10 shadow-sm flex items-center gap-3 px-6">
+          <Search className="text-outline shrink-0" size={20} />
           <input 
             type="text" 
             placeholder="Buscar por nome ou e-mail..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 bg-transparent outline-none text-lg font-medium placeholder:text-outline/50"
+            className="flex-1 bg-transparent outline-none text-sm font-medium placeholder:text-outline/50 w-full"
           />
         </div>
       </section>
 
       {/* Users List */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
-        {/* Current User Card (Always first) */}
-        <div className="bg-primary/5 border-2 border-primary/20 p-8 rounded-[2.5rem] flex items-center justify-between group">
-          <div className="flex items-center gap-6">
-            <div className="w-16 h-16 rounded-2xl overflow-hidden relative border-2 border-white shadow-md">
-              <Image 
-                src={user.avatar || "https://picsum.photos/seed/doctor/200/200"} 
-                alt={user.name} 
-                fill 
-                className="object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-xl font-bold text-on-surface">{user.name}</h3>
-                <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded-md uppercase tracking-widest">Você</span>
+        {/* Current User Card (Always first if not filtering inactive) */}
+        {statusFilter !== 'inactive' && (
+          <div className="bg-primary/5 border-2 border-primary/20 p-8 rounded-[2.5rem] flex items-center justify-between group">
+            <div className="flex items-center gap-6">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden relative border-2 border-white shadow-md">
+                <Image 
+                  src={user.avatar || "https://picsum.photos/seed/doctor/200/200"} 
+                  alt={user.name} 
+                  fill 
+                  className="object-cover"
+                  referrerPolicy="no-referrer"
+                />
               </div>
-              <p className="text-sm text-on-surface-variant font-medium">{user.email}</p>
-              <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-1">{ROLE_LABELS[user.role]}</p>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-xl font-bold text-on-surface">{user.name}</h3>
+                  <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded-md uppercase tracking-widest">Você</span>
+                  <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200/60 text-[10px] font-bold rounded-md uppercase tracking-wider flex items-center gap-1">
+                    <UserCheck size={11} /> Ativo
+                  </span>
+                </div>
+                <p className="text-sm text-on-surface-variant font-medium">{user.email}</p>
+                <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-1">{ROLE_LABELS[user.role]}</p>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-white text-primary flex items-center justify-center shadow-sm">
+              <Shield size={20} />
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-white text-primary flex items-center justify-center shadow-sm">
-            <Shield size={20} />
-          </div>
-        </div>
+        )}
 
         {isLoading ? (
           <div className="col-span-full py-20 flex flex-col items-center justify-center gap-4">
@@ -481,60 +573,107 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
           </div>
         ) : (
           <>
-            {filteredUsers.map((u) => (
-              <div key={u.id} className="bg-white p-8 rounded-[2.5rem] border border-outline-variant/10 shadow-sm hover:shadow-md transition-all flex items-center justify-between group">
-                <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden relative bg-surface-container">
-                    <Image 
-                      src={u.avatar || `https://picsum.photos/seed/${u.id}/200/200`} 
-                      alt={u.name} 
-                      fill 
-                      className="object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-on-surface">{u.name}</h3>
-                    <p className="text-sm text-on-surface-variant font-medium">{u.email}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-[10px] font-bold rounded-md uppercase tracking-widest">
-                        {ROLE_LABELS[u.role]}
-                      </span>
-                      <span className="text-[10px] font-bold text-outline uppercase tracking-widest">• {u.permissions?.length || 0} permissões</span>
+            {filteredUsers.map((u) => {
+              const isActive = u.is_active !== false;
+              return (
+                <div 
+                  key={u.id} 
+                  className={`p-8 rounded-[2.5rem] border shadow-sm hover:shadow-md transition-all flex items-center justify-between group ${
+                    isActive ? 'bg-white border-outline-variant/10' : 'bg-slate-50/80 border-slate-200/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden relative bg-surface-container shrink-0">
+                      <Image 
+                        src={u.avatar || `https://picsum.photos/seed/${u.id}/200/200`} 
+                        alt={u.name} 
+                        fill 
+                        className={`object-cover ${!isActive ? 'grayscale opacity-70' : ''}`}
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className={`text-xl font-bold ${isActive ? 'text-on-surface' : 'text-slate-500 line-through'}`}>{u.name}</h3>
+                        {isActive ? (
+                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/70 text-[10px] font-bold rounded-md uppercase tracking-wider flex items-center gap-1">
+                            <UserCheck size={11} /> Ativo
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-slate-200 text-slate-600 border border-slate-300 text-[10px] font-bold rounded-md uppercase tracking-wider flex items-center gap-1">
+                            <UserX size={11} /> Inativo
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-on-surface-variant font-medium">{u.email}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-[10px] font-bold rounded-md uppercase tracking-widest">
+                          {ROLE_LABELS[u.role]}
+                        </span>
+                        <span className="text-[10px] font-bold text-outline uppercase tracking-widest">• {u.permissions?.length || 0} permissões</span>
+                      </div>
                     </div>
                   </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                    {canEdit && (
+                      <button 
+                        onClick={() => setUserToInactivate(u)}
+                        disabled={isTogglingStatus === u.id}
+                        title={isActive ? "Inativar Acesso do Usuário" : "Reativar Acesso do Usuário"}
+                        className={`p-3 rounded-xl transition-all flex items-center gap-1 ${
+                          isActive 
+                            ? 'text-amber-600 hover:bg-amber-50' 
+                            : 'text-emerald-600 hover:bg-emerald-50'
+                        }`}
+                      >
+                        {isTogglingStatus === u.id ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                          <Power size={18} />
+                        )}
+                      </button>
+                    )}
+                    {canEdit && (
+                      <button 
+                        onClick={() => handleEditUser(u)}
+                        className="p-3 text-outline hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
+                        title="Editar Usuário"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button 
+                        onClick={() => handleDeleteUser(u)}
+                        className="p-3 text-outline hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                        title="Excluir Usuário"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                  {canEdit && (
-                    <button 
-                      onClick={() => handleEditUser(u)}
-                      className="p-3 text-outline hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
-                    >
-                      <Edit2 size={20} />
-                    </button>
-                  )}
-                  {canDelete && (
-                    <button 
-                      onClick={() => handleDeleteUser(u)}
-                      className="p-3 text-outline hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
-            {filteredUsers.length === 0 && searchTerm && (
+            {filteredUsers.length === 0 && (searchTerm || statusFilter !== 'all') && (
               <div className="col-span-full py-20 text-center space-y-4 bg-white rounded-[2.5rem] border border-outline-variant/10 shadow-sm">
                 <div className="w-20 h-20 bg-surface-container rounded-full flex items-center justify-center mx-auto text-outline/30">
                   <Search size={40} />
                 </div>
-                <p className="text-on-surface-variant font-medium text-lg">Nenhum usuário encontrado para &quot;{searchTerm}&quot;</p>
+                <p className="text-on-surface-variant font-medium text-lg">
+                  Nenhum usuário encontrado com os filtros selecionados.
+                </p>
+                <button 
+                  onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}
+                  className="px-4 py-2 bg-surface-container text-primary font-bold rounded-xl text-sm hover:bg-surface-container-high transition-all"
+                >
+                  Limpar Filtros
+                </button>
               </div>
             )}
             
-            {filteredUsers.length === 0 && !searchTerm && (
+            {filteredUsers.length === 0 && !searchTerm && statusFilter === 'all' && (
               <div className="col-span-full py-20 text-center space-y-4 bg-white rounded-[2.5rem] border border-outline-variant/10 shadow-sm">
                 <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-emerald-500/50">
                   <Users size={40} />
@@ -554,7 +693,7 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
         )}
       </section>
 
-      {/* Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       <ConfirmationModal
         isOpen={!!userToDelete}
         onClose={() => !isDeleting && setUserToDelete(null)}
@@ -564,6 +703,22 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
         confirmText={isDeleting ? "Excluindo..." : "Excluir"}
         cancelText="Cancelar"
         type="danger"
+      />
+
+      {/* Inactivation / Activation Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!userToInactivate}
+        onClose={() => setUserToInactivate(null)}
+        onConfirm={() => userToInactivate && handleToggleUserStatus(userToInactivate)}
+        title={userToInactivate?.is_active !== false ? "Inativar Acesso do Usuário" : "Reativar Usuário"}
+        message={
+          userToInactivate?.is_active !== false
+            ? `O usuário "${userToInactivate?.name}" não poderá mais fazer login no sistema. O histórico de atendimentos e registros criados por este usuário permanecerão preservados.`
+            : `Deseja reativar o acesso de "${userToInactivate?.name}"? O usuário voltará a poder efetuar login e acessar o sistema.`
+        }
+        confirmText={userToInactivate?.is_active !== false ? "Inativar Usuário" : "Reativar Usuário"}
+        cancelText="Cancelar"
+        type={userToInactivate?.is_active !== false ? "warning" : "info"}
       />
 
       {/* User Form Modal */}
