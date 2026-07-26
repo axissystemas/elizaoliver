@@ -39,10 +39,10 @@ const navItems = [
   { id: 'financial', label: 'Financeiro', icon: CreditCard, featureKey: 'mod_financial' },
   { id: 'billing', label: 'Faturamento', icon: FileText, featureKey: 'mod_billing' },
   { id: 'inventory', label: 'Estoque', icon: Package, featureKey: 'mod_inventory' },
-  { id: 'users', label: 'Usuários', icon: Users, featureKey: 'mod_users' },
-  { id: 'settings', label: 'Configurações', icon: Settings },
   { id: 'reports', label: 'Relatórios', icon: BarChart3, featureKey: 'mod_reports' },
+  { id: 'users', label: 'Usuários', icon: Users, featureKey: 'mod_users' },
   { id: 'audit_logs', label: 'Auditoria', icon: Shield, featureKey: 'mod_audit' },
+  { id: 'settings', label: 'Configurações', icon: Settings },
 ];
 
 export default function Sidebar({ activeView, setActiveView, onNewAppointment, onLogout, user }: SidebarProps) {
