@@ -6,12 +6,12 @@ import {
   Upload, FileSpreadsheet, Package, DatabaseZap, Play, XSquare, 
   CheckCircle, Trash2, Users, BarChart3, Info, Settings, 
   ChevronRight, AlertTriangle, Terminal as TerminalIcon, RefreshCw,
-  LogIn, LogOut, Mail, Lock, ShieldCheck, Eye, EyeOff
+  LogIn, LogOut, Mail, Lock, ShieldCheck, Eye, EyeOff, Apple 
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
 
-type Category = "procedures" | "medical_supplies" | "inventory" | "patients";
+type Category = "chinese_diet_foods" | "procedures" | "medical_supplies" | "inventory" | "patients";
 
 export default function DataLoaderPage() {
   const { user: authUser, loading: authLoading, signIn, signOut } = useAuth();
@@ -19,10 +19,11 @@ export default function DataLoaderPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cancelRef = useRef<boolean>(false);
   
-  const [activeTab, setActiveTab] = useState<Category>("procedures");
+  const [activeTab, setActiveTab] = useState<Category>("chinese_diet_foods");
   const [logs, setLogs] = useState<string[]>([]);
   const [stats, setStats] = useState({ success: 0, errors: 0 });
   const [dbStats, setDbStats] = useState<Record<Category, number>>({
+    chinese_diet_foods: 0,
     procedures: 0,
     medical_supplies: 0,
     inventory: 0,
@@ -67,13 +68,22 @@ export default function DataLoaderPage() {
     };
 
     try {
-      const [proc, supp, inv, pat] = await Promise.all([
+      const [proc, supp, inv, pat, foods] = await Promise.all([
         fetchCount("procedures"),
         fetchCount("medical_supplies"),
         fetchCount("inventory_items"),
-        fetchCount("patients")
+        fetchCount("patients"),
+        fetchCount("chinese_diet_foods")
       ]);
+
+      let localFoodsCount = 0;
+      try {
+        const stored = localStorage.getItem('axis_gc_dietotherapy_foods');
+        if (stored) localFoodsCount = JSON.parse(stored).length;
+      } catch {}
+
       setDbStats({
+        chinese_diet_foods: Math.max(foods, localFoodsCount),
         procedures: proc,
         medical_supplies: supp,
         inventory: inv,
@@ -129,6 +139,7 @@ export default function DataLoaderPage() {
       
       // Palavras-chave aprimoradas por categoria
       const keywordsMap: Record<Category, string[]> = {
+        chinese_diet_foods: ["categoria", "nome", "ativo", "nome_cientifico", "parte_utilizada", "sinonimos", "imagem_url", "descricao", "natureza_termica", "direcao_energetica", "sabores", "canais_meridianos", "funcoes_terapeuticas", "padroes_indicados", "padroes_cautela_contraindicacao", "observacoes_clinicas", "observacoes_culinarias", "modos_preparo", "contraindicacoes_gerais", "alergenicos", "restricoes_alimentares", "titulo_obra_referencia", "autor_referencia", "edicao_referencia", "pagina_referencia", "ano_publicacao_referencia"],
         procedures: ["codigo", "termo", "tuss", "procedimento", "code", "name", "service", "servico"],
         medical_supplies: ["codigo", "anvisa", "laboratorio", "produto", "apresentacao", "code", "material", "med", "brand", "lote", "batch", "fabricante", "manufacturer"],
         inventory: ["nome", "quantidade", "estoque", "unidade", "custo", "validade", "alerta", "minimo", "name", "quantity", "stock", "min", "limit", "alert", "unit", "cost", "expiry", "lote", "batch", "fabricante", "manufacturer"],
@@ -184,7 +195,34 @@ export default function DataLoaderPage() {
       const json = [];
       const colMap: any = {};
 
-      if (activeTab === "procedures" || activeTab === "medical_supplies") {
+      if (activeTab === "chinese_diet_foods") {
+        colMap.category = getIdx(["categoria", "category"]);
+        colMap.name = getIdx(["nome", "name"]);
+        colMap.is_active = getIdx(["ativo", "active"]);
+        colMap.scientific_name = getIdx(["nome_cientifico", "scientific_name"]);
+        colMap.used_part = getIdx(["parte_utilizada", "used_part"]);
+        colMap.synonyms = getIdx(["sinonimos", "synonyms"]);
+        colMap.image_url = getIdx(["imagem_url", "image_url"]);
+        colMap.description = getIdx(["descricao", "description"]);
+        colMap.thermal_nature = getIdx(["natureza_termica", "thermal_nature"]);
+        colMap.energy_direction = getIdx(["direcao_energetica", "energy_direction"]);
+        colMap.flavors = getIdx(["sabores", "flavors"]);
+        colMap.channels = getIdx(["canais_meridianos", "channels", "canais"]);
+        colMap.therapeutic_functions = getIdx(["funcoes_terapeuticas", "therapeutic_functions"]);
+        colMap.indicated_patterns = getIdx(["padroes_indicados", "indicated_patterns"]);
+        colMap.caution_patterns = getIdx(["padroes_cautela_contraindicacao", "caution_patterns"]);
+        colMap.clinical_notes = getIdx(["observacoes_clinicas", "clinical_notes"]);
+        colMap.culinary_notes = getIdx(["observacoes_culinarias", "culinary_notes"]);
+        colMap.preparation_modes = getIdx(["modos_preparo", "preparation_modes"]);
+        colMap.contraindications = getIdx(["contraindicacoes_gerais", "contraindications"]);
+        colMap.allergens = getIdx(["alergenicos", "allergens"]);
+        colMap.restrictions = getIdx(["restricoes_alimentares", "restrictions"]);
+        colMap.source_title = getIdx(["titulo_obra_referencia", "source_title"]);
+        colMap.author = getIdx(["autor_referencia", "author"]);
+        colMap.edition = getIdx(["edicao_referencia", "edition"]);
+        colMap.page = getIdx(["pagina_referencia", "page"]);
+        colMap.publication_year = getIdx(["ano_publicacao_referencia", "publication_year"]);
+      } else if (activeTab === "procedures" || activeTab === "medical_supplies") {
         colMap.code = getIdx(["codigo", "tuss", "cod", "produto", "code", "ean", "id"]);
         colMap.name = getIdx(["termo", "nome", "descricao", "procedimento", "name", "service", "servico"]);
         colMap.presentation = getIdx(["apresentacao", "unidade", "presentation", "unit", "env"]);
@@ -294,7 +332,52 @@ export default function DataLoaderPage() {
           metadata: row.metadata || {}
         };
 
-        if (activeTab === "procedures") {
+        if (activeTab === "chinese_diet_foods") {
+          const name = row.name?.toString()?.trim();
+          if (!name) return null;
+          
+          const parseArr = (val: any) => {
+            if (!val) return [];
+            if (Array.isArray(val)) return val;
+            return val.toString().split(/[,;|]/).map((s: string) => s.trim()).filter(Boolean);
+          };
+
+          return {
+            ...insertData,
+            id: 'f_' + Math.random().toString(36).substr(2, 9),
+            name,
+            normalized_name: name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(),
+            category: row.category?.toString() || "Outros",
+            thermal_nature: row.thermal_nature?.toString() || "Neutro",
+            energy_direction: row.energy_direction?.toString() || "Neutro",
+            flavors: parseArr(row.flavors),
+            channels: parseArr(row.channels),
+            scientific_name: row.scientific_name?.toString() || undefined,
+            used_part: row.used_part?.toString() || undefined,
+            synonyms: parseArr(row.synonyms),
+            image_url: row.image_url?.toString() || undefined,
+            description: row.description?.toString() || undefined,
+            therapeutic_functions: parseArr(row.therapeutic_functions),
+            indicated_patterns: parseArr(row.indicated_patterns),
+            caution_patterns: parseArr(row.caution_patterns),
+            preparation_modes: parseArr(row.preparation_modes),
+            clinical_notes: row.clinical_notes?.toString() || undefined,
+            culinary_notes: row.culinary_notes?.toString() || undefined,
+            contraindications: row.contraindications?.toString() || undefined,
+            allergens: row.allergens?.toString() || undefined,
+            restrictions: row.restrictions?.toString() || undefined,
+            editorial_status: "published",
+            is_active: row.is_active !== undefined ? (row.is_active?.toString().toLowerCase() !== 'não' && row.is_active?.toString().toLowerCase() !== 'nao') : true,
+            sources: row.source_title ? [{
+              source_title: row.source_title.toString(),
+              author: row.author?.toString() || "Desconhecido",
+              edition: row.edition?.toString() || undefined,
+              page: row.page?.toString() || undefined,
+              publication_year: row.publication_year ? Number(row.publication_year) : undefined,
+              notes: "Importado via Data Loader"
+            }] : []
+          };
+        } else if (activeTab === "procedures") {
           const code = row.code?.toString()?.trim();
           if (!code) return null;
           return { ...insertData, code, name: row.name?.toString(), category: "tuss" };
@@ -353,7 +436,8 @@ export default function DataLoaderPage() {
 
       let table = "";
       let onConflict = "id";
-      if (activeTab === "procedures") { table = "procedures"; onConflict = "code"; }
+      if (activeTab === "chinese_diet_foods") { table = "chinese_diet_foods"; onConflict = "name"; }
+      else if (activeTab === "procedures") { table = "procedures"; onConflict = "code"; }
       else if (activeTab === "medical_supplies") { table = "medical_supplies"; onConflict = "code"; }
       else if (activeTab === "inventory") { table = "inventory_items"; onConflict = "name"; }
       else if (activeTab === "patients") { table = "patients"; onConflict = "cpf"; }
@@ -362,6 +446,20 @@ export default function DataLoaderPage() {
 
       if (!error) {
         successCount += batchToInsert.length;
+
+        // Se for alimentos de dietoterapia, também atualiza o localStorage para garantir sincronia local instantânea
+        if (activeTab === "chinese_diet_foods") {
+          try {
+            const currentStr = localStorage.getItem('axis_gc_dietotherapy_foods') || '[]';
+            const currentList: any[] = JSON.parse(currentStr);
+            const foodMap = new Map<string, any>();
+            currentList.forEach(item => foodMap.set(item.name.toLowerCase().trim(), item));
+            batchToInsert.forEach(item => foodMap.set(item.name.toLowerCase().trim(), item));
+            localStorage.setItem('axis_gc_dietotherapy_foods', JSON.stringify(Array.from(foodMap.values())));
+          } catch (e) {
+            console.error("Erro ao sincronizar localStorage:", e);
+          }
+        }
       } else {
         errorCount += batchToInsert.length;
         addLog(`❌ Erro no lote ${b + 1}: ${error.message}`);
@@ -381,11 +479,18 @@ export default function DataLoaderPage() {
     
     addLog(`⚠️ Iniciando limpeza da tabela ${activeTab}...`);
     const tableMap: Record<Category, string> = {
+      chinese_diet_foods: "chinese_diet_foods",
       procedures: "procedures",
       medical_supplies: "medical_supplies",
       inventory: "inventory_items",
       patients: "patients"
     };
+
+    if (activeTab === "chinese_diet_foods") {
+      try {
+        localStorage.removeItem('axis_gc_dietotherapy_foods');
+      } catch (e) {}
+    }
 
     const { error } = await (supabase.from as any)(tableMap[activeTab]).delete().neq("id", "00000000-0000-0000-0000-000000000000");
     
@@ -548,7 +653,7 @@ export default function DataLoaderPage() {
           </div>
 
           <nav className="space-y-2">
-            {(["procedures", "medical_supplies", "inventory", "patients"] as Category[]).map((cat) => (
+            {(["chinese_diet_foods", "procedures", "medical_supplies", "inventory", "patients"] as Category[]).map((cat) => (
               <button
                 key={cat}
                 onClick={() => {
@@ -566,6 +671,7 @@ export default function DataLoaderPage() {
               >
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${activeTab === cat ? "bg-indigo-600 text-white" : "bg-neutral-800 text-neutral-400"}`}>
+                    {cat === "chinese_diet_foods" && <Apple size={18} />}
                     {cat === "procedures" && <FileSpreadsheet size={18} />}
                     {cat === "medical_supplies" && <Package size={18} />}
                     {cat === "inventory" && <BarChart3 size={18} />}
@@ -573,12 +679,14 @@ export default function DataLoaderPage() {
                   </div>
                   <div className="text-left">
                     <span className={`block text-xs font-bold ${activeTab === cat ? "text-indigo-400" : "text-neutral-400"}`}>
+                      {cat === "chinese_diet_foods" && "Módulo de Dietoterapia"}
                       {cat === "procedures" && "Faturamento / TUSS"}
                       {cat === "medical_supplies" && "Faturamento / MAT"}
                       {cat === "inventory" && "Gerência de Estoque"}
                       {cat === "patients" && "Módulo de Pacientes"}
                     </span>
                     <span className="text-sm font-bold text-white uppercase tracking-tight">
+                      {cat === "chinese_diet_foods" && "Alimentos MTC"}
                       {cat === "procedures" && "Procedimentos"}
                       {cat === "medical_supplies" && "Materiais"}
                       {cat === "inventory" && "Inventário"}
