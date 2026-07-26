@@ -8,11 +8,14 @@ import {
   ChevronRight, AlertTriangle, Terminal as TerminalIcon, RefreshCw,
   LogIn, LogOut, Mail, Lock, ShieldCheck, Eye, EyeOff
 } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
 
 type Category = "procedures" | "medical_supplies" | "inventory" | "patients";
 
 export default function DataLoaderPage() {
+  const { user: authUser, loading: authLoading, signIn, signOut } = useAuth();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cancelRef = useRef<boolean>(false);
   
@@ -31,18 +34,27 @@ export default function DataLoaderPage() {
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [previewHeaders, setPreviewHeaders] = useState<string[]>([]);
   const [previewRows, setPreviewRows] = useState<any[][]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isTruncateModalOpen, setIsTruncateModalOpen] = useState(false);
   const [truncateConfirm, setTruncateConfirm] = useState("");
   
   // Estados de Login
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState("");
+
+  const isAdmin = !!(authUser && (
+    (authUser.role as string) === 'ADMIN' || 
+    (authUser.role as string) === 'OWNER' || 
+    authUser.isNativeAdmin || 
+    authUser.email === 'admin@axis.com.br' || 
+    authUser.email === 'suporte@axissistemas.com.br'
+  ));
+
+  const userId = authUser?.id || null;
+  const userEmail = authUser?.email || null;
 
   const addLog = (msg: string) => {
     setLogs((prev) => [`${new Date().toLocaleTimeString()} - ${msg}`, ...prev].slice(0, 100));
@@ -73,62 +85,27 @@ export default function DataLoaderPage() {
   };
 
   useEffect(() => {
-    fetchDbStats();
-    
-    // Capturar usuário logado para RLS
-    const getAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session?.user) {
-        setUserId(data.session.user.id);
-        setUserEmail(data.session.user.email || "Usuário");
-      } else {
-        setUserId(null);
-        setUserEmail(null);
-      }
-    };
-    getAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUserId(session.user.id);
-        setUserEmail(session.user.email || "Usuário");
-      } else {
-        setUserId(null);
-        setUserEmail(null);
-      }
-    });
-
-    const interval = setInterval(fetchDbStats, 30000);
-    return () => {
-      clearInterval(interval);
-      subscription.unsubscribe();
-    };
-  }, []);
+    if (isAdmin) {
+      fetchDbStats();
+      const interval = setInterval(fetchDbStats, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoginLoading(true);
-    addLog(`🔐 Tentando autenticação para ${email}...`);
+    setLoginError("");
+    addLog(`🔐 Autenticando ${email}...`);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) throw error;
-
-      if (data.user) {
-        setUserId(data.user.id);
-        setUserEmail(data.user.email || "Operador");
-        addLog(`✅ Acesso concedido! Bem-vindo, ${data.user.email}`);
-        setShowLoginModal(false);
-        setPassword("");
-        fetchDbStats();
-      }
+      await signIn(email, password);
+      addLog(`✅ Acesso efetuado para ${email}`);
+      setPassword("");
     } catch (err: any) {
-      addLog(`❌ Falha no login: ${err.message}`);
-      alert(`Erro de autenticação: ${err.message}`);
+      const msg = err?.message || 'Falha ao realizar login';
+      setLoginError(msg);
+      addLog(`❌ Falha no login: ${msg}`);
     } finally {
       setIsLoginLoading(false);
     }
@@ -422,6 +399,113 @@ export default function DataLoaderPage() {
     setTruncateConfirm("");
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0c] text-neutral-100 flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <RefreshCw className="animate-spin text-indigo-500" size={32} />
+          <p className="text-xs font-mono uppercase tracking-widest text-neutral-400">Verificando permissões de Administrador...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0c] text-neutral-100 flex items-center justify-center p-6 font-sans selection:bg-indigo-500/30">
+        <div className="relative bg-neutral-900 border border-indigo-500/30 p-10 rounded-[2.5rem] max-w-md w-full shadow-2xl shadow-indigo-500/10">
+          <div className="w-16 h-16 bg-indigo-600/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-400 border border-indigo-500/20">
+            <ShieldCheck size={32} />
+          </div>
+          
+          <h3 className="text-2xl font-black text-white text-center mb-2 tracking-tight">DATA LOADER — ACESSO RESTRITO</h3>
+          <p className="text-neutral-500 text-center text-xs font-bold uppercase tracking-widest mb-6">Exclusivo para Administradores</p>
+
+          {authUser ? (
+            <div className="space-y-6 text-center">
+              <div className="p-4 bg-red-950/30 border border-red-900/40 rounded-2xl text-left space-y-2">
+                <div className="flex items-center gap-2 text-red-400 font-bold text-xs uppercase">
+                  <AlertTriangle size={16} /> Acesso Não Autorizado
+                </div>
+                <p className="text-xs text-neutral-300 leading-relaxed">
+                  Você está conectado como <strong className="text-white">{authUser.email}</strong>, porém o perfil <span className="px-2 py-0.5 bg-neutral-800 text-indigo-300 rounded font-mono text-[10px] uppercase font-bold">{authUser.role || 'Usuário'}</span> não possui privilégios de Administrador.
+                </p>
+              </div>
+
+              <button
+                onClick={() => signOut()}
+                className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-500 transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-600/20"
+              >
+                <LogOut size={18} /> ENTRAR COM CONTA ADMINISTRADORA
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSignIn} className="space-y-4">
+              {loginError && (
+                <div className="p-3 bg-red-950/40 border border-red-900/50 rounded-xl text-red-400 text-xs font-medium text-center">
+                  {loginError}
+                </div>
+              )}
+
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-indigo-400 transition-colors">
+                  <Mail size={18} />
+                </div>
+                <input 
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="E-mail de Administrador"
+                  required
+                  className="w-full pl-12 pr-4 py-4 bg-black/40 border border-neutral-800 focus:border-indigo-500 rounded-2xl text-sm font-medium transition-all outline-none"
+                />
+              </div>
+
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-indigo-400 transition-colors">
+                  <Lock size={18} />
+                </div>
+                <input 
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Senha"
+                  required
+                  className="w-full pl-12 pr-12 py-4 bg-black/40 border border-neutral-800 focus:border-indigo-500 rounded-2xl text-sm font-medium transition-all outline-none"
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              <button 
+                type="submit"
+                disabled={isLoginLoading}
+                className="w-full mt-6 py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-600/20"
+              >
+                {isLoginLoading ? (
+                  <>
+                    <RefreshCw className="animate-spin" size={20} />
+                    <span>AUTENTICANDO...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={18} fill="currentColor" />
+                    <span>ACESSAR FERRAMENTA DE SUPORTE</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-neutral-100 p-6 font-sans selection:bg-indigo-500/30">
       <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-3rem)]">
@@ -445,7 +529,7 @@ export default function DataLoaderPage() {
                 <div className={`h-3 w-3 rounded-full animate-pulse ${userId ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"}`} />
                 <div className="min-w-0 flex-1">
                    <span className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest">
-                     {userId ? "Operador Autenticado" : "Acesso Restrito"}
+                     {userId ? "Administrador Autenticado" : "Acesso Restrito"}
                    </span>
                    <span className="block text-xs font-bold text-neutral-200 truncate">
                      {userEmail || "Sistema Bloqueado"}
@@ -453,7 +537,7 @@ export default function DataLoaderPage() {
                 </div>
                 {userId && (
                   <button 
-                    onClick={() => supabase.auth.signOut()}
+                    onClick={() => signOut()}
                     className="p-1.5 text-neutral-500 hover:text-red-400 transition-colors"
                     title="Sair"
                   >
@@ -461,14 +545,6 @@ export default function DataLoaderPage() {
                   </button>
                 )}
              </div>
-             {!userId && (
-               <button 
-                 onClick={() => setShowLoginModal(true)}
-                 className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black rounded-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
-               >
-                 <LogIn size={12} /> Conectar ao Sistema
-               </button>
-             )}
           </div>
 
           <nav className="space-y-2">
@@ -754,85 +830,7 @@ export default function DataLoaderPage() {
         </div>
       )}
 
-      {/* Modal de Login */}
-      {showLoginModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={() => !isLoginLoading && setShowLoginModal(false)}></div>
-          <form 
-            onSubmit={handleSignIn}
-            className="relative bg-neutral-900 border border-indigo-500/30 p-10 rounded-[2.5rem] max-w-sm w-full shadow-2xl shadow-indigo-500/10 animate-in fade-in zoom-in-95 duration-300"
-          >
-            <div className="w-16 h-16 bg-indigo-600/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-400 border border-indigo-500/20">
-              <ShieldCheck size={32} />
-            </div>
-            <h3 className="text-2xl font-black text-white text-center mb-2 tracking-tight">AUTENTICAÇÃO</h3>
-            <p className="text-neutral-500 text-center text-xs font-bold uppercase tracking-widest mb-8">Credenciais Requeridas</p>
-            
-            <div className="space-y-4">
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-indigo-400 transition-colors">
-                  <Mail size={18} />
-                </div>
-                <input 
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Seu e-mail"
-                  required
-                  className="w-full pl-12 pr-4 py-4 bg-black/40 border border-neutral-800 focus:border-indigo-500 rounded-2xl text-sm font-medium transition-all outline-none"
-                />
-              </div>
 
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-indigo-400 transition-colors">
-                  <Lock size={18} />
-                </div>
-                <input 
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Sua senha"
-                  required
-                  className="w-full pl-12 pr-12 py-4 bg-black/40 border border-neutral-800 focus:border-indigo-500 rounded-2xl text-sm font-medium transition-all outline-none"
-                />
-                <button 
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white transition-colors"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <button 
-              type="submit"
-              disabled={isLoginLoading}
-              className="w-full mt-8 py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3 relative overflow-hidden group shadow-lg shadow-indigo-600/20"
-            >
-              {isLoginLoading ? (
-                <>
-                  <RefreshCw className="animate-spin" size={20} />
-                  <span>VERIFICANDO...</span>
-                </>
-              ) : (
-                <>
-                  <Play size={18} fill="currentColor" />
-                  <span>ACESSAR SISTEMA</span>
-                </>
-              )}
-            </button>
-            
-            <button 
-              type="button"
-              onClick={() => setShowLoginModal(false)}
-              className="w-full mt-3 py-3 text-neutral-500 hover:text-white text-xs font-bold uppercase transition-all"
-            >
-              Cancelar
-            </button>
-          </form>
-        </div>
-      )}
 
       {/* Modal de Sucesso */}
       {showSuccessModal && (
