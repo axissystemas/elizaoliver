@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Check, AlertTriangle, AlertCircle, Eye, Info } from 'lucide-react';
 import { ChineseDietFood, ThermalNature, EditorialStatus, FoodSource, AuditLogEntry, FoodDivergence } from '@/types/dietotherapy';
-import { dietotherapyService } from '@/lib/dietotherapyService';
+import { dietotherapyService, parseChannels } from '@/lib/dietotherapyService';
 
 interface FoodFormModalProps {
   food?: ChineseDietFood | null;
@@ -30,7 +30,7 @@ export default function FoodFormModal({ food, onClose, onSave }: FoodFormModalPr
   // Classificação Energética
   const [thermalNature, setThermalNature] = useState<ThermalNature>(food?.thermal_nature || 'Neutro');
   const [flavors, setFlavors] = useState<string[]>(food?.flavors || []);
-  const [channels, setChannels] = useState<string[]>(food?.channels || []);
+  const [channels, setChannels] = useState<string[]>(parseChannels(food?.channels));
   const [energyDirection, setEnergyDirection] = useState(food?.energy_direction || 'Neutro');
   const [functionsText, setFunctionsText] = useState(food?.therapeutic_functions?.join(', ') || '');
 

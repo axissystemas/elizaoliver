@@ -5,43 +5,81 @@ import { INITIAL_MOCK_FOODS } from './dietotherapyMockData';
 const CHANNEL_MAP: Record<string, string> = {
   'BP': 'Baço',
   'BAÇO-PÂNCREAS': 'Baço',
+  'BAÇO PÂNCREAS': 'Baço',
   'BAÇO': 'Baço',
+  'BACO': 'Baço',
   'E': 'Estômago',
   'ESTÔMAGO': 'Estômago',
+  'ESTOMAGO': 'Estômago',
   'IG': 'Intestino Grosso',
   'INTESTINO GROSSO': 'Intestino Grosso',
   'ID': 'Intestino Delgado',
   'INTESTINO DELGADO': 'Intestino Delgado',
   'P': 'Pulmão',
   'PULMÃO': 'Pulmão',
+  'PULMAO': 'Pulmão',
   'R': 'Rim',
+  'RIMS': 'Rim',
+  'RINS': 'Rim',
   'RIM': 'Rim',
   'F': 'Fígado',
   'FÍGADO': 'Fígado',
+  'FIGADO': 'Fígado',
   'C': 'Coração',
   'CORAÇÃO': 'Coração',
+  'CORACAO': 'Coração',
   'B': 'Bexiga',
   'BEXIGA': 'Bexiga',
   'VB': 'Vesícula Biliar',
   'VESÍCULA BILIAR': 'Vesícula Biliar',
+  'VESICULA BILIAR': 'Vesícula Biliar',
   'VC': 'Vaso Concepção',
   'VG': 'Vaso Governador',
   'TA': 'Triplo Aquecedor',
   'PC': 'Pericárdio'
 };
 
-function parseChannels(rawText: string): string[] {
-  if (!rawText) return [];
-  const parts = rawText.split(/[,/;|\s+]\s*/).map(p => p.trim().toUpperCase());
+export function parseChannels(rawInput: any): string[] {
+  if (!rawInput) return [];
+  
+  let str = '';
+  if (Array.isArray(rawInput)) {
+    str = rawInput.join(', ');
+  } else {
+    str = rawInput.toString();
+  }
+
+  // Substitui conectivos ' e ', '&', ' E ' por vírgula
+  str = str.replace(/\s+e\s+/gi, ', ').replace(/\s*&\s*/g, ', ');
+
+  // Separa por vírgula, ponto-e-vírgula, barra (/), pipe (|)
+  const parts = str.split(/[,;/|]+/).map(p => p.trim()).filter(Boolean);
   const result = new Set<string>();
+
   for (const part of parts) {
-    if (CHANNEL_MAP[part]) {
-      result.add(CHANNEL_MAP[part]);
+    const normKey = part.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (CHANNEL_MAP[normKey]) {
+      result.add(CHANNEL_MAP[normKey]);
+    } else if (CHANNEL_MAP[part.toUpperCase()]) {
+      result.add(CHANNEL_MAP[part.toUpperCase()]);
     } else if (part !== '') {
-      const capitalized = part.charAt(0) + part.slice(1).toLowerCase();
-      result.add(capitalized);
+      // Se houver sub-tokens (ex: P/IG/E/BP/R que pode vir aglutinado ou separado por espaços)
+      const subParts = part.split(/[\/\s]+/).filter(Boolean);
+      let matchedAny = false;
+      for (const sub of subParts) {
+        const subKey = sub.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        if (CHANNEL_MAP[subKey]) {
+          result.add(CHANNEL_MAP[subKey]);
+          matchedAny = true;
+        }
+      }
+      if (!matchedAny) {
+        const capitalized = part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+        result.add(capitalized);
+      }
     }
   }
+
   return Array.from(result);
 }
 
@@ -91,9 +129,15 @@ function getLocalFoods(): ChineseDietFood[] {
   let updated = false;
   const sanitized = foods.map(f => {
     const normNature = normalizeThermalNature(f.thermal_nature);
-    if (normNature !== f.thermal_nature) {
+    const parsedCh = parseChannels(f.channels);
+    const chChanged = JSON.stringify(parsedCh) !== JSON.stringify(f.channels);
+    if (normNature !== f.thermal_nature || chChanged) {
       updated = true;
-      return { ...f, thermal_nature: normNature };
+      return { 
+        ...f, 
+        thermal_nature: normNature,
+        channels: parsedCh 
+      };
     }
     return f;
   });
