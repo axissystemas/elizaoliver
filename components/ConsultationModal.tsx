@@ -21,11 +21,16 @@ import {
   Package,
   ShieldCheck,
   CreditCard,
-  Hash
+  Hash,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '@/lib/supabase';
 import { Procedure, InsurancePlan } from '@/types/billing';
+import { PatientAttachment } from '@/types/attachments';
+import { attachmentService } from '@/lib/attachmentService';
+import PhotoUploaderModal from './attachments/PhotoUploaderModal';
 
 interface ConsultationModalProps {
   isOpen: boolean;
@@ -76,6 +81,22 @@ export default function ConsultationModal({
   const [guiaNumber, setGuiaNumber] = useState(editingConsultation?.guiaNumber || '');
   const [authCode, setAuthCode] = useState(editingConsultation?.authCode || '');
   const [isInsuranceConsultation, setIsInsuranceConsultation] = useState(!!patient?.insurancePlanId);
+  // Attachments / Photos fields
+  const [sessionAttachments, setSessionAttachments] = useState<PatientAttachment[]>([]);
+  const [isPhotoUploaderOpen, setIsPhotoUploaderOpen] = useState(false);
+
+  const fetchSessionAttachments = React.useCallback(async () => {
+    if (!patient?.id) return;
+    const constId = activeConsultation?.id || editingConsultation?.id;
+    const list = await attachmentService.getPatientAttachments(patient.id, constId);
+    setSessionAttachments(list);
+  }, [patient?.id, activeConsultation?.id, editingConsultation?.id]);
+
+  useEffect(() => {
+    if (isOpen && patient?.id) {
+      fetchSessionAttachments();
+    }
+  }, [isOpen, patient?.id, fetchSessionAttachments]);
 
   useEffect(() => {
     const fetchProcedures = async () => {
@@ -504,6 +525,39 @@ export default function ConsultationModal({
                       )}
                     </div>
                   </div>
+
+                  {/* Photos / Visual Registration Section */}
+                  <div className="space-y-4 pt-4 border-t border-outline-variant/10">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-outline uppercase tracking-widest flex items-center gap-2">
+                        <Camera size={14} className="text-purple-600" /> Registro Visual (Auriculoterapia / Língua)
+                      </label>
+                      <button 
+                        type="button"
+                        onClick={() => setIsPhotoUploaderOpen(true)}
+                        className="text-[10px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1 rounded-xl transition-all flex items-center gap-1.5"
+                      >
+                        <Camera size={13} /> Tirar / Anexar Foto
+                      </button>
+                    </div>
+
+                    {sessionAttachments.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {sessionAttachments.map((att) => (
+                          <div key={att.id} className="relative rounded-2xl overflow-hidden border border-outline-variant/15 group bg-slate-900 h-24 flex items-center justify-center">
+                            <img src={att.url} alt={att.title || 'Foto da Sessão'} className="h-full w-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 text-center">
+                              <span className="text-[9px] font-bold text-white line-clamp-2">{att.title}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-outline-variant italic">
+                        Nenhuma foto anexada a esta sessão (ex: foto da orelha ou língua).
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -607,6 +661,18 @@ export default function ConsultationModal({
           </div>
         )}
       </AnimatePresence>
+      {/* Photo Uploader Modal */}
+      {isPhotoUploaderOpen && patient && (
+        <PhotoUploaderModal
+          patientId={patient.id}
+          consultationId={activeConsultation?.id || editingConsultation?.id}
+          defaultCategory="auriculotherapy"
+          onClose={() => setIsPhotoUploaderOpen(false)}
+          onSuccess={() => {
+            fetchSessionAttachments();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -41,6 +41,8 @@ import DietBuilderModal from './dietotherapy/DietBuilderModal';
 import { dietotherapyService } from '@/lib/dietotherapyService';
 import { DietPdfGenerator } from '@/lib/DietPdfGenerator';
 
+import PatientGalleryView from './attachments/PatientGalleryView';
+
 interface PatientDetailViewProps {
   patient: any;
   consultations: any[];
@@ -103,7 +105,7 @@ export default function PatientDetailView({
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [packageToDeleteId, setPackageToDeleteId] = useState<string | null>(null);
   const [isEditingPackage, setIsEditingPackage] = useState(false);
-  const [activeTab, setActiveTab] = useState<'geral' | 'historico' | 'pacotes' | 'dietoterapia'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'historico' | 'pacotes' | 'dietoterapia' | 'galeria'>('geral');
 
   // Dietotherapy States
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
@@ -392,8 +394,8 @@ export default function PatientDetailView({
       </section>
 
       {/* Tabs Navigation */}
-      <div className="flex items-center gap-2 bg-surface-container-low p-2 rounded-[2rem] w-fit no-print">
-        {['geral', 'historico', 'pacotes', 'dietoterapia'].map((tab) => (
+      <div className="flex items-center gap-2 bg-surface-container-low p-2 rounded-[2rem] w-fit no-print flex-wrap">
+        {['geral', 'historico', 'pacotes', 'dietoterapia', 'galeria'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab as any)}
@@ -401,7 +403,7 @@ export default function PatientDetailView({
               activeTab === tab ? 'bg-white text-primary shadow-sm' : 'text-outline hover:text-primary'
             }`}
           >
-            {tab === 'geral' ? 'Resumo Clínico' : tab === 'historico' ? 'Consultas' : tab === 'pacotes' ? 'Pacotes' : 'Dietoterapia'}
+            {tab === 'geral' ? 'Resumo Clínico' : tab === 'historico' ? 'Consultas' : tab === 'pacotes' ? 'Pacotes' : tab === 'dietoterapia' ? 'Dietoterapia' : '📷 Fotos & Mídias Clínicas'}
           </button>
         ))}
       </div>
@@ -986,6 +988,17 @@ export default function PatientDetailView({
                 </div>
               )}
             </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'galeria' && (
+          <motion.div key="galeria" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+            <PatientGalleryView 
+              patientId={patient.id} 
+              patientName={patient.name} 
+              canCreate={canCreateConsultation} 
+              canDelete={canEditPatient} 
+            />
           </motion.div>
         )}
       </AnimatePresence>
