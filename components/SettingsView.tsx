@@ -140,6 +140,47 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileFeedback, setProfileFeedback] = useState<{ type: 'error' | 'success', message: string } | null>(null);
 
+  // Estados de auditoria
+  const [auditEnabled, setAuditEnabled] = useState(true);
+  const [isAuditingLoading, setIsAuditingLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchAuditState() {
+      if (!supabase) return;
+      try {
+        const { data } = await supabase
+          .from('system_settings')
+          .select('audit_enabled')
+          .eq('id', 1)
+          .maybeSingle();
+        if (data && typeof data.audit_enabled === 'boolean') {
+          setAuditEnabled(data.audit_enabled);
+        }
+      } catch (e) {}
+      setIsAuditingLoading(false);
+    }
+    fetchAuditState();
+  }, []);
+
+  const handleToggleAudit = async () => {
+    if (!supabase || user?.role !== 'ADMIN') return;
+    const newStatus = !auditEnabled;
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert({ id: 1, audit_enabled: newStatus, updated_at: new Date().toISOString(), updated_by: user.id });
+      if (error) throw error;
+      setAuditEnabled(newStatus);
+      logAction({
+        action: 'SETTINGS_CHANGE',
+        entityType: 'SYSTEM',
+        details: { audit_enabled: newStatus, reason: newStatus ? 'Ativado em Configurações' : 'Pausado para economizar espaço' }
+      }).catch(() => {});
+    } catch (e) {
+      alert('Erro ao alterar status da auditoria.');
+    }
+  };
+
   // Carrega dados da clínica do Supabase se o usuário possuir organização vinculada
   useEffect(() => {
     async function loadClinicFromDatabase() {
@@ -291,19 +332,6 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
   });
   const [isPasswordUpdating, setIsPasswordUpdating] = useState(false);
   const [passwordFeedback, setPasswordFeedback] = useState<{ type: 'error' | 'success', message: string } | null>(null);
-  
-  const [auditEnabled, setAuditEnabled] = useState(true);
-  const [isAuditingLoading, setIsAuditingLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchAuditState() {
-      if (!supabase) return;
-      const { data } = await supabase.from('system_settings').select('audit_enabled').eq('id', 1).single();
-      if (data) setAuditEnabled(data.audit_enabled ?? true);
-      setIsAuditingLoading(false);
-    }
-    fetchAuditState();
-  }, []);
 
   useEffect(() => {
     async function fetchQuotas() {
@@ -396,13 +424,6 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
   const canEditClinic = user?.permissions.includes('settings:clinic') || user?.role === 'ADMIN';
   const canDelete = user?.permissions.includes('settings:delete') || user?.role === 'ADMIN';
   const canManageUsers = user?.permissions.includes('settings:users') || user?.role === 'ADMIN';
-
-  const handleToggleAudit = async () => {
-    if (!supabase || user?.role !== 'ADMIN') return;
-    const newState = !auditEnabled;
-    setAuditEnabled(newState);
-    await supabase.from('system_settings').update({ audit_enabled: newState }).eq('id', 1);
-  };
   
   const [consultationTypes, setConsultationTypes] = useState<ConsultationType[]>(() => {
     if (typeof window !== 'undefined') {

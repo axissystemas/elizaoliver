@@ -13,10 +13,16 @@ import {
   X, 
   Filter, 
   Lock,
-  FileCode
+  FileCode,
+  AlertTriangle,
+  ToggleLeft,
+  ToggleRight,
+  Loader2,
+  CheckCircle2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@/types/auth';
+import { logAction } from '@/lib/auditLogService';
 
 interface AuditLog {
   id: string;
@@ -74,11 +80,66 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
   const [actionFilter, setActionFilter] = useState('ALL');
   const [periodFilter, setPeriodFilter] = useState<'all' | 'today' | '7d' | '30d'>('all');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [auditEnabled, setAuditEnabled] = useState(true);
+  const [isTogglingAudit, setIsTogglingAudit] = useState(false);
+
+  useEffect(() => {
+    async function fetchAuditStatus() {
+      if (!supabase) return;
+      try {
+        const { data } = await supabase
+          .from('system_settings')
+          .select('audit_enabled')
+          .eq('id', 1)
+          .maybeSingle();
+
+        if (data && typeof data.audit_enabled === 'boolean') {
+          setAuditEnabled(data.audit_enabled);
+        }
+      } catch (e) {}
+    }
+    fetchAuditStatus();
+  }, []);
+
+  const handleToggleAudit = async () => {
+    if (!supabase || user?.role !== 'ADMIN') return;
+    setIsTogglingAudit(true);
+    const newStatus = !auditEnabled;
+
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert({ 
+          id: 1, 
+          audit_enabled: newStatus, 
+          updated_at: new Date().toISOString(), 
+          updated_by: user.id 
+        });
+
+      if (error) throw error;
+
+      setAuditEnabled(newStatus);
+      logAction({
+        action: 'SETTINGS_CHANGE',
+        entityType: 'SYSTEM',
+        details: { audit_enabled: newStatus, reason: newStatus ? 'Ativado manualmente pelo administrador' : 'Pausado para economia de armazenamento' }
+      }).catch(() => {});
+
+    } catch (err: any) {
+      console.error('Erro ao alterar status da auditoria:', err);
+      alert('Erro ao alterar status da auditoria.');
+    } finally {
+      setIsTogglingAudit(false);
+    }
+  };
 
   const fetchLogs = async () => {
     if (!supabase) return;
     setLoading(true);
     try {
+      let rawLogs: any[] = [];
+
+      // 1. Tenta consulta primária com join relacional
       let query = supabase
         .from('audit_logs')
         .select(`
@@ -100,10 +161,52 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
-      setLogs((data as any) || []);
+
+      if (error) {
+        console.warn('[AuditLogsView] Join de relacionamento falhou. Buscando logs sem join...', error.message);
+        let directQuery = supabase
+          .from('audit_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(5000);
+
+        if (filterType !== 'ALL') directQuery = directQuery.eq('entity_type', filterType);
+        if (actionFilter !== 'ALL') directQuery = directQuery.eq('action', actionFilter);
+
+        const { data: directData, error: directError } = await directQuery;
+        if (directError) {
+          console.error('[AuditLogsView] Erro ao buscar logs diretamente:', directError);
+        } else {
+          rawLogs = directData || [];
+        }
+      } else {
+        rawLogs = data || [];
+      }
+
+      // 2. Enriquece perfis em memória para garantir que o nome e e-mail apareçam
+      try {
+        const missingUserIds = Array.from(new Set(rawLogs.filter(l => !l.profiles && l.user_id).map(l => l.user_id)));
+        if (missingUserIds.length > 0) {
+          const { data: profs } = await supabase
+            .from('profiles')
+            .select('id, name, email')
+            .in('id', missingUserIds);
+
+          if (profs && profs.length > 0) {
+            const pMap = new Map(profs.map(p => [p.id, p]));
+            rawLogs = rawLogs.map(l => ({
+              ...l,
+              profiles: l.profiles || pMap.get(l.user_id) || undefined
+            }));
+          }
+        }
+      } catch (pErr) {
+        console.warn('[AuditLogsView] Erro ao associar perfis:', pErr);
+      }
+
+      setLogs(rawLogs);
     } catch (err) {
-      console.error('Erro ao buscar logs:', err);
+      console.error('Erro crítico ao buscar logs:', err);
     } finally {
       setLoading(false);
     }
@@ -225,16 +328,47 @@ export default function AuditLogsView({ user }: AuditLogsViewProps) {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-4xl font-bold font-headline text-on-surface">Auditoria de Sistema</h2>
             <span className="px-3 py-1 bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold rounded-full flex items-center gap-1.5">
               <Lock size={12} /> Append-Only Imutável
             </span>
+
+            {/* Visual Status Indicator Badge */}
+            {auditEnabled ? (
+              <span className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-full flex items-center gap-2 shadow-sm">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                Serviço de Auditoria: ATIVO (Gravando Logs)
+              </span>
+            ) : (
+              <span className="px-3.5 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold rounded-full flex items-center gap-2 shadow-sm">
+                <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+                Serviço de Auditoria: PAUSADO (Economia de Espaço em Disco)
+              </span>
+            )}
           </div>
           <p className="text-on-surface-variant text-lg mt-2 font-medium">Histórico contínuo de ações clínicas, financeiras e administrativas.</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Toggle Service Button */}
+          <button 
+            onClick={handleToggleAudit}
+            disabled={isTogglingAudit}
+            className={`px-5 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 text-xs uppercase tracking-wider ${
+              auditEnabled 
+                ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200' 
+                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+            }`}
+            title={auditEnabled ? 'Pausar gravação para economizar espaço em disco' : 'Ativar gravação de logs de auditoria'}
+          >
+            {isTogglingAudit ? <Loader2 size={18} className="animate-spin" /> : (auditEnabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />)}
+            {auditEnabled ? 'Pausar Gravação' : 'Ativar Gravação'}
+          </button>
+
           <button 
             onClick={fetchLogs}
             className="px-5 py-3 rounded-2xl bg-surface-container-low text-on-surface font-bold hover:bg-surface-container transition-colors flex items-center gap-2"

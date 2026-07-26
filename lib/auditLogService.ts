@@ -37,23 +37,12 @@ interface LogActionParams {
   ipAddress?: string;
 }
 
-// Em memória cache para não consultar o DB a cada ação
 let auditEnabledCache: boolean | null = null;
 let lastCacheUpdate: number = 0;
 const CACHE_TTL = 60000; // 1 minuto
-let isBootstrapMode = false;
 
-/**
- * Define se o sistema está em modo bootstrap (inicialização).
- * Durante o bootstrap, os logs são ignorados para evitar concorrência.
- */
 export function setBootstrapMode(enabled: boolean) {
-  isBootstrapMode = enabled;
-  if (enabled) {
-    console.log('[AuditLog] Sistema em modo bootstrap. Logs suspensos.');
-  } else {
-    console.log('[AuditLog] Modo bootstrap finalizado. Logs liberados.');
-  }
+  // Desativado bloqueio de bootstrap para garantir gravação 100% contínua
 }
 
 export async function isAuditEnabled(): Promise<boolean> {
@@ -63,16 +52,17 @@ export async function isAuditEnabled(): Promise<boolean> {
   }
 
   try {
-    if (!supabase) return false;
-    const { data, error } = await supabase
+    const client = getSupabase();
+    if (!client) return true;
+
+    const { data, error } = await client
       .from('system_settings')
       .select('audit_enabled')
       .eq('id', 1)
-      .single();
+      .maybeSingle();
     
     if (error || !data) {
-      console.error('Erro ao ler configuração de auditoria:', error);
-      auditEnabledCache = true; // Fallback seguro
+      auditEnabledCache = true;
     } else {
       auditEnabledCache = data.audit_enabled ?? true;
     }
@@ -88,9 +78,7 @@ export async function isAuditEnabled(): Promise<boolean> {
  * Registra uma ação no log de auditoria de forma assíncrona e não-bloqueante.
  */
 export async function logAction({ action, entityType, details = {}, entityId, userId, organizationId, ipAddress }: LogActionParams) {
-  // Fire-and-forget assíncrono para garantir zero atraso na navegação do usuário
   try {
-    if (isBootstrapMode) return;
     const isEnabled = await isAuditEnabled();
     if (!isEnabled) return;
 
@@ -101,17 +89,19 @@ export async function logAction({ action, entityType, details = {}, entityId, us
     let finalOrgId = organizationId;
 
     if (!finalUserId || !finalOrgId) {
-      const { data: { user } } = await client.auth.getUser();
-      if (!finalUserId) finalUserId = user?.id;
+      try {
+        const { data: { user } } = await client.auth.getUser();
+        if (!finalUserId) finalUserId = user?.id;
 
-      if (!finalOrgId && finalUserId) {
-        const { data: profile } = await client
-          .from('profiles')
-          .select('organization_id')
-          .eq('id', finalUserId)
-          .single();
-        finalOrgId = profile?.organization_id;
-      }
+        if (!finalOrgId && finalUserId) {
+          const { data: profile } = await client
+            .from('profiles')
+            .select('organization_id')
+            .eq('id', finalUserId)
+            .maybeSingle();
+          finalOrgId = profile?.organization_id;
+        }
+      } catch (e) {}
     }
 
     const safeDetails = { ...details };
@@ -133,7 +123,11 @@ export async function logAction({ action, entityType, details = {}, entityId, us
         ip_address: clientIp
       });
 
-    if (error) console.error('[AuditLog] Erro ao salvar log:', error.message);
+    if (error) {
+      console.error('[AuditLog] Erro ao salvar log no Supabase:', error.message);
+    } else {
+      console.log(`[AuditLog] Log registrado com sucesso: [${action}] em [${entityType}]`);
+    }
   } catch (err) {
     console.error('[AuditLog] Erro crítico ao processar log:', err);
   }
