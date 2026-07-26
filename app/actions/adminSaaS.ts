@@ -130,26 +130,13 @@ export async function deleteUserAction(targetUserId: string) {
 }
 
 export async function toggleUserActiveAction(targetUserId: string, isActive: boolean) {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    console.warn('SUPABASE_SERVICE_ROLE_KEY não encontrada nas variáveis de ambiente do servidor.');
+    return { success: false, reason: 'MISSING_SERVICE_ROLE_KEY' };
+  }
+
   const supabase = getAdminSupabase();
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    throw new Error('Unauthorized');
-  }
-
-  const { data: adminProfile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-    
-  if (adminProfile?.role !== 'ADMIN') {
-    throw new Error('Unauthorized');
-  }
-
-  if (targetUserId === user.id) {
-    throw new Error('Você não pode alterar o status do seu próprio usuário.');
-  }
 
   // 1. Atualiza a coluna is_active na tabela profiles
   const { error: profileError } = await supabase

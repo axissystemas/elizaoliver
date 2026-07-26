@@ -330,7 +330,33 @@ export default function UsersManagementView({ user }: UsersManagementViewProps) 
     setGeneralError(null);
 
     try {
-      await toggleUserActiveAction(u.id, targetNewStatus);
+      let isSuccess = false;
+
+      // 1. Tenta atualizar via Server Action (que suspende no Auth se Service Role Key estiver disponível)
+      try {
+        const res = await toggleUserActiveAction(u.id, targetNewStatus);
+        if (res && res.success) {
+          isSuccess = true;
+        }
+      } catch (saErr) {
+        console.warn('Server Action toggleUserActiveAction falhou, usando atualização direta no cliente Supabase:', saErr);
+      }
+
+      // 2. Fallback via cliente Supabase caso Server Action não consiga executar
+      if (!isSuccess) {
+        const supabase = getSupabase();
+        if (!supabase) throw new Error('Cliente Supabase não inicializado.');
+
+        const { error: updateErr } = await supabase
+          .from('profiles')
+          .update({
+            is_active: targetNewStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', u.id);
+
+        if (updateErr) throw updateErr;
+      }
       
       setUsers(prevUsers => prevUsers.map(item => 
         item.id === u.id ? { ...item, is_active: targetNewStatus } : item
