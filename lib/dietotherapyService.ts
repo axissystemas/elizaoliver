@@ -155,6 +155,78 @@ function saveLocalFoods(foods: ChineseDietFood[]) {
   }
 }
 
+async function fetchFoodsFromSupabase(): Promise<ChineseDietFood[]> {
+  const localFoods = getLocalFoods();
+
+  try {
+    const { data, error } = await (supabase.from as any)('chinese_diet_foods').select('*');
+
+    if (!error && data && Array.isArray(data)) {
+      const mappedDbFoods: ChineseDietFood[] = data.map((item: any) => ({
+        id: item.id || ('f_' + Math.random().toString(36).substr(2, 9)),
+        name: item.name || '',
+        normalized_name: item.normalized_name || (item.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
+        synonyms: Array.isArray(item.synonyms) ? item.synonyms : [],
+        category: item.category || 'Outros',
+        scientific_name: item.scientific_name || undefined,
+        used_part: item.used_part || undefined,
+        description: item.description || undefined,
+        image_url: item.image_url || undefined,
+        thermal_nature: normalizeThermalNature(item.thermal_nature),
+        energy_direction: item.energy_direction || 'Neutro',
+        flavors: Array.isArray(item.flavors) ? item.flavors : [],
+        channels: parseChannels(item.channels),
+        therapeutic_functions: Array.isArray(item.therapeutic_functions) ? item.therapeutic_functions : [],
+        indicated_patterns: Array.isArray(item.indicated_patterns) ? item.indicated_patterns : [],
+        caution_patterns: Array.isArray(item.caution_patterns) ? item.caution_patterns : [],
+        preparation_modes: Array.isArray(item.preparation_modes) ? item.preparation_modes : [],
+        clinical_notes: item.clinical_notes || undefined,
+        culinary_notes: item.culinary_notes || undefined,
+        contraindications: item.contraindications || undefined,
+        allergens: item.allergens || undefined,
+        restrictions: item.restrictions || undefined,
+        editorial_status: item.editorial_status || 'published',
+        is_active: item.is_active ?? true,
+        sources: Array.isArray(item.sources) ? item.sources : [],
+        divergences: Array.isArray(item.divergences) ? item.divergences : [],
+        audit_logs: Array.isArray(item.audit_logs) ? item.audit_logs : [],
+        created_at: item.created_at || new Date().toISOString(),
+        updated_at: item.updated_at || new Date().toISOString()
+      }));
+
+      // Se houver alimentos no localStorage que ainda NÃO estão no Supabase, sobe eles para a nuvem
+      const dbNameSet = new Set(mappedDbFoods.map(f => f.normalized_name));
+      const localFoodsToUpload = localFoods.filter(lf => lf.normalized_name && !dbNameSet.has(lf.normalized_name));
+
+      if (localFoodsToUpload.length > 0) {
+        console.log(`[DietotherapyService] Sincronizando ${localFoodsToUpload.length} alimentos locais com o Supabase...`);
+        const { error: upsertErr } = await (supabase.from as any)('chinese_diet_foods').upsert(localFoodsToUpload, { onConflict: 'name' });
+        if (!upsertErr) {
+          mappedDbFoods.push(...localFoodsToUpload);
+        } else {
+          console.warn('[DietotherapyService] Aviso ao enviar alimentos locais:', upsertErr.message);
+        }
+      }
+
+      // Atualiza o cache do localStorage para manter sincronia local
+      saveLocalFoods(mappedDbFoods);
+      return mappedDbFoods;
+    }
+
+    if (error) {
+      console.warn('[DietotherapyService] Tabela no Supabase inacessível ou vazia, usando dados locais. Erro:', error.message);
+      // Tenta fazer upload dos dados locais caso a tabela já exista e esteja vazia
+      if (localFoods.length > 0) {
+        (supabase.from as any)('chinese_diet_foods').upsert(localFoods, { onConflict: 'name' }).catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.error('[DietotherapyService] Erro ao conectar ao Supabase:', err);
+  }
+
+  return localFoods;
+}
+
 function getLocalPrescriptions(): ChineseDietPrescription[] {
   if (typeof window === 'undefined') return [];
   const stored = localStorage.getItem(LOCAL_STORAGE_PRESCRIPTIONS_KEY);
@@ -174,7 +246,7 @@ function saveLocalPrescriptions(prescriptions: ChineseDietPrescription[]) {
 
 export const dietotherapyService = {
   /**
-   * Busca alimentos com base em filtros e busca textual
+   * Busca alimentos com base em filtros e busca textual (Nuvem / Supabase com fallback local)
    */
   async getFoods(filters: {
     searchTerm?: string;
@@ -192,7 +264,7 @@ export const dietotherapyService = {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
   } = {}): Promise<ChineseDietFood[]> {
-    let foods = getLocalFoods();
+    let foods = await fetchFoodsFromSupabase();
 
     // Filtro por termo de busca
     if (filters.searchTerm) {
@@ -265,7 +337,7 @@ export const dietotherapyService = {
   },
 
   /**
-   * Grava ou atualiza um alimento no banco ou localmente
+   * Grava ou atualiza um alimento no banco Supabase e localmente
    */
   async saveFood(food: Partial<ChineseDietFood>): Promise<ChineseDietFood> {
     const foods = getLocalFoods();
@@ -313,6 +385,14 @@ export const dietotherapyService = {
     }
 
     saveLocalFoods(foods);
+
+    // Tenta persistir no Supabase em paralelo
+    try {
+      await (supabase.from as any)('chinese_diet_foods').upsert(updatedFood, { onConflict: 'name' });
+    } catch (err) {
+      console.error('[DietotherapyService] Erro ao salvar no Supabase:', err);
+    }
+
     return updatedFood;
   },
 
@@ -322,9 +402,22 @@ export const dietotherapyService = {
   async deleteFood(id: string): Promise<void> {
     const foods = getLocalFoods();
     const index = foods.findIndex(f => f.id === id);
+    let deletedItem: ChineseDietFood | null = null;
     if (index !== -1) {
+      deletedItem = foods[index];
       foods.splice(index, 1);
       saveLocalFoods(foods);
+    }
+
+    try {
+      if (id) {
+        await (supabase.from as any)('chinese_diet_foods').delete().eq('id', id);
+      }
+      if (deletedItem?.name) {
+        await (supabase.from as any)('chinese_diet_foods').delete().eq('name', deletedItem.name);
+      }
+    } catch (err) {
+      console.error('[DietotherapyService] Erro ao deletar no Supabase:', err);
     }
   },
 
@@ -517,6 +610,13 @@ export const dietotherapyService = {
     }
 
     saveLocalFoods(currentFoods);
+
+    // Tenta persistir toda a lista no Supabase
+    try {
+      await (supabase.from as any)('chinese_diet_foods').upsert(currentFoods, { onConflict: 'name' });
+    } catch (err) {
+      console.error('[DietotherapyService] Erro ao enviar importação para o Supabase:', err);
+    }
 
     if (typeof window !== 'undefined') {
       const historyStr = localStorage.getItem('axis_gc_dietotherapy_imports_history') || '[]';
