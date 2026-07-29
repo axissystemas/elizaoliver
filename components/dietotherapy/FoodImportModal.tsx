@@ -3,7 +3,7 @@ import {
   X, Upload, Check, Trash2, AlertTriangle, RefreshCw, FileText, 
   ChevronRight, Info, History, Sparkles, Database, ShieldAlert, Download, FileSpreadsheet 
 } from 'lucide-react';
-import { dietotherapyService, normalizeThermalNature } from '@/lib/dietotherapyService';
+import { dietotherapyService, normalizeThermalNature, parseChannels } from '@/lib/dietotherapyService';
 import { FoodImportLine, ChineseDietFood } from '@/types/dietotherapy';
 
 interface FoodImportModalProps {
@@ -507,7 +507,7 @@ export default function FoodImportModal({ onClose, onImportSuccess }: FoodImport
                               </span>
                             </div>
                             <div><span className="text-outline">Sabores:</span> <span className="font-bold">{line.original_flavors || '-'}</span></div>
-                            <div><span className="text-outline">Canais:</span> <span className="font-bold text-primary">{line.original_channels || '-'}</span></div>
+                            <div><span className="text-outline">Canais:</span> <span className="font-bold text-primary">{parseChannels(line.original_channels).join(', ') || line.original_channels || '-'}</span></div>
                             {line.inconsistency_notes && (
                               <div className="text-[10px] text-amber-700 italic font-semibold mt-1">
                                 Obs: {line.inconsistency_notes}
