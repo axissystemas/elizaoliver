@@ -6,7 +6,7 @@ const LOCAL_STORAGE_KEY = 'axis_gc_patient_attachments';
 /**
  * Função utilitária para compactar imagem via Canvas client-side antes de salvar
  */
-async function compressImage(file: File, maxWidth = 1600, maxHeight = 1600, quality = 0.85): Promise<{ blob: Blob; dataUrl: string }> {
+async function compressImage(file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.75): Promise<{ blob: Blob; dataUrl: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -77,14 +77,21 @@ function getLocalAttachments(patientId?: string): PatientAttachment[] {
 }
 
 /**
- * Salva a lista de anexos no localStorage
+ * Salva a lista de anexos no localStorage garantindo tratamento contra QuotaExceededError
  */
 function saveLocalAttachments(attachments: PatientAttachment[]) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(attachments));
   } catch (e) {
-    console.error('Erro ao salvar anexos locais:', e);
+    console.warn('Cota de localStorage excedida para imagens. Limpando itens antigos para liberar espaço...', e);
+    try {
+      // Se estourar a cota de 5MB, mantém apenas os últimos 5 anexos mais recentes
+      const trimmed = attachments.slice(0, 5);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(trimmed));
+    } catch (err) {
+      console.error('Erro crítico ao salvar anexos locais:', err);
+    }
   }
 }
 
