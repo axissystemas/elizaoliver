@@ -155,6 +155,49 @@ function saveLocalFoods(foods: ChineseDietFood[]) {
   }
 }
 
+function isUUID(str?: string): boolean {
+  if (!str) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+}
+
+function toDbPayload(food: ChineseDietFood): any {
+  const payload: any = {
+    name: food.name,
+    normalized_name: food.normalized_name || (food.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(),
+    category: food.category || 'Outros',
+    thermal_nature: normalizeThermalNature(food.thermal_nature),
+    energy_direction: food.energy_direction || 'Neutro',
+    flavors: Array.isArray(food.flavors) ? food.flavors : [],
+    channels: parseChannels(food.channels),
+    scientific_name: food.scientific_name || null,
+    used_part: food.used_part || null,
+    description: food.description || null,
+    image_url: food.image_url || null,
+    synonyms: Array.isArray(food.synonyms) ? food.synonyms : [],
+    therapeutic_functions: Array.isArray(food.therapeutic_functions) ? food.therapeutic_functions : [],
+    indicated_patterns: Array.isArray(food.indicated_patterns) ? food.indicated_patterns : [],
+    caution_patterns: Array.isArray(food.caution_patterns) ? food.caution_patterns : [],
+    preparation_modes: Array.isArray(food.preparation_modes) ? food.preparation_modes : [],
+    clinical_notes: food.clinical_notes || null,
+    culinary_notes: food.culinary_notes || null,
+    contraindications: food.contraindications || null,
+    allergens: food.allergens || null,
+    restrictions: food.restrictions || null,
+    editorial_status: food.editorial_status || 'published',
+    is_active: food.is_active ?? true,
+    sources: Array.isArray(food.sources) ? food.sources : [],
+    divergences: Array.isArray(food.divergences) ? food.divergences : [],
+    audit_logs: Array.isArray(food.audit_logs) ? food.audit_logs : [],
+    updated_at: new Date().toISOString()
+  };
+
+  if (isUUID(food.id)) {
+    payload.id = food.id;
+  }
+
+  return payload;
+}
+
 async function fetchFoodsFromSupabase(): Promise<ChineseDietFood[]> {
   const localFoods = getLocalFoods();
 
@@ -165,7 +208,7 @@ async function fetchFoodsFromSupabase(): Promise<ChineseDietFood[]> {
 
     if (!error && data && Array.isArray(data)) {
       mappedDbFoods = data.map((item: any) => ({
-        id: item.id || ('f_' + Math.random().toString(36).substr(2, 9)),
+        id: item.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'f_' + Math.random().toString(36).substr(2, 9)),
         name: item.name || '',
         normalized_name: item.normalized_name || (item.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
         synonyms: Array.isArray(item.synonyms) ? item.synonyms : [],
@@ -221,7 +264,8 @@ async function fetchFoodsFromSupabase(): Promise<ChineseDietFood[]> {
 
       if (localFoodsToUpload.length > 0) {
         console.log(`[DietotherapyService] Sincronizando ${localFoodsToUpload.length} alimentos locais com o Supabase...`);
-        (supabase.from as any)('chinese_diet_foods').upsert(localFoodsToUpload).catch((e: any) => {
+        const dbPayloads = localFoodsToUpload.map(toDbPayload);
+        (supabase.from as any)('chinese_diet_foods').upsert(dbPayloads).catch((e: any) => {
           console.warn('[DietotherapyService] Aviso ao enviar para Supabase:', e);
         });
       }
@@ -396,7 +440,7 @@ export const dietotherapyService = {
 
     // Tenta persistir no Supabase em paralelo
     try {
-      await (supabase.from as any)('chinese_diet_foods').upsert(updatedFood);
+      await (supabase.from as any)('chinese_diet_foods').upsert(toDbPayload(updatedFood));
     } catch (err) {
       console.error('[DietotherapyService] Erro ao salvar no Supabase:', err);
     }
@@ -621,7 +665,8 @@ export const dietotherapyService = {
 
     // Tenta persistir toda a lista no Supabase
     try {
-      await (supabase.from as any)('chinese_diet_foods').upsert(currentFoods);
+      const dbPayloads = currentFoods.map(toDbPayload);
+      await (supabase.from as any)('chinese_diet_foods').upsert(dbPayloads);
     } catch (err) {
       console.error('[DietotherapyService] Erro ao enviar importação para o Supabase:', err);
     }
