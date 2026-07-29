@@ -760,5 +760,40 @@ export const dietotherapyService = {
 
     saveLocalPrescriptions(prescriptions);
     return updated;
+  },
+
+  /**
+   * Força o envio e sincronização de todos os alimentos do armazenamento local com o banco de dados Supabase
+   */
+  async forceSyncWithDatabase(): Promise<{ successCount: number; error: string | null }> {
+    const localFoods = getLocalFoods();
+    if (!localFoods || localFoods.length === 0) {
+      return { successCount: 0, error: 'Nenhum alimento encontrado no armazenamento local para sincronizar.' };
+    }
+
+    try {
+      const dbPayloads = localFoods.map(toDbPayload);
+      console.log(`[DietotherapyService] Forçando sincronismo de ${dbPayloads.length} alimentos com o Supabase...`);
+
+      const BATCH_SIZE = 50;
+      let totalSynced = 0;
+
+      for (let i = 0; i < dbPayloads.length; i += BATCH_SIZE) {
+        const chunk = dbPayloads.slice(i, i + BATCH_SIZE);
+        const { error } = await (supabase.from as any)('chinese_diet_foods').upsert(chunk);
+
+        if (error) {
+          console.error(`[DietotherapyService] Erro ao sincronizar lote ${Math.floor(i / BATCH_SIZE) + 1}:`, error.message);
+          return { successCount: totalSynced, error: error.message };
+        }
+
+        totalSynced += chunk.length;
+      }
+
+      return { successCount: totalSynced, error: null };
+    } catch (err: any) {
+      console.error('[DietotherapyService] Erro fatal na força de sincronismo:', err);
+      return { successCount: 0, error: err?.message || 'Falha ao conectar com o banco Supabase' };
+    }
   }
 };

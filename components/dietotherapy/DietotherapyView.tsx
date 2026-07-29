@@ -77,9 +77,28 @@ export default function DietotherapyView({ user }: DietotherapyViewProps) {
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Permissões
   const canCreate = user?.permissions.includes('dietotherapy:create') || user?.role === 'ADMIN';
+
+  // Forçar Sincronismo com o banco Supabase
+  const handleForceSync = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await dietotherapyService.forceSyncWithDatabase();
+      if (res.error) {
+        alert(`Aviso na sincronização: ${res.error}\nRegistros processados: ${res.successCount}`);
+      } else {
+        alert(`Sincronização concluída com sucesso! ${res.successCount} alimentos salvos na tabela chinese_diet_foods do banco Supabase.`);
+      }
+      await fetchFoods();
+    } catch (e: any) {
+      alert(`Erro na sincronização: ${e.message}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Buscar alimentos
   const fetchFoods = useCallback(async () => {
@@ -226,6 +245,15 @@ export default function DietotherapyView({ user }: DietotherapyViewProps) {
                 className="px-6 py-3.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 shadow-md shadow-emerald-600/20"
               >
                 <Upload size={16} /> Importar Lote
+              </button>
+              <button 
+                onClick={handleForceSync}
+                disabled={isSyncing}
+                className="px-5 py-3.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 shadow-md shadow-indigo-600/20 disabled:opacity-50"
+                title="Forçar envio de todos os alimentos locais para a tabela chinese_diet_foods no banco Supabase"
+              >
+                <RotateCcw size={16} className={isSyncing ? 'animate-spin' : ''} />
+                {isSyncing ? 'Sincronizando...' : 'Sincronizar Nuvem'}
               </button>
             </div>
           )}
