@@ -161,8 +161,10 @@ async function fetchFoodsFromSupabase(): Promise<ChineseDietFood[]> {
   try {
     const { data, error } = await (supabase.from as any)('chinese_diet_foods').select('*');
 
+    let mappedDbFoods: ChineseDietFood[] = [];
+
     if (!error && data && Array.isArray(data)) {
-      const mappedDbFoods: ChineseDietFood[] = data.map((item: any) => ({
+      mappedDbFoods = data.map((item: any) => ({
         id: item.id || ('f_' + Math.random().toString(36).substr(2, 9)),
         name: item.name || '',
         normalized_name: item.normalized_name || (item.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
@@ -193,32 +195,38 @@ async function fetchFoodsFromSupabase(): Promise<ChineseDietFood[]> {
         created_at: item.created_at || new Date().toISOString(),
         updated_at: item.updated_at || new Date().toISOString()
       }));
+    } else if (error) {
+      console.warn('[DietotherapyService] Tabela no Supabase inacessível ou vazia, usando dados locais. Erro:', error.message);
+    }
 
-      // Se houver alimentos no localStorage que ainda NÃO estão no Supabase, sobe eles para a nuvem
-      const dbNameSet = new Set(mappedDbFoods.map(f => f.normalized_name));
-      const localFoodsToUpload = localFoods.filter(lf => lf.normalized_name && !dbNameSet.has(lf.normalized_name));
+    // Combina os alimentos locais com os alimentos do banco de dados (priorizando o que tem mais informação)
+    const foodMap = new Map<string, ChineseDietFood>();
+    
+    localFoods.forEach(f => {
+      if (f.name) foodMap.set(f.name.toLowerCase().trim(), f);
+    });
+
+    mappedDbFoods.forEach(f => {
+      if (f.name) foodMap.set(f.name.toLowerCase().trim(), f);
+    });
+
+    const combinedFoods = Array.from(foodMap.values());
+
+    if (combinedFoods.length > 0) {
+      saveLocalFoods(combinedFoods);
+
+      // Tenta sincronizar em segundo plano alimentos locais que não estão no Supabase
+      const dbNameSet = new Set(mappedDbFoods.map(f => f.name.toLowerCase().trim()));
+      const localFoodsToUpload = localFoods.filter(lf => lf.name && !dbNameSet.has(lf.name.toLowerCase().trim()));
 
       if (localFoodsToUpload.length > 0) {
         console.log(`[DietotherapyService] Sincronizando ${localFoodsToUpload.length} alimentos locais com o Supabase...`);
-        const { error: upsertErr } = await (supabase.from as any)('chinese_diet_foods').upsert(localFoodsToUpload, { onConflict: 'name' });
-        if (!upsertErr) {
-          mappedDbFoods.push(...localFoodsToUpload);
-        } else {
-          console.warn('[DietotherapyService] Aviso ao enviar alimentos locais:', upsertErr.message);
-        }
+        (supabase.from as any)('chinese_diet_foods').upsert(localFoodsToUpload).catch((e: any) => {
+          console.warn('[DietotherapyService] Aviso ao enviar para Supabase:', e);
+        });
       }
 
-      // Atualiza o cache do localStorage para manter sincronia local
-      saveLocalFoods(mappedDbFoods);
-      return mappedDbFoods;
-    }
-
-    if (error) {
-      console.warn('[DietotherapyService] Tabela no Supabase inacessível ou vazia, usando dados locais. Erro:', error.message);
-      // Tenta fazer upload dos dados locais caso a tabela já exista e esteja vazia
-      if (localFoods.length > 0) {
-        (supabase.from as any)('chinese_diet_foods').upsert(localFoods, { onConflict: 'name' }).catch(() => {});
-      }
+      return combinedFoods;
     }
   } catch (err) {
     console.error('[DietotherapyService] Erro ao conectar ao Supabase:', err);
@@ -388,7 +396,7 @@ export const dietotherapyService = {
 
     // Tenta persistir no Supabase em paralelo
     try {
-      await (supabase.from as any)('chinese_diet_foods').upsert(updatedFood, { onConflict: 'name' });
+      await (supabase.from as any)('chinese_diet_foods').upsert(updatedFood);
     } catch (err) {
       console.error('[DietotherapyService] Erro ao salvar no Supabase:', err);
     }
@@ -613,7 +621,7 @@ export const dietotherapyService = {
 
     // Tenta persistir toda a lista no Supabase
     try {
-      await (supabase.from as any)('chinese_diet_foods').upsert(currentFoods, { onConflict: 'name' });
+      await (supabase.from as any)('chinese_diet_foods').upsert(currentFoods);
     } catch (err) {
       console.error('[DietotherapyService] Erro ao enviar importação para o Supabase:', err);
     }
