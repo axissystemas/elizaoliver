@@ -28,7 +28,14 @@ import {
   Phone,
   Mail,
   CreditCard,
-  MessageSquare
+  MessageSquare,
+  Camera,
+  Eye,
+  Image as ImageIcon,
+  Maximize2,
+  Paperclip,
+  Tag,
+  ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import jsPDF from 'jspdf';
@@ -42,6 +49,9 @@ import { dietotherapyService } from '@/lib/dietotherapyService';
 import { DietPdfGenerator } from '@/lib/DietPdfGenerator';
 
 import PatientGalleryView from './attachments/PatientGalleryView';
+import { attachmentService } from '@/lib/attachmentService';
+import { PatientAttachment, ATTACHMENT_CATEGORY_LABELS } from '@/types/attachments';
+import PhotoUploaderModal from './attachments/PhotoUploaderModal';
 
 interface PatientDetailViewProps {
   patient: any;
@@ -114,6 +124,50 @@ export default function PatientDetailView({
   const [editingPrescriptionId, setEditingPrescriptionId] = useState<string | null>(null);
   const [adherence, setAdherence] = useState('Boa');
   const [evolutionText, setEvolutionText] = useState('');
+
+  // Patient Attachments / Photos for Consultations
+  const [patientAttachments, setPatientAttachments] = useState<PatientAttachment[]>([]);
+  const [uploadModalConsultationId, setUploadModalConsultationId] = useState<string | null>(null);
+  const [isPhotoUploaderOpen, setIsPhotoUploaderOpen] = useState(false);
+  const [selectedLightboxPhoto, setSelectedLightboxPhoto] = useState<PatientAttachment | null>(null);
+  const [isDeletingAttachment, setIsDeletingAttachment] = useState(false);
+
+  const fetchAttachments = React.useCallback(async () => {
+    if (!patient?.id) return;
+    try {
+      const list = await attachmentService.getPatientAttachments(patient.id);
+      setPatientAttachments(list);
+    } catch (e) {
+      console.error('Erro ao carregar anexos do paciente:', e);
+    }
+  }, [patient?.id]);
+
+  React.useEffect(() => {
+    fetchAttachments();
+  }, [fetchAttachments]);
+
+  const extractAcupoints = (text?: string): string[] => {
+    if (!text) return [];
+    const regex = /\b(E\d{1,2}|IG\d{1,2}|BP\d{1,2}|F\d{1,2}|R\d{1,2}|P\d{1,2}|C\d{1,2}|ID\d{1,2}|V\d{1,2}|VB\d{1,2}|VC\d{1,2}|VG\d{1,2}|CS\d{1,2}|TA\d{1,2}|SJ\d{1,2}|Yintang|Taiyang|Anmian)\b/gi;
+    const matches = text.match(regex);
+    if (!matches) return [];
+    return Array.from(new Set(matches.map(m => m.toUpperCase())));
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!confirm('Deseja realmente remover esta foto da consulta?')) return;
+    setIsDeletingAttachment(true);
+    try {
+      await attachmentService.deleteAttachment(photoId, patient.id);
+      setSelectedLightboxPhoto(null);
+      await fetchAttachments();
+    } catch (err) {
+      console.error('Erro ao excluir foto:', err);
+      alert('Falha ao excluir a foto. Tente novamente.');
+    } finally {
+      setIsDeletingAttachment(false);
+    }
+  };
 
   const fetchPrescriptions = React.useCallback(async () => {
     try {
@@ -538,65 +592,223 @@ export default function PatientDetailView({
         )}
 
         {activeTab === 'historico' && (
-          <motion.div key="historico" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-4">
+          <motion.div key="historico" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-[2rem] border border-outline-variant/10 shadow-sm">
+              <div>
+                <h3 className="text-xl font-bold font-headline text-on-surface">Histórico de Consultas ({consultations.length})</h3>
+                <p className="text-xs text-on-surface-variant font-medium mt-0.5">Prontuário com evolução clínica, acupontos e galeria de mídias registradas (MTC)</p>
+              </div>
+              {canCreateConsultation && (
+                <button onClick={onStartConsultation} className="px-6 py-3 rounded-2xl bg-primary text-white font-bold text-xs shadow-lg shadow-primary/20 hover:scale-105 transition-all flex items-center gap-2 shrink-0">
+                  <Plus size={16} /> Nova Consulta
+                </button>
+              )}
+            </div>
+
             {consultations.length > 0 ? consultations.map((c) => {
               const start = new Date(c.startTime);
               const end = c.endTime ? new Date(c.endTime) : null;
               const duration = end ? Math.round((end.getTime() - start.getTime()) / 60000) : 0;
               
+              // Filter attachments associated with this specific consultation
+              const cAttachments = patientAttachments.filter(a => 
+                a.consultationId === c.id || 
+                (!a.consultationId && a.createdAt && new Date(a.createdAt).toDateString() === start.toDateString())
+              );
+
+              const acupoints = extractAcupoints(c.notes);
+
               return (
-                <div key={c.id} className="bg-white rounded-[2rem] border border-outline-variant/10 shadow-sm p-8 space-y-6">
+                <div key={c.id} className="bg-white rounded-[2.5rem] border border-outline-variant/15 shadow-sm hover:shadow-md transition-all p-8 space-y-6 relative overflow-hidden group">
+                  {/* Accent Top Border */}
+                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-purple-500 to-indigo-500 opacity-80" />
+
                   {/* Header */}
-                  <div className="flex justify-between items-start">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-outline-variant/10 pb-6">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-surface-container-low rounded-2xl flex items-center justify-center text-on-surface-variant">
-                        <Clock size={20} />
+                      <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center font-bold shrink-0">
+                        <Stethoscope size={22} />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-on-surface">
-                          {start.toLocaleDateString('pt-BR')} • {start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                          {end ? ` às ${end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}
-                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-base font-extrabold text-on-surface">
+                            {start.toLocaleDateString('pt-BR')} • {start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            {end ? ` às ${end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                          </p>
+                          {c.type && (
+                            <span className="px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200/60 rounded-xl text-xs font-bold flex items-center gap-1">
+                              <Sparkles size={12} /> {c.type}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 mt-1.5 text-xs text-outline font-semibold flex-wrap">
+                          <span className="flex items-center gap-1 bg-surface-container-low px-2.5 py-0.5 rounded-lg border border-outline-variant/10">
+                            <Clock size={12} className="text-primary" /> {duration} min
+                          </span>
+
+                          {/* Photos Badge Indicator */}
+                          {cAttachments.length > 0 ? (
+                            <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2.5 py-0.5 rounded-lg font-bold shadow-xs">
+                              <Camera size={12} /> {cAttachments.length} {cAttachments.length === 1 ? 'Foto Anexada' : 'Fotos Anexadas'}
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-outline-variant italic">
+                              <Camera size={12} /> Sem fotos vinculadas
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Duração</p>
-                        <p className="text-sm font-black text-on-surface">{duration} min</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => onEditConsultation(c)} className="p-2 bg-white rounded-xl border border-outline-variant/10 text-outline hover:text-primary shadow-sm hover:shadow-md transition-all">
-                          <Edit3 size={18} />
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      {canEditConsultation && (
+                        <button 
+                          onClick={() => onEditConsultation(c)} 
+                          className="p-2 bg-surface-container-low rounded-xl border border-outline-variant/10 text-outline hover:text-primary hover:bg-white shadow-xs transition-all"
+                          title="Editar Consulta"
+                        >
+                          <Edit3 size={16} />
                         </button>
-                        <button onClick={() => onDeleteConsultation(c.id)} className="p-2 bg-white rounded-xl border border-outline-variant/10 text-outline hover:text-rose-500 shadow-sm hover:shadow-md transition-all">
-                          <Trash2 size={18} />
+                      )}
+
+                      {canDeleteConsultation && (
+                        <button 
+                          onClick={() => onDeleteConsultation(c.id)} 
+                          className="p-2 bg-surface-container-low rounded-xl border border-outline-variant/10 text-outline hover:text-rose-500 hover:bg-white shadow-xs transition-all"
+                          title="Excluir Consulta"
+                        >
+                          <Trash2 size={16} />
                         </button>
-                      </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Notes */}
+                  {/* VISUAL RECORDS & PHOTOS SECTION */}
+                  <div className="bg-surface-container-low/40 rounded-2xl p-5 border border-outline-variant/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Camera size={16} className="text-purple-600" />
+                        <h4 className="text-xs font-bold text-on-surface uppercase tracking-wider">
+                          Registro Visual & Anexos ({cAttachments.length})
+                        </h4>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setUploadModalConsultationId(c.id);
+                          setIsPhotoUploaderOpen(true);
+                        }}
+                        className="text-[11px] font-bold text-purple-700 hover:underline flex items-center gap-1 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 px-3 py-1 rounded-xl transition-all"
+                      >
+                        + Adicionar Fotos
+                      </button>
+                    </div>
+
+                    {cAttachments.length > 0 ? (
+                      <div className="flex flex-wrap gap-3 pt-1">
+                        {cAttachments.map((att) => {
+                          const catInfo = ATTACHMENT_CATEGORY_LABELS[att.category] || { 
+                            label: 'Foto Clínica', 
+                            icon: '📷', 
+                            color: 'bg-indigo-100 text-indigo-900 border-indigo-200' 
+                          };
+
+                          return (
+                            <div 
+                              key={att.id} 
+                              onClick={() => setSelectedLightboxPhoto(att)}
+                              className="group relative rounded-2xl overflow-hidden border border-outline-variant/20 bg-slate-950 w-28 h-28 sm:w-32 sm:h-32 shrink-0 cursor-pointer shadow-xs hover:shadow-md transition-all transform hover:-translate-y-0.5"
+                            >
+                              <img 
+                                src={att.url} 
+                                alt={att.title || 'Foto da Sessão'} 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-95 group-hover:opacity-100" 
+                              />
+                              
+                              {/* Category Badge Pill */}
+                              <div className="absolute top-1.5 left-1.5 z-10">
+                                <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold border shadow-xs flex items-center gap-1 backdrop-blur-md ${catInfo.color}`}>
+                                  <span>{catInfo.icon}</span>
+                                  <span className="hidden sm:inline">{catInfo.label}</span>
+                                </span>
+                              </div>
+
+                              {/* Hover Action Overlay */}
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2.5 text-white">
+                                <div className="self-end">
+                                  <span className="p-1 bg-white/20 backdrop-blur-md rounded-md flex items-center justify-center text-white">
+                                    <Eye size={12} />
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-bold line-clamp-1 leading-tight">{att.title || 'Foto da Sessão'}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-xl border border-dashed border-outline-variant/25 bg-white text-center sm:text-left">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                            <ImageIcon size={18} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-on-surface">Nenhuma foto registrada para esta sessão</p>
+                            <p className="text-[11px] text-outline italic">Anexe fotos da língua, auriculoterapia, lesões ou evolução clínica do paciente.</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            setUploadModalConsultationId(c.id);
+                            setIsPhotoUploaderOpen(true);
+                          }}
+                          className="px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold shadow-xs hover:bg-purple-700 transition-all flex items-center gap-1.5 shrink-0"
+                        >
+                          <Camera size={14} /> Capturar Foto
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Notes & Extracted Acupoints */}
                   {c.notes && (
-                    <div className="space-y-2">
-                      <h4 className="text-[10px] font-bold text-outline uppercase tracking-widest">Notas da Sessão</h4>
-                      <p className="text-sm text-on-surface italic font-medium opacity-90 leading-relaxed">
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] font-bold text-outline uppercase tracking-widest flex items-center gap-1.5">
+                        <FileText size={12} /> Notas da Sessão
+                      </h4>
+                      <div className="p-5 bg-surface-container-low/60 rounded-2xl border-l-4 border-primary/60 text-sm text-on-surface font-medium leading-relaxed">
                         &quot;{c.notes}&quot;
-                      </p>
+                      </div>
+
+                      {/* Acupoints detected in notes */}
+                      {acupoints.length > 0 && (
+                        <div className="flex items-center gap-2 flex-wrap pt-1">
+                          <span className="text-[11px] font-bold text-outline uppercase tracking-wider flex items-center gap-1">
+                            <Sparkles size={12} className="text-amber-500" /> Acupontos Identificados:
+                          </span>
+                          {acupoints.map((pt, idx) => (
+                            <span key={idx} className="px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200/80 rounded-xl text-xs font-black shadow-xs">
+                              {pt}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Materials */}
+                  {/* Materials Used */}
                   {c.materials_used && c.materials_used.length > 0 && (
-                    <div className="space-y-3">
+                    <div className="space-y-2 pt-2 border-t border-outline-variant/10">
                       <h4 className="text-[10px] font-bold text-outline uppercase tracking-widest">Materiais Utilizados</h4>
                       <div className="flex flex-wrap gap-2">
                         {c.materials_used.map((m: any, idx: number) => {
                           const item = inventoryItems.find(i => i.id === m.itemId);
                           const name = m.itemName || item?.name || 'Material';
                           return (
-                            <span key={idx} className="px-3 py-1.5 bg-surface-container-low text-[10px] font-bold text-on-surface-variant rounded-xl border border-outline-variant/10">
-                              {name} x{m.quantity}
+                            <span key={idx} className="px-3 py-1.5 bg-surface-container-low text-xs font-bold text-on-surface-variant rounded-xl border border-outline-variant/10">
+                              📦 {name} (x{m.quantity})
                             </span>
                           );
                         })}
@@ -606,8 +818,10 @@ export default function PatientDetailView({
                 </div>
               );
             }) : (
-              <div className="text-center py-24 bg-white rounded-[2rem] border-2 border-dashed border-outline-variant/20 italic text-outline">
-                Sem consultas registradas.
+              <div className="text-center py-24 bg-white rounded-[2rem] border-2 border-dashed border-outline-variant/20 italic text-outline space-y-3">
+                <Stethoscope size={40} className="mx-auto text-outline-variant" />
+                <p className="text-base font-bold text-on-surface">Sem consultas registradas para este paciente.</p>
+                <p className="text-xs">Clique em &quot;Nova Consulta&quot; acima para registrar um atendimento.</p>
               </div>
             )}
           </motion.div>
@@ -1023,6 +1237,111 @@ export default function PatientDetailView({
           user={user}
         />
       )}
+
+      {/* Photo Uploader Modal for Consultations */}
+      {isPhotoUploaderOpen && patient && (
+        <PhotoUploaderModal
+          patientId={patient.id}
+          consultationId={uploadModalConsultationId || undefined}
+          defaultCategory="auriculotherapy"
+          onClose={() => {
+            setIsPhotoUploaderOpen(false);
+            setUploadModalConsultationId(null);
+          }}
+          onSuccess={() => {
+            fetchAttachments();
+          }}
+        />
+      )}
+
+      {/* Lightbox Modal for Photo Inspection */}
+      <AnimatePresence>
+        {selectedLightboxPhoto && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedLightboxPhoto(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative bg-slate-900 text-white w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-white/10"
+            >
+              {/* Lightbox Header */}
+              <div className="p-6 border-b border-white/10 flex items-center justify-between bg-slate-950/60">
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const catInfo = ATTACHMENT_CATEGORY_LABELS[selectedLightboxPhoto.category] || { label: 'Foto Clínica', icon: '📷', color: 'bg-indigo-500 text-white' };
+                    return (
+                      <span className={`px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 ${catInfo.color}`}>
+                        <span>{catInfo.icon}</span>
+                        <span>{catInfo.label}</span>
+                      </span>
+                    );
+                  })()}
+                  <h3 className="text-base font-bold text-white truncate max-w-md">
+                    {selectedLightboxPhoto.title || 'Foto de Atendimento'}
+                  </h3>
+                </div>
+
+                <button
+                  onClick={() => setSelectedLightboxPhoto(null)}
+                  className="p-2 hover:bg-white/10 rounded-full transition-all text-white/70 hover:text-white"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Lightbox Image Preview */}
+              <div className="flex-1 bg-black p-4 flex items-center justify-center overflow-hidden min-h-[350px]">
+                <img
+                  src={selectedLightboxPhoto.url}
+                  alt={selectedLightboxPhoto.title || 'Foto Ampliada'}
+                  className="max-h-[60vh] max-w-full object-contain rounded-xl shadow-2xl"
+                />
+              </div>
+
+              {/* Lightbox Footer & Details */}
+              <div className="p-6 border-t border-white/10 bg-slate-950/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  {selectedLightboxPhoto.notes && (
+                    <p className="text-sm text-slate-300 italic mb-1">&quot;{selectedLightboxPhoto.notes}&quot;</p>
+                  )}
+                  <p className="text-xs text-slate-400">
+                    Registrado em {new Date(selectedLightboxPhoto.createdAt).toLocaleDateString('pt-BR')} às {new Date(selectedLightboxPhoto.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 self-end sm:self-center">
+                  <a
+                    href={selectedLightboxPhoto.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <Download size={14} /> Baixar
+                  </a>
+
+                  {canEditPatient && (
+                    <button
+                      onClick={() => handleDeletePhoto(selectedLightboxPhoto.id)}
+                      disabled={isDeletingAttachment}
+                      className="px-4 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      <Trash2 size={14} /> Excluir Foto
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal 
