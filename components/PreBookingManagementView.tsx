@@ -77,70 +77,89 @@ export default function PreBookingManagementView({ user, onAppointmentCreated }:
 
   const handleApprove = async (sendWhatsApp: boolean = false, targetRequest?: PreBookingRequest) => {
     const reqToApprove = targetRequest || selectedRequest;
-    if (!reqToApprove || !user) return;
+    if (!reqToApprove) return;
     setActionLoading(true);
 
-    const res = await approvePreBookingRequest(reqToApprove.id, user.id);
-    setActionLoading(false);
+    try {
+      const userId = user?.id || 'native-admin';
+      const res = await approvePreBookingRequest(reqToApprove.id, userId);
+      setActionLoading(false);
 
-    if (res.success) {
-      setModalType(null);
-      setSelectedRequest(null);
-      await loadRequests();
-      if (onAppointmentCreated) onAppointmentCreated();
+      if (res.success) {
+        setModalType(null);
+        setSelectedRequest(null);
+        await loadRequests();
+        if (onAppointmentCreated) onAppointmentCreated();
 
-      if (sendWhatsApp && reqToApprove.patient_phone) {
-        const msg = `Olá, ${reqToApprove.patient_name}! Seu pré-agendamento (Protocolo ${reqToApprove.protocol}) para o dia ${new Date(reqToApprove.requested_date + 'T00:00:00').toLocaleDateString('pt-BR')} às ${reqToApprove.requested_time} foi CONFIRMADO com sucesso pela nossa equipe!`;
-        openWhatsApp(reqToApprove.patient_phone, msg);
+        if (sendWhatsApp && reqToApprove.patient_phone) {
+          const msg = `Olá, ${reqToApprove.patient_name}! Seu pré-agendamento (Protocolo ${reqToApprove.protocol}) para o dia ${new Date(reqToApprove.requested_date + 'T00:00:00').toLocaleDateString('pt-BR')} às ${reqToApprove.requested_time} foi CONFIRMADO com sucesso pela nossa equipe!`;
+          openWhatsApp(reqToApprove.patient_phone, msg);
+        }
+      } else {
+        alert('Erro ao aprovar a solicitação: ' + (res.message || 'Falha no banco de dados.'));
       }
-    } else {
-      alert('Erro ao aprovar a solicitação: ' + (res.message || 'Falha no banco de dados.'));
+    } catch (err: any) {
+      setActionLoading(false);
+      console.error('Erro no handleApprove:', err);
+      alert('Erro inesperado ao aprovar: ' + (err.message || 'Tente novamente.'));
     }
   };
 
   const handleReject = async () => {
-    if (!selectedRequest || !user) return;
+    if (!selectedRequest) return;
     if (!rejectionReason.trim()) {
       alert('Informe o motivo da recusa.');
       return;
     }
     setActionLoading(true);
 
-    const res = await rejectPreBookingRequest(selectedRequest.id, rejectionReason, user.id);
-    setActionLoading(false);
+    try {
+      const userId = user?.id || 'native-admin';
+      const res = await rejectPreBookingRequest(selectedRequest.id, rejectionReason, userId);
+      setActionLoading(false);
 
-    if (res.success) {
-      const currentReq = selectedRequest;
-      setModalType(null);
-      setSelectedRequest(null);
-      setRejectionReason('');
-      await loadRequests();
+      if (res.success) {
+        const currentReq = selectedRequest;
+        setModalType(null);
+        setSelectedRequest(null);
+        setRejectionReason('');
+        await loadRequests();
 
-      const msg = `Olá, ${currentReq.patient_name}. Em relação ao seu pré-agendamento (Protocolo ${currentReq.protocol}): infelizmente não poderemos confirmar esse horário. Motivo: ${rejectionReason}. Entre em contato caso deseje agendar outro horário.`;
-      openWhatsApp(currentReq.patient_phone, msg);
-    } else {
-      alert(res.message || 'Erro ao recusar a solicitação.');
+        const msg = `Olá, ${currentReq.patient_name}. Em relação ao seu pré-agendamento (Protocolo ${currentReq.protocol}): infelizmente não poderemos confirmar esse horário. Motivo: ${rejectionReason}. Entre em contato caso deseje agendar outro horário.`;
+        openWhatsApp(currentReq.patient_phone, msg);
+      } else {
+        alert(res.message || 'Erro ao recusar a solicitação.');
+      }
+    } catch (err: any) {
+      setActionLoading(false);
+      alert('Erro ao recusar: ' + (err.message || 'Erro no banco de dados.'));
     }
   };
 
   const handlePropose = async () => {
-    if (!selectedRequest || !user || !proposedDate || !proposedTime) return;
+    if (!selectedRequest || !proposedDate || !proposedTime) return;
     setActionLoading(true);
 
-    const res = await proposeNewSlot(selectedRequest.id, proposedDate, proposedTime, user.id);
-    setActionLoading(false);
+    try {
+      const userId = user?.id || 'native-admin';
+      const res = await proposeNewSlot(selectedRequest.id, proposedDate, proposedTime, userId);
+      setActionLoading(false);
 
-    if (res.success) {
-      const currentReq = selectedRequest;
-      setModalType(null);
-      setSelectedRequest(null);
-      await loadRequests();
+      if (res.success) {
+        const currentReq = selectedRequest;
+        setModalType(null);
+        setSelectedRequest(null);
+        await loadRequests();
 
-      const formattedDate = new Date(proposedDate + 'T00:00:00').toLocaleDateString('pt-BR');
-      const msg = `Olá, ${currentReq.patient_name}! Sobre seu pré-agendamento (Protocolo ${currentReq.protocol}): gostaríamos de sugerir o horário do dia ${formattedDate} às ${proposedTime}. Por favor, confirme se este horário funciona para você!`;
-      openWhatsApp(currentReq.patient_phone, msg);
-    } else {
-      alert(res.message || 'Erro ao propor novo horário.');
+        const formattedDate = new Date(proposedDate + 'T00:00:00').toLocaleDateString('pt-BR');
+        const msg = `Olá, ${currentReq.patient_name}! Sobre seu pré-agendamento (Protocolo ${currentReq.protocol}): gostaríamos de sugerir o horário do dia ${formattedDate} às ${proposedTime}. Por favor, confirme se este horário funciona para você!`;
+        openWhatsApp(currentReq.patient_phone, msg);
+      } else {
+        alert(res.message || 'Erro ao propor novo horário.');
+      }
+    } catch (err: any) {
+      setActionLoading(false);
+      alert('Erro ao propor novo horário: ' + (err.message || 'Erro no banco de dados.'));
     }
   };
 
