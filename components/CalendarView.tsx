@@ -23,6 +23,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { User as UserType } from '@/types/auth';
 import { openWhatsApp, WhatsAppTemplates } from '@/lib/whatsapp';
 
+import PreBookingManagementView from '@/components/PreBookingManagementView';
+import { fetchPreBookingRequests } from '@/lib/preBookingService';
+
 interface Appointment {
   id: string;
   patientId: string;
@@ -61,6 +64,7 @@ interface CalendarViewProps {
   onDeleteAppointment: (id: string) => Promise<void>;
   onOpenPatientModal?: () => void;
   packages?: any[];
+  onRefreshData?: () => void;
 }
 
 export default function CalendarView({ 
@@ -72,10 +76,21 @@ export default function CalendarView({
   onSaveAppointment,
   onDeleteAppointment,
   onOpenPatientModal,
-  packages = []
+  packages = [],
+  onRefreshData
 }: CalendarViewProps) {
+  const [mainTab, setMainTab] = useState<'calendar' | 'pre_booking'>('calendar');
+  const [pendingPreBookingCount, setPendingPreBookingCount] = useState<number>(0);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week'>('week');
+
+  useEffect(() => {
+    async function loadPendingCount() {
+      const list = await fetchPreBookingRequests();
+      setPendingPreBookingCount(list.filter(r => r.status === 'PENDENTE').length);
+    }
+    loadPendingCount();
+  }, [mainTab]);
   
   const [consultationTypes, setConsultationTypes] = useState<ConsultationType[]>([
     { id: 'initial', name: 'Primeira Consulta', price: 250 },
@@ -345,56 +360,97 @@ export default function CalendarView({
   };
 
   return (
-    <div className="p-10 relative flex flex-col space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-4xl font-bold font-headline text-on-surface capitalize">
-            {viewMode === 'month' ? `${monthName} ${year}` : `Semana de ${currentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}`}
-          </h2>
-          <p className="text-on-surface-variant text-lg mt-2 font-medium">Gerencie seus atendimentos e horários.</p>
-        </div>
-        <div className="flex items-center gap-4">
-          {/* View Mode Toggle */}
-          <div className="flex bg-surface-container-low p-1 rounded-2xl border border-outline-variant/10">
-            <button 
-              onClick={() => setViewMode('month')}
-              className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${viewMode === 'month' ? 'bg-white shadow-sm text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}
-            >
-              Mês
-            </button>
-            <button 
-              onClick={() => setViewMode('week')}
-              className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${viewMode === 'week' ? 'bg-white shadow-sm text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}
-            >
-              Semana
-            </button>
-          </div>
+    <div className="p-6 lg:p-10 relative flex flex-col space-y-6">
+      {/* Barra de Abas Superiores (Agenda vs Pré-Agendamentos) */}
+      <div className="flex items-center gap-2 border-b border-outline-variant/30 pb-3">
+        <button
+          onClick={() => setMainTab('calendar')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+            mainTab === 'calendar'
+              ? 'bg-primary text-white shadow-lg shadow-primary/20'
+              : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          <CalendarIcon size={16} />
+          <span>Agenda da Clínica</span>
+        </button>
 
-          <div className="flex bg-white rounded-2xl shadow-sm border border-outline-variant/10 p-1">
-            <button onClick={prevDate} className="p-2 hover:bg-surface-container-low rounded-xl transition-all text-on-surface-variant">
-              <ChevronLeft size={20} />
-            </button>
-            <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 text-xs font-bold text-on-surface hover:bg-surface-container-low rounded-xl transition-all">
-              Hoje
-            </button>
-            <button onClick={nextDate} className="p-2 hover:bg-surface-container-low rounded-xl transition-all text-on-surface-variant">
-              <ChevronRight size={20} />
-            </button>
-          </div>
-          {canCreate && (
-            <button 
-              onClick={() => {
-                resetForm();
-                setIsModalOpen(true);
-              }}
-              className="bg-primary text-white px-6 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 hover:brightness-110 transition-all shadow-xl shadow-primary/20"
-            >
-              <Plus size={18} /> Novo Atendimento
-            </button>
+        <button
+          onClick={() => setMainTab('pre_booking')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+            mainTab === 'pre_booking'
+              ? 'bg-primary text-white shadow-lg shadow-primary/20'
+              : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          <Clock size={16} />
+          <span>Solicitações de Pré-Agendamento</span>
+          {pendingPreBookingCount > 0 && (
+            <span className="ml-1.5 px-2 py-0.5 rounded-full bg-amber-500 text-amber-950 font-extrabold text-[10px]">
+              {pendingPreBookingCount}
+            </span>
           )}
-        </div>
+        </button>
       </div>
+
+      {mainTab === 'pre_booking' ? (
+        <PreBookingManagementView 
+          user={user || null} 
+          onAppointmentCreated={() => {
+            if (onRefreshData) onRefreshData();
+          }} 
+        />
+      ) : (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-4xl font-bold font-headline text-on-surface capitalize">
+                {viewMode === 'month' ? `${monthName} ${year}` : `Semana de ${currentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}`}
+              </h2>
+              <p className="text-on-surface-variant text-lg mt-2 font-medium">Gerencie seus atendimentos e horários.</p>
+            </div>
+            <div className="flex items-center gap-4">
+              {/* View Mode Toggle */}
+              <div className="flex bg-surface-container-low p-1 rounded-2xl border border-outline-variant/10">
+                <button 
+                  onClick={() => setViewMode('month')}
+                  className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${viewMode === 'month' ? 'bg-white shadow-sm text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}
+                >
+                  Mês
+                </button>
+                <button 
+                  onClick={() => setViewMode('week')}
+                  className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${viewMode === 'week' ? 'bg-white shadow-sm text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}
+                >
+                  Semana
+                </button>
+              </div>
+
+              <div className="flex bg-white rounded-2xl shadow-sm border border-outline-variant/10 p-1">
+                <button onClick={prevDate} className="p-2 hover:bg-surface-container-low rounded-xl transition-all text-on-surface-variant">
+                  <ChevronLeft size={20} />
+                </button>
+                <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 text-xs font-bold text-on-surface hover:bg-surface-container-low rounded-xl transition-all">
+                  Hoje
+                </button>
+                <button onClick={nextDate} className="p-2 hover:bg-surface-container-low rounded-xl transition-all text-on-surface-variant">
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+              {canCreate && (
+                <button 
+                  onClick={() => {
+                    resetForm();
+                    setIsModalOpen(true);
+                  }}
+                  className="bg-primary text-white px-6 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 hover:brightness-110 transition-all shadow-xl shadow-primary/20"
+                >
+                  <Plus size={18} /> Novo Atendimento
+                </button>
+              )}
+            </div>
+          </div>
 
       {/* Legend */}
       <div className="flex items-center gap-6 flex-wrap">
@@ -674,6 +730,8 @@ export default function CalendarView({
           </div>
         )}
       </AnimatePresence>
+        </>
+      )}
     </div>
   );
 }

@@ -6,6 +6,8 @@ import { getInitials } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
+import { fetchPreBookingRequests } from '@/lib/preBookingService';
+
 interface TopBarProps {
   user?: User | null;
   onLogout?: () => void;
@@ -27,14 +29,36 @@ export default function TopBar({
 }: TopBarProps) {
   const [profileName, setProfileName] = useState(user?.name || 'Dr. Elena Wu');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const [preBookingNotifications, setPreBookingNotifications] = useState<any[]>([]);
 
   useEffect(() => {
     if (user?.name) {
       setProfileName(user.name);
     }
   }, [user]);
+
+  useEffect(() => {
+    async function checkPreBookings() {
+      const list = await fetchPreBookingRequests();
+      const pending = list.filter(r => r.status === 'PENDENTE');
+      const mapped = pending.map(req => ({
+        id: `pb-${req.id}`,
+        title: 'Novo Pré-Agendamento Pendente',
+        message: `${req.patient_name} solicitou ${req.service_type} para ${new Date(req.requested_date + 'T00:00:00').toLocaleDateString('pt-BR')} às ${req.requested_time}.`,
+        time: req.created_at,
+        type: 'warning',
+        read: false
+      }));
+      setPreBookingNotifications(mapped);
+    }
+
+    checkPreBookings();
+    const interval = setInterval(checkPreBookings, 30000); // 30s silent refresh
+    return () => clearInterval(interval);
+  }, []);
+
+  const allNotifications = [...preBookingNotifications, ...notifications];
+  const unreadCount = allNotifications.filter(n => !n.read).length;
 
   return (
     <header className="h-20 flex items-center justify-between px-8 bg-white border-b border-outline-variant/10 z-40">
@@ -119,8 +143,8 @@ export default function TopBar({
                   </div>
                   
                   <div className="overflow-y-auto custom-scrollbar flex-1">
-                    {notifications.length > 0 ? (
-                      notifications.map((n) => (
+                    {allNotifications.length > 0 ? (
+                      allNotifications.map((n) => (
                         <div 
                           key={n.id} 
                           onClick={() => {

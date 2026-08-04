@@ -248,6 +248,7 @@ function AgendaContent() {
         onDeleteAppointment={handleDeleteAppointment}
         onOpenPatientModal={() => setIsPatientModalOpen(true)}
         forceOpenModal={forceOpen}
+        onRefreshData={fetchData}
       />
 
       <PatientModal 
