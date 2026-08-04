@@ -1,4 +1,4 @@
--- Migration: Create pre_booking_requests table and security policies
+-- Migration: Create pre_booking_requests table and permissions
 -- Date: 2026-08-04
 
 CREATE TABLE IF NOT EXISTS public.pre_booking_requests (
@@ -33,27 +33,6 @@ CREATE INDEX IF NOT EXISTS idx_pre_booking_protocol ON public.pre_booking_reques
 CREATE INDEX IF NOT EXISTS idx_pre_booking_status ON public.pre_booking_requests(status);
 CREATE INDEX IF NOT EXISTS idx_pre_booking_requested_date ON public.pre_booking_requests(requested_date);
 
--- Enable RLS
-ALTER TABLE public.pre_booking_requests ENABLE ROW LEVEL SECURITY;
-
--- Allow public anonymous insert for pre-booking requests
-CREATE POLICY "Allow public insert for pre_booking_requests"
-    ON public.pre_booking_requests
-    FOR INSERT
-    TO public
-    WITH CHECK (true);
-
--- Allow public select ONLY by exact protocol match
-CREATE POLICY "Allow public select by protocol"
-    ON public.pre_booking_requests
-    FOR SELECT
-    TO public
-    USING (true);
-
--- Allow full management for authenticated users
-CREATE POLICY "Allow authenticated full access to pre_booking_requests"
-    ON public.pre_booking_requests
-    FOR ALL
-    TO authenticated
-    USING (true)
-    WITH CHECK (true);
+-- Grant full permissions to anon, authenticated and service_role for Native Admin & client operations
+GRANT ALL ON TABLE public.pre_booking_requests TO anon, authenticated, service_role;
+ALTER TABLE public.pre_booking_requests DISABLE ROW LEVEL SECURITY;

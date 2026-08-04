@@ -261,7 +261,7 @@ export async function approvePreBookingRequest(
 
     if (apptErr) throw apptErr;
 
-    await (supabase as any)
+    const { error: updateErr } = await (supabase as any)
       .from('pre_booking_requests')
       .update({
         status: 'CONFIRMADO',
@@ -270,6 +270,11 @@ export async function approvePreBookingRequest(
         updated_at: new Date().toISOString()
       })
       .eq('id', requestId);
+
+    if (updateErr) {
+      console.error('Erro ao atualizar status do pré-agendamento:', updateErr);
+      throw updateErr;
+    }
 
     await logAction({
       action: 'UPDATE',

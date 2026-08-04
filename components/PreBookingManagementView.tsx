@@ -83,14 +83,13 @@ export default function PreBookingManagementView({ user, onAppointmentCreated }:
     setActionLoading(false);
 
     if (res.success) {
-      // Abre notificação via WhatsApp se desejado
-      const msg = `Olá, ${selectedRequest.patient_name}! Seu pré-agendamento (Protocolo ${selectedRequest.protocol}) para o dia ${new Date(selectedRequest.requested_date + 'T00:00:00').toLocaleDateString('pt-BR')} às ${selectedRequest.requested_time} foi CONFIRMADO com sucesso pela nossa equipe!`;
-      openWhatsApp(selectedRequest.patient_phone, msg);
-
       setModalType(null);
       setSelectedRequest(null);
       await loadRequests();
       if (onAppointmentCreated) onAppointmentCreated();
+
+      const msg = `Olá, ${selectedRequest.patient_name}! Seu pré-agendamento (Protocolo ${selectedRequest.protocol}) para o dia ${new Date(selectedRequest.requested_date + 'T00:00:00').toLocaleDateString('pt-BR')} às ${selectedRequest.requested_time} foi CONFIRMADO com sucesso pela nossa equipe!`;
+      openWhatsApp(selectedRequest.patient_phone, msg);
     } else {
       alert(res.message || 'Erro ao aprovar a solicitação.');
     }
@@ -108,13 +107,14 @@ export default function PreBookingManagementView({ user, onAppointmentCreated }:
     setActionLoading(false);
 
     if (res.success) {
-      const msg = `Olá, ${selectedRequest.patient_name}. Em relação ao seu pré-agendamento (Protocolo ${selectedRequest.protocol}): infelizmente não poderemos confirmar esse horário. Motivo: ${rejectionReason}. Entre em contato caso deseje agendar outro horário.`;
-      openWhatsApp(selectedRequest.patient_phone, msg);
-
+      const currentReq = selectedRequest;
       setModalType(null);
       setSelectedRequest(null);
       setRejectionReason('');
       await loadRequests();
+
+      const msg = `Olá, ${currentReq.patient_name}. Em relação ao seu pré-agendamento (Protocolo ${currentReq.protocol}): infelizmente não poderemos confirmar esse horário. Motivo: ${rejectionReason}. Entre em contato caso deseje agendar outro horário.`;
+      openWhatsApp(currentReq.patient_phone, msg);
     } else {
       alert(res.message || 'Erro ao recusar a solicitação.');
     }
@@ -128,13 +128,14 @@ export default function PreBookingManagementView({ user, onAppointmentCreated }:
     setActionLoading(false);
 
     if (res.success) {
-      const formattedDate = new Date(proposedDate + 'T00:00:00').toLocaleDateString('pt-BR');
-      const msg = `Olá, ${selectedRequest.patient_name}! Sobre seu pré-agendamento (Protocolo ${selectedRequest.protocol}): gostaríamos de sugerir o horário do dia ${formattedDate} às ${proposedTime}. Por favor, confirme se este horário funciona para você!`;
-      openWhatsApp(selectedRequest.patient_phone, msg);
-
+      const currentReq = selectedRequest;
       setModalType(null);
       setSelectedRequest(null);
       await loadRequests();
+
+      const formattedDate = new Date(proposedDate + 'T00:00:00').toLocaleDateString('pt-BR');
+      const msg = `Olá, ${currentReq.patient_name}! Sobre seu pré-agendamento (Protocolo ${currentReq.protocol}): gostaríamos de sugerir o horário do dia ${formattedDate} às ${proposedTime}. Por favor, confirme se este horário funciona para você!`;
+      openWhatsApp(currentReq.patient_phone, msg);
     } else {
       alert(res.message || 'Erro ao propor novo horário.');
     }
