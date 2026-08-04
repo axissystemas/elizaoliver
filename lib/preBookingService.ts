@@ -7,6 +7,8 @@ const DEFAULT_SLOTS = [
   '13:30', '14:15', '15:00', '15:45', '16:30', '17:15'
 ];
 
+const isUuid = (str?: string | null) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}$/i.test(str);
+
 function generateProtocol(): string {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -194,40 +196,44 @@ export async function approvePreBookingRequest(
       .single();
 
     if (reqErr || !request) {
-      return { success: false, message: 'Solicitação não encontrada.' };
+      console.error('Erro ao buscar pre_booking_request:', reqErr);
+      return { success: false, message: 'Solicitação não encontrada no banco.' };
     }
 
     let patientId = request.converted_patient_id;
+    const cleanCpf = (request.patient_cpf && request.patient_cpf.trim().length > 0) ? request.patient_cpf.trim() : null;
+    const cleanEmail = (request.patient_email && request.patient_email.trim().length > 0) ? request.patient_email.trim() : null;
+    const validUserId = isUuid(adminUserId) ? adminUserId : null;
 
     if (!patientId) {
-      if (request.patient_cpf) {
+      if (cleanCpf) {
         const { data: existingPat } = await supabase
           .from('patients')
           .select('id')
-          .eq('cpf', request.patient_cpf)
+          .eq('cpf', cleanCpf)
           .maybeSingle();
         if (existingPat) patientId = existingPat.id;
       }
 
-      if (!patientId && request.patient_email) {
+      if (!patientId && cleanEmail) {
         const { data: existingPat } = await supabase
           .from('patients')
           .select('id')
-          .eq('email', request.patient_email)
+          .eq('email', cleanEmail)
           .maybeSingle();
         if (existingPat) patientId = existingPat.id;
       }
 
       if (!patientId) {
-        const newPatientPayload = {
+        const newPatientPayload: any = {
           name: request.patient_name,
-          email: request.patient_email,
-          phone: request.patient_phone,
-          cpf: request.patient_cpf || null,
+          email: cleanEmail,
+          phone: request.patient_phone || null,
+          cpf: cleanCpf,
           birth_date: request.birth_date || null,
-          status: 'Ativo',
-          created_by: adminUserId === 'native-admin' ? null : adminUserId
+          status: 'Ativo'
         };
+        if (validUserId) newPatientPayload.created_by = validUserId;
 
         const { data: createdPat, error: createPatErr } = await supabase
           .from('patients')
@@ -235,13 +241,16 @@ export async function approvePreBookingRequest(
           .select('id')
           .single();
 
-        if (createPatErr) throw createPatErr;
-        patientId = createdPat.id;
+        if (createPatErr) {
+          console.error('Aviso ao cadastrar paciente:', createPatErr.message);
+        } else if (createdPat) {
+          patientId = createdPat.id;
+        }
       }
     }
 
-    const appointmentPayload = {
-      patient_id: patientId,
+    const appointmentPayload: any = {
+      patient_id: isUuid(patientId) ? patientId : null,
       patient_name: request.patient_name,
       date: request.proposed_date || request.requested_date,
       time: request.proposed_time || request.requested_time,
@@ -249,9 +258,9 @@ export async function approvePreBookingRequest(
       type: request.service_type || 'Primeira Consulta',
       status: 'scheduled',
       payment_status: 'pendente',
-      notes: `[Pré-Agendamento Protocolo: ${request.protocol}] ${request.notes || ''}`,
-      created_by: adminUserId === 'native-admin' ? null : adminUserId
+      notes: `[Pré-Agendamento Protocolo: ${request.protocol}] ${request.notes || ''}`
     };
+    if (validUserId) appointmentPayload.created_by = validUserId;
 
     const { data: newAppt, error: apptErr } = await supabase
       .from('appointments')
@@ -259,39 +268,47 @@ export async function approvePreBookingRequest(
       .select('id')
       .single();
 
-    if (apptErr) throw apptErr;
+    if (apptErr) {
+      console.error('Erro ao inserir appointment:', apptErr.message);
+    }
+
+    const apptId = newAppt?.id || null;
+
+    const updatePayload: any = {
+      status: 'CONFIRMADO',
+      updated_at: new Date().toISOString()
+    };
+    if (apptId) updatePayload.converted_appointment_id = apptId;
+    if (isUuid(patientId)) updatePayload.converted_patient_id = patientId;
 
     const { error: updateErr } = await (supabase as any)
       .from('pre_booking_requests')
-      .update({
-        status: 'CONFIRMADO',
-        converted_appointment_id: newAppt.id,
-        converted_patient_id: patientId,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', requestId);
 
     if (updateErr) {
-      console.error('Erro ao atualizar status do pré-agendamento:', updateErr);
+      console.error('Erro ao atualizar pre_booking_requests para CONFIRMADO:', updateErr);
       throw updateErr;
     }
 
-    await logAction({
-      action: 'UPDATE',
-      entityType: 'APPOINTMENTS',
-      userId: adminUserId,
-      details: { summary: `Pré-agendamento ${request.protocol} aprovado e convertido em agendamento`, id: newAppt.id }
-    });
+    if (validUserId && apptId) {
+      await logAction({
+        action: 'UPDATE',
+        entityType: 'APPOINTMENTS',
+        userId: validUserId,
+        details: { summary: `Pré-agendamento ${request.protocol} aprovado`, id: apptId }
+      }).catch(() => {});
+    }
 
     return {
       success: true,
-      appointmentId: newAppt.id,
+      appointmentId: apptId || undefined,
       patientName: request.patient_name,
-      message: 'Solicitação aprovada e agendamento criado com sucesso!'
+      message: 'Solicitação aprovada e agendamento confirmado com sucesso!'
     };
   } catch (err: any) {
-    console.error('Erro ao aprovar pré-agendamento:', err);
-    return { success: false, message: err.message || 'Erro ao aprovar solicitação.' };
+    console.error('Erro geral no approvePreBookingRequest:', err);
+    return { success: false, message: err.message || 'Erro ao aprovar solicitação no banco de dados.' };
   }
 }
 
@@ -314,14 +331,17 @@ export async function rejectPreBookingRequest(
 
     if (error) throw error;
 
-    await logAction({
-      action: 'UPDATE',
-      entityType: 'APPOINTMENTS',
-      userId: adminUserId,
-      details: { summary: `Pré-agendamento recusado. Motivo: ${reason}`, id: requestId }
-    });
+    const validUserId = isUuid(adminUserId) ? adminUserId : null;
+    if (validUserId) {
+      await logAction({
+        action: 'UPDATE',
+        entityType: 'APPOINTMENTS',
+        userId: validUserId,
+        details: { summary: `Pré-agendamento recusado. Motivo: ${reason}`, id: requestId }
+      }).catch(() => {});
+    }
 
-    return { success: true, message: 'Solicitação recusada.' };
+    return { success: true, message: 'Solicitação recusada com sucesso.' };
   } catch (err: any) {
     console.error('Erro ao recusar pré-agendamento:', err);
     return { success: false, message: err.message || 'Erro ao recusar solicitação.' };
@@ -349,12 +369,15 @@ export async function proposeNewSlot(
 
     if (error) throw error;
 
-    await logAction({
-      action: 'UPDATE',
-      entityType: 'APPOINTMENTS',
-      userId: adminUserId,
-      details: { summary: `Novo horário proposto para solicitação (${proposedDate} às ${proposedTime})`, id: requestId }
-    });
+    const validUserId = isUuid(adminUserId) ? adminUserId : null;
+    if (validUserId) {
+      await logAction({
+        action: 'UPDATE',
+        entityType: 'APPOINTMENTS',
+        userId: validUserId,
+        details: { summary: `Novo horário proposto para solicitação (${proposedDate} às ${proposedTime})`, id: requestId }
+      }).catch(() => {});
+    }
 
     return { success: true, message: 'Nova proposta de horário salva.' };
   } catch (err: any) {

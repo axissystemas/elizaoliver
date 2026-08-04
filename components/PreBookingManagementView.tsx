@@ -75,11 +75,12 @@ export default function PreBookingManagementView({ user, onAppointmentCreated }:
 
   const pendingCount = requests.filter(r => r.status === 'PENDENTE').length;
 
-  const handleApprove = async () => {
-    if (!selectedRequest || !user) return;
+  const handleApprove = async (sendWhatsApp: boolean = false, targetRequest?: PreBookingRequest) => {
+    const reqToApprove = targetRequest || selectedRequest;
+    if (!reqToApprove || !user) return;
     setActionLoading(true);
 
-    const res = await approvePreBookingRequest(selectedRequest.id, user.id);
+    const res = await approvePreBookingRequest(reqToApprove.id, user.id);
     setActionLoading(false);
 
     if (res.success) {
@@ -88,10 +89,12 @@ export default function PreBookingManagementView({ user, onAppointmentCreated }:
       await loadRequests();
       if (onAppointmentCreated) onAppointmentCreated();
 
-      const msg = `Olá, ${selectedRequest.patient_name}! Seu pré-agendamento (Protocolo ${selectedRequest.protocol}) para o dia ${new Date(selectedRequest.requested_date + 'T00:00:00').toLocaleDateString('pt-BR')} às ${selectedRequest.requested_time} foi CONFIRMADO com sucesso pela nossa equipe!`;
-      openWhatsApp(selectedRequest.patient_phone, msg);
+      if (sendWhatsApp && reqToApprove.patient_phone) {
+        const msg = `Olá, ${reqToApprove.patient_name}! Seu pré-agendamento (Protocolo ${reqToApprove.protocol}) para o dia ${new Date(reqToApprove.requested_date + 'T00:00:00').toLocaleDateString('pt-BR')} às ${reqToApprove.requested_time} foi CONFIRMADO com sucesso pela nossa equipe!`;
+        openWhatsApp(reqToApprove.patient_phone, msg);
+      }
     } else {
-      alert(res.message || 'Erro ao aprovar a solicitação.');
+      alert('Erro ao aprovar a solicitação: ' + (res.message || 'Falha no banco de dados.'));
     }
   };
 
@@ -442,14 +445,25 @@ export default function PreBookingManagementView({ user, onAppointmentCreated }:
                 </button>
 
                 {modalType === 'approve' && (
-                  <button
-                    onClick={handleApprove}
-                    disabled={actionLoading}
-                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                    <span>Confirmar e Enviar WhatsApp</span>
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <button
+                      onClick={() => handleApprove(false)}
+                      disabled={actionLoading}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 shadow-sm"
+                    >
+                      {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      <span>Aprovar (Sem Mensagem)</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleApprove(true)}
+                      disabled={actionLoading}
+                      className="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 shadow-sm border border-emerald-600"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
+                      <span>Aprovar + Enviar WhatsApp</span>
+                    </button>
+                  </div>
                 )}
 
                 {modalType === 'reject' && (
