@@ -19,6 +19,55 @@ function generateProtocol(): string {
   return `PRE-${dateStr}-${randomHash}`;
 }
 
+/**
+ * Remove agendamentos duplicados criados por tentativas repetidas de aprovação do mesmo protocolo.
+ */
+export async function cleanupDuplicatePreBookingAppointments(protocol?: string): Promise<number> {
+  if (!supabase) return 0;
+  try {
+    let query = supabase
+      .from('appointments')
+      .select('id, patient_name, date, time, notes, created_at')
+      .ilike('notes', '%[Pré-Agendamento Protocolo:%');
+
+    if (protocol) {
+      query = query.ilike('notes', `%${protocol}%`);
+    }
+
+    const { data: appts, error } = await query;
+    if (error || !appts || appts.length <= 1) return 0;
+
+    const seenProtocols = new Map<string, string>(); // protocol -> first appt id
+    const idsToDelete: string[] = [];
+
+    // Ordena por data de criação mais antiga primeiro para manter a primeira inserção
+    const sorted = [...appts].sort((a, b) => 
+      new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+    );
+
+    for (const appt of sorted) {
+      const match = appt.notes?.match(/\[Pré-Agendamento Protocolo:\s*([A-Z0-9-]+)\]/i);
+      const apptKey = match ? match[1] : `${appt.patient_name}_${appt.date}_${appt.time}`;
+
+      if (seenProtocols.has(apptKey)) {
+        idsToDelete.push(appt.id);
+      } else {
+        seenProtocols.set(apptKey, appt.id);
+      }
+    }
+
+    if (idsToDelete.length > 0) {
+      console.log(`Limpando ${idsToDelete.length} agendamentos duplicados da agenda...`);
+      await supabase.from('appointments').delete().in('id', idsToDelete);
+    }
+
+    return idsToDelete.length;
+  } catch (err) {
+    console.error('Erro ao limpar agendamentos duplicados:', err);
+    return 0;
+  }
+}
+
 export async function getAvailableSlots(dateStr: string): Promise<string[]> {
   if (!supabase) return DEFAULT_SLOTS;
 
@@ -84,7 +133,7 @@ export async function createPreBookingRequest(
 
     const protocol = generateProtocol();
 
-    const insertPayload = {
+    const insertPayload: any = {
       protocol,
       patient_name: data.patient_name.trim(),
       patient_email: data.patient_email.trim().toLowerCase(),
@@ -165,6 +214,9 @@ export async function fetchPreBookingRequests(): Promise<PreBookingRequest[]> {
   if (!supabase) return [];
 
   try {
+    // Executa a limpeza proativa de duplicados em background
+    cleanupDuplicatePreBookingAppointments().catch(() => {});
+
     const { data, error } = await (supabase as any)
       .from('pre_booking_requests')
       .select('*')
@@ -189,6 +241,7 @@ export async function approvePreBookingRequest(
   if (!supabase) return { success: false, message: 'Supabase indisponível' };
 
   try {
+    // 1. Buscar a solicitação no banco
     const { data: request, error: reqErr } = await (supabase as any)
       .from('pre_booking_requests')
       .select('*')
@@ -200,6 +253,36 @@ export async function approvePreBookingRequest(
       return { success: false, message: 'Solicitação não encontrada no banco.' };
     }
 
+    // Se já estiver confirmada, retorna direto para evitar recriação
+    if (request.status === 'CONFIRMADO') {
+      return {
+        success: true,
+        appointmentId: request.converted_appointment_id || undefined,
+        patientName: request.patient_name,
+        message: 'Esta solicitação já foi aprovada anteriormente.'
+      };
+    }
+
+    // 2. Verificar se já existe agendamento criado para este protocolo
+    let apptId: string | null = request.converted_appointment_id || null;
+
+    if (!apptId && request.protocol) {
+      const { data: existingAppts } = await supabase
+        .from('appointments')
+        .select('id')
+        .ilike('notes', `%${request.protocol}%`);
+
+      if (existingAppts && existingAppts.length > 0) {
+        apptId = existingAppts[0].id;
+        // Limpa duplicatas excedentes se existirem
+        if (existingAppts.length > 1) {
+          const duplicateIds = existingAppts.slice(1).map(a => a.id);
+          await supabase.from('appointments').delete().in('id', duplicateIds);
+        }
+      }
+    }
+
+    // 3. Cadastrar ou localizar o Paciente
     let patientId = request.converted_patient_id;
     const cleanCpf = (request.patient_cpf && request.patient_cpf.trim().length > 0) ? request.patient_cpf.trim() : null;
     const cleanEmail = (request.patient_email && request.patient_email.trim().length > 0) ? request.patient_email.trim() : null;
@@ -234,6 +317,7 @@ export async function approvePreBookingRequest(
           status: 'Ativo'
         };
         if (validUserId) newPatientPayload.created_by = validUserId;
+        if (request.organization_id) newPatientPayload.organization_id = request.organization_id;
 
         const { data: createdPat, error: createPatErr } = await supabase
           .from('patients')
@@ -242,38 +326,47 @@ export async function approvePreBookingRequest(
           .single();
 
         if (createPatErr) {
-          console.error('Aviso ao cadastrar paciente:', createPatErr.message);
+          console.warn('Aviso ao cadastrar paciente:', createPatErr.message);
         } else if (createdPat) {
           patientId = createdPat.id;
         }
       }
     }
 
-    const appointmentPayload: any = {
-      patient_id: isUuid(patientId) ? patientId : null,
-      patient_name: request.patient_name,
-      date: request.proposed_date || request.requested_date,
-      time: request.proposed_time || request.requested_time,
-      duration: request.duration || 45,
-      type: request.service_type || 'Primeira Consulta',
-      status: 'scheduled',
-      payment_status: 'pendente',
-      notes: `[Pré-Agendamento Protocolo: ${request.protocol}] ${request.notes || ''}`
-    };
-    if (validUserId) appointmentPayload.created_by = validUserId;
+    // 4. Inserir o agendamento na Agenda (apenas se ainda não existir)
+    if (!apptId) {
+      const appointmentPayload: any = {
+        patient_id: isUuid(patientId) ? patientId : null,
+        patient_name: request.patient_name,
+        date: request.proposed_date || request.requested_date,
+        time: request.proposed_time || request.requested_time,
+        duration: request.duration || 45,
+        type: request.service_type || 'Primeira Consulta',
+        status: 'scheduled',
+        payment_status: 'pendente',
+        notes: `[Pré-Agendamento Protocolo: ${request.protocol}] ${request.notes || ''}`
+      };
+      if (validUserId) appointmentPayload.created_by = validUserId;
+      if (request.organization_id) appointmentPayload.organization_id = request.organization_id;
 
-    const { data: newAppt, error: apptErr } = await supabase
-      .from('appointments')
-      .insert([appointmentPayload])
-      .select('id')
-      .single();
+      const { data: newAppt, error: apptErr } = await supabase
+        .from('appointments')
+        .insert([appointmentPayload])
+        .select('id')
+        .single();
 
-    if (apptErr) {
-      console.error('Erro ao inserir appointment:', apptErr.message);
+      if (apptErr) {
+        console.error('Erro ao inserir appointment:', apptErr.message);
+        return { 
+          success: false, 
+          message: `Falha ao registrar consulta na agenda: ${apptErr.message}` 
+        };
+      }
+
+      apptId = newAppt?.id || null;
     }
 
-    const apptId = newAppt?.id || null;
-
+    // 5. Atualizar status da solicitação de pré-agendamento para CONFIRMADO
     const updatePayload: any = {
       status: 'CONFIRMADO',
       updated_at: new Date().toISOString()
@@ -281,16 +374,33 @@ export async function approvePreBookingRequest(
     if (apptId) updatePayload.converted_appointment_id = apptId;
     if (isUuid(patientId)) updatePayload.converted_patient_id = patientId;
 
-    const { error: updateErr } = await (supabase as any)
+    let { error: updateErr } = await (supabase as any)
       .from('pre_booking_requests')
       .update(updatePayload)
       .eq('id', requestId);
 
+    // Fallback: Se colunas convertidas não existirem na tabela
     if (updateErr) {
-      console.error('Erro ao atualizar pre_booking_requests para CONFIRMADO:', updateErr);
-      throw updateErr;
+      console.warn('Tentativa com colunas estendidas falhou, tentando fallback apenas status:', updateErr.message);
+      const fallbackPayload = {
+        status: 'CONFIRMADO',
+        updated_at: new Date().toISOString()
+      };
+      const { error: fallbackErr } = await (supabase as any)
+        .from('pre_booking_requests')
+        .update(fallbackPayload)
+        .eq('id', requestId);
+
+      if (fallbackErr) {
+        console.error('Erro ao atualizar status do pre_booking_requests:', fallbackErr.message);
+        return {
+          success: false,
+          message: `Agendamento criado na agenda, porém erro ao alterar status da solicitação: ${fallbackErr.message}`
+        };
+      }
     }
 
+    // 6. Registrar Log de Auditoria
     if (validUserId && apptId) {
       await logAction({
         action: 'UPDATE',
@@ -320,7 +430,7 @@ export async function rejectPreBookingRequest(
   if (!supabase) return { success: false, message: 'Supabase indisponível' };
 
   try {
-    const { error } = await (supabase as any)
+    let { error } = await (supabase as any)
       .from('pre_booking_requests')
       .update({
         status: 'RECUSADO',
@@ -329,7 +439,18 @@ export async function rejectPreBookingRequest(
       })
       .eq('id', requestId);
 
-    if (error) throw error;
+    if (error) {
+      // Fallback se a coluna rejection_reason não existir
+      const { error: fallbackErr } = await (supabase as any)
+        .from('pre_booking_requests')
+        .update({
+          status: 'RECUSADO',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (fallbackErr) throw fallbackErr;
+    }
 
     const validUserId = isUuid(adminUserId) ? adminUserId : null;
     if (validUserId) {
@@ -357,7 +478,7 @@ export async function proposeNewSlot(
   if (!supabase) return { success: false, message: 'Supabase indisponível' };
 
   try {
-    const { error } = await (supabase as any)
+    let { error } = await (supabase as any)
       .from('pre_booking_requests')
       .update({
         status: 'PROPOSTA_ALTERADA',
@@ -367,7 +488,18 @@ export async function proposeNewSlot(
       })
       .eq('id', requestId);
 
-    if (error) throw error;
+    if (error) {
+      // Fallback se as colunas propostas não existirem
+      const { error: fallbackErr } = await (supabase as any)
+        .from('pre_booking_requests')
+        .update({
+          status: 'PROPOSTA_ALTERADA',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (fallbackErr) throw fallbackErr;
+    }
 
     const validUserId = isUuid(adminUserId) ? adminUserId : null;
     if (validUserId) {

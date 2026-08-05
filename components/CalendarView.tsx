@@ -398,6 +398,9 @@ export default function CalendarView({
           user={user || null} 
           onAppointmentCreated={() => {
             if (onRefreshData) onRefreshData();
+            fetchPreBookingRequests().then(list => {
+              setPendingPreBookingCount(list.filter(r => r.status === 'PENDENTE').length);
+            });
           }} 
         />
       ) : (
