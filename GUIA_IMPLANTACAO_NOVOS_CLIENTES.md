@@ -76,6 +76,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon-aqui
 
 ---
 
+## 🎨 Passo 6: Personalizar Marca, Nome e LOGO da Clínica
+
+1. Acesse o sistema como Administrador e navegue até **Configurações** > **Dados da Clínica**.
+2. Faça o upload da imagem de **LOGO** do cliente (recomendado: PNG com fundo transparente, `250x250px` ou `300x100px`).
+3. Preencha o **Nome da Clínica**, **Subtítulo** (exibido na página pública de pré-agendamento), **Endereço** e **Telefone Comercial**.
+4. Clique em **Salvar Dados**. Todas as páginas públicas e internas atualizarão a marca instantaneamente.
+
+> Para especificações detalhadas da imagem de logo e dimensões em pixels, consulte o arquivo [docs/MANUAL_CONFIGURACOES_E_LOGO.md](file:///d:/Projetos%20antigravity/ElizaOliver/elizaoliver/docs/MANUAL_CONFIGURACOES_E_LOGO.md).
+
+---
+
 ## 💡 Dicas e Boas Práticas
 - Cada cliente possui banco e credenciais 100% isolados.
 - Nunca compartilhe a chave de serviço (`service_role key`) do Supabase.

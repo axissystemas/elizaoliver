@@ -109,6 +109,11 @@ npm run build
 - Níveis de permissão granulados (Administrador, Profissional de Saúde, Recepção).
 - Registros de auditoria (`AuditLogsView.tsx`, `lib/auditLogService.ts`) para rastreabilidade de criação/edição/exclusão de prontuários.
 
+### 7. 🎨 Módulo de Configurações da Clínica & Branding ([lib/clinicService.ts](file:///d:/Projetos%20antigravity/ElizaOliver/elizaoliver/lib/clinicService.ts), [components/SettingsView.tsx](file:///d:/Projetos%20antigravity/ElizaOliver/elizaoliver/components/SettingsView.tsx))
+- Personalização de Nome da Clínica, Subtítulo, Endereço, Telefone Comercial e Upload de LOGO.
+- Sincronização automática na página pública de pré-agendamento (`/pre-agendamento`), TopBar e Sidebar.
+- Guia técnico e especificações de imagem: [docs/MANUAL_CONFIGURACOES_E_LOGO.md](file:///d:/Projetos%20antigravity/ElizaOliver/elizaoliver/docs/MANUAL_CONFIGURACOES_E_LOGO.md).
+
 ---
 
 ## 📄 Estrutura de Arquivos Relevantes
