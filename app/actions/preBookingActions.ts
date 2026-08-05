@@ -3,7 +3,8 @@
 import { 
   getAvailableSlots, 
   createPreBookingRequest, 
-  getPreBookingStatusByProtocol 
+  getPreBookingStatusByProtocol,
+  lookupPatientByCpf
 } from '@/lib/preBookingService';
 import { CreatePreBookingDTO } from '@/types/preBooking';
 
@@ -34,5 +35,14 @@ export async function checkProtocolStatusAction(protocol: string) {
     return { success: true, data: statusData };
   } catch (err: any) {
     return { success: false, message: err.message || 'Erro ao buscar protocolo' };
+  }
+}
+
+export async function lookupPatientByCpfAction(cpf: string) {
+  try {
+    const res = await lookupPatientByCpf(cpf);
+    return res;
+  } catch (err: any) {
+    return { found: false, message: err.message || 'Erro ao consultar CPF' };
   }
 }

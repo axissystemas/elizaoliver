@@ -31,7 +31,7 @@ export interface CreatePreBookingDTO {
   patient_name: string;
   patient_email: string;
   patient_phone: string;
-  patient_cpf?: string;
+  patient_cpf: string;
   birth_date?: string;
   requested_date: string;
   requested_time: string;

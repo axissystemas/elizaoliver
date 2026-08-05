@@ -23,9 +23,15 @@ import {
   X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { fetchAvailableSlotsAction, submitPreBookingAction, checkProtocolStatusAction } from '@/app/actions/preBookingActions';
+import { 
+  fetchAvailableSlotsAction, 
+  submitPreBookingAction, 
+  checkProtocolStatusAction,
+  lookupPatientByCpfAction 
+} from '@/app/actions/preBookingActions';
 import { PublicProtocolStatus } from '@/types/preBooking';
 import { getClinicSettings, ClinicSettings, DEFAULT_CLINIC_SETTINGS } from '@/lib/clinicService';
+import { formatCpf, cleanCpf, isValidCpf } from '@/lib/preBookingService';
 
 const SERVICE_OPTIONS = [
   { id: 'Primeira Consulta', name: 'Primeira Consulta', duration: '60 min', description: 'Avaliação completa de saúde, anamnese e planejamento terapêutico.' },
@@ -70,6 +76,33 @@ export default function PreAgendamentoPage() {
   const [lgpdConsent, setLgpdConsent] = useState<boolean>(true);
   const [honeypot, setHoneypot] = useState<string>('');
 
+  // CPF Auto-fill state
+  const [isSearchingCpf, setIsSearchingCpf] = useState<boolean>(false);
+  const [cpfMatchStatus, setCpfMatchStatus] = useState<{ found: boolean; name?: string } | null>(null);
+
+  const handleCpfChange = async (val: string) => {
+    const formatted = formatCpf(val);
+    setPatientCpf(formatted);
+    setCpfMatchStatus(null);
+
+    const digits = cleanCpf(val);
+    if (digits.length === 11) {
+      setIsSearchingCpf(true);
+      const res = await lookupPatientByCpfAction(digits);
+      setIsSearchingCpf(false);
+
+      if (res.found && res.patient) {
+        if (res.patient.name) setPatientName(res.patient.name);
+        if (res.patient.email) setPatientEmail(res.patient.email);
+        if (res.patient.phone) setPatientPhone(res.patient.phone);
+        if (res.patient.birth_date) setBirthDate(res.patient.birth_date);
+        setCpfMatchStatus({ found: true, name: res.patient.name });
+      } else {
+        setCpfMatchStatus({ found: false });
+      }
+    }
+  };
+
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submittedProtocol, setSubmittedProtocol] = useState<string | null>(null);
@@ -100,8 +133,16 @@ export default function PreAgendamentoPage() {
     if (currentStep === 1 && !selectedService) return;
     if (currentStep === 2 && (!selectedDate || !selectedTime)) return;
     if (currentStep === 3) {
+      if (!patientCpf.trim()) {
+        alert('Por favor, informe o seu CPF.');
+        return;
+      }
+      if (!isValidCpf(patientCpf)) {
+        alert('Por favor, informe um CPF válido com 11 dígitos.');
+        return;
+      }
       if (!patientName.trim() || !patientEmail.trim() || !patientPhone.trim()) {
-        alert('Por favor, preencha os campos obrigatórios: Nome, E-mail e Celular.');
+        alert('Por favor, preencha todos os campos obrigatórios: CPF, Nome Completo, E-mail e Celular.');
         return;
       }
     }
@@ -498,10 +539,48 @@ export default function PreAgendamentoPage() {
                     <User className="w-5 h-5 text-emerald-600" />
                     Preencha seus Dados Pessoais
                   </h2>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-1">Essas informações serão utilizadas para a recepção analisar a sua solicitação.</p>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">Informe seu CPF para consultar ou iniciar seu cadastro na clínica.</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  {/* CPF Obrigatório no Topo com Consulta Automática */}
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="font-semibold text-slate-700 block">CPF *</label>
+                    <div className="relative">
+                      <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+                      <input 
+                        type="text" 
+                        required
+                        maxLength={14}
+                        placeholder="000.000.000-00"
+                        value={patientCpf}
+                        onChange={(e) => handleCpfChange(e.target.value)}
+                        className="w-full pl-9 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-sm font-medium font-mono"
+                      />
+                      {isSearchingCpf && (
+                        <div className="absolute right-3 top-3.5 flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Buscando...</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Feedback visual de auto-preenchimento por CPF */}
+                    {cpfMatchStatus?.found && (
+                      <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-800 flex items-center gap-2 font-medium">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>Cadastro localizado na clínica! Seus dados foram preenchidos automaticamente.</span>
+                      </div>
+                    )}
+
+                    {cpfMatchStatus && !cpfMatchStatus.found && (
+                      <div className="p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-600 flex items-center gap-2 font-medium">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>Primeiro agendamento com este CPF. Preencha seus dados abaixo para iniciar o cadastro.</span>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-1.5 sm:col-span-2">
                     <label className="font-semibold text-slate-700">Nome Completo *</label>
                     <div className="relative">
@@ -547,18 +626,7 @@ export default function PreAgendamentoPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="font-semibold text-slate-700">CPF (Opcional)</label>
-                    <input 
-                      type="text" 
-                      placeholder="000.000.000-00"
-                      value={patientCpf}
-                      onChange={(e) => setPatientCpf(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-sm font-medium"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <label className="font-semibold text-slate-700">Data de Nascimento (Opcional)</label>
                     <input 
                       type="date" 

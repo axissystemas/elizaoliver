@@ -9,6 +9,94 @@ const DEFAULT_SLOTS = [
 
 const isUuid = (str?: string | null) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}$/i.test(str);
 
+export function cleanCpf(cpf?: string | null): string {
+  if (!cpf) return '';
+  return cpf.replace(/\D/g, '');
+}
+
+export function formatCpf(val?: string | null): string {
+  const digits = cleanCpf(val);
+  if (!digits) return '';
+  return digits
+    .slice(0, 11)
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
+export function isValidCpf(val?: string | null): boolean {
+  const digits = cleanCpf(val);
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+
+  let sum = 0;
+  let remainder;
+  for (let i = 1; i <= 9; i++) sum += parseInt(digits.substring(i - 1, i)) * (11 - i);
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(digits.substring(9, 10))) return false;
+
+  sum = 0;
+  for (let i = 1; i <= 10; i++) sum += parseInt(digits.substring(i - 1, i)) * (12 - i);
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(digits.substring(10, 11))) return false;
+
+  return true;
+}
+
+export async function lookupPatientByCpf(cpf: string): Promise<{
+  found: boolean;
+  patient?: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    birth_date?: string;
+  };
+  message?: string;
+}> {
+  if (!supabase || !cpf) return { found: false, message: 'CPF não informado' };
+
+  const rawDigits = cleanCpf(cpf);
+  if (rawDigits.length !== 11) {
+    return { found: false, message: 'CPF deve conter 11 dígitos' };
+  }
+
+  const formatted = formatCpf(rawDigits);
+
+  try {
+    const { data, error } = await supabase
+      .from('patients')
+      .select('id, name, email, phone, birth_date, cpf')
+      .or(`cpf.eq.${rawDigits},cpf.eq.${formatted}`)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Erro ao buscar paciente por CPF:', error.message);
+      return { found: false };
+    }
+
+    if (data) {
+      return {
+        found: true,
+        patient: {
+          id: data.id,
+          name: data.name || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          birth_date: data.birth_date || ''
+        }
+      };
+    }
+
+    return { found: false };
+  } catch (err) {
+    console.error('Erro no lookupPatientByCpf:', err);
+    return { found: false };
+  }
+}
+
 function generateProtocol(): string {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -114,8 +202,12 @@ export async function createPreBookingRequest(
     return { success: true, protocol: 'PRE-ROBOT-PASS', message: 'Solicitação registrada com sucesso!' };
   }
 
-  if (!data.patient_name || !data.patient_email || !data.patient_phone || !data.requested_date || !data.requested_time) {
-    return { success: false, message: 'Preencha todos os campos obrigatórios.' };
+  if (!data.patient_name || !data.patient_email || !data.patient_phone || !data.patient_cpf || !data.requested_date || !data.requested_time) {
+    return { success: false, message: 'Preencha todos os campos obrigatórios (Nome, E-mail, Celular, CPF, Data e Horário).' };
+  }
+
+  if (!isValidCpf(data.patient_cpf)) {
+    return { success: false, message: 'Por favor, informe um CPF válido com 11 dígitos.' };
   }
 
   if (!supabase) {
@@ -132,13 +224,14 @@ export async function createPreBookingRequest(
     }
 
     const protocol = generateProtocol();
+    const formattedCpf = formatCpf(data.patient_cpf);
 
     const insertPayload: any = {
       protocol,
       patient_name: data.patient_name.trim(),
       patient_email: data.patient_email.trim().toLowerCase(),
       patient_phone: data.patient_phone.trim(),
-      patient_cpf: data.patient_cpf ? data.patient_cpf.trim() : null,
+      patient_cpf: formattedCpf || cleanCpf(data.patient_cpf),
       birth_date: data.birth_date || null,
       requested_date: data.requested_date,
       requested_time: data.requested_time,
@@ -282,22 +375,25 @@ export async function approvePreBookingRequest(
       }
     }
 
-    // 3. Cadastrar ou localizar o Paciente
+    // 3. Cadastrar ou localizar o Paciente (Evitando Duplicidades por CPF ou E-mail)
     let patientId = request.converted_patient_id;
-    const cleanCpf = (request.patient_cpf && request.patient_cpf.trim().length > 0) ? request.patient_cpf.trim() : null;
+    const rawCpf = cleanCpf(request.patient_cpf);
+    const formattedCpf = formatCpf(rawCpf);
     const cleanEmail = (request.patient_email && request.patient_email.trim().length > 0) ? request.patient_email.trim() : null;
     const validUserId = isUuid(adminUserId) ? adminUserId : null;
 
     if (!patientId) {
-      if (cleanCpf) {
+      // Prioridade 1: Localizar paciente existente pelo CPF (formatado ou limpo)
+      if (rawCpf) {
         const { data: existingPat } = await supabase
           .from('patients')
           .select('id')
-          .eq('cpf', cleanCpf)
+          .or(`cpf.eq.${rawCpf},cpf.eq.${formattedCpf}`)
           .maybeSingle();
         if (existingPat) patientId = existingPat.id;
       }
 
+      // Prioridade 2: Localizar paciente existente pelo E-mail
       if (!patientId && cleanEmail) {
         const { data: existingPat } = await supabase
           .from('patients')
@@ -307,12 +403,13 @@ export async function approvePreBookingRequest(
         if (existingPat) patientId = existingPat.id;
       }
 
+      // Apenas se NÃO existir nenhum paciente com esse CPF/E-mail, cria um novo
       if (!patientId) {
         const newPatientPayload: any = {
           name: request.patient_name,
           email: cleanEmail,
           phone: request.patient_phone || null,
-          cpf: cleanCpf,
+          cpf: formattedCpf || rawCpf || null,
           birth_date: request.birth_date || null,
           status: 'Ativo'
         };
