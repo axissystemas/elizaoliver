@@ -25,6 +25,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchAvailableSlotsAction, submitPreBookingAction, checkProtocolStatusAction } from '@/app/actions/preBookingActions';
 import { PublicProtocolStatus } from '@/types/preBooking';
+import { getClinicSettings, ClinicSettings, DEFAULT_CLINIC_SETTINGS } from '@/lib/clinicService';
 
 const SERVICE_OPTIONS = [
   { id: 'Primeira Consulta', name: 'Primeira Consulta', duration: '60 min', description: 'Avaliação completa de saúde, anamnese e planejamento terapêutico.' },
@@ -32,6 +33,16 @@ const SERVICE_OPTIONS = [
 ];
 
 export default function PreAgendamentoPage() {
+  const [clinicInfo, setClinicInfo] = useState<ClinicSettings>(DEFAULT_CLINIC_SETTINGS);
+
+  useEffect(() => {
+    async function loadClinic() {
+      const data = await getClinicSettings();
+      setClinicInfo(data);
+    }
+    loadClinic();
+  }, []);
+
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isConsultingProtocol, setIsConsultingProtocol] = useState<boolean>(false);
   const [protocolInput, setProtocolInput] = useState<string>('');
@@ -167,12 +178,18 @@ export default function PreAgendamentoPage() {
       <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-md sticky top-0 z-40 shadow-xs">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center shadow-md shadow-emerald-600/20">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
+            {clinicInfo.logo_url ? (
+              <div className="w-10 h-10 rounded-2xl overflow-hidden border border-slate-200 shadow-md flex items-center justify-center bg-white shrink-0 p-0.5">
+                <img src={clinicInfo.logo_url} alt={clinicInfo.name} className="w-full h-full object-contain" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+            )}
             <div>
-              <h1 className="font-bold text-lg leading-none tracking-tight text-slate-900">Clínica Axis GC</h1>
-              <p className="text-xs text-slate-500 mt-1">Pré-Agendamento de Consultas</p>
+              <h1 className="font-bold text-lg leading-none tracking-tight text-slate-900">{clinicInfo.name || 'Clínica Axis GC'}</h1>
+              <p className="text-xs text-slate-500 mt-1">{clinicInfo.subtitle || 'Pré-Agendamento de Consultas'}</p>
             </div>
           </div>
 

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import { getClinicSettings, ClinicSettings } from '@/lib/clinicService';
 
 import { 
   LayoutDashboard, 
@@ -47,6 +48,24 @@ const navItems = [
 
 export default function Sidebar({ activeView, setActiveView, onNewAppointment, onLogout, user }: SidebarProps) {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [clinicSettings, setClinicSettings] = useState<ClinicSettings | null>(null);
+
+  useEffect(() => {
+    getClinicSettings(user.organizationId).then(setClinicSettings);
+
+    const handleUpdate = (e: any) => {
+      if (e.detail) setClinicSettings(e.detail);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('clinic_settings_updated', handleUpdate);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('clinic_settings_updated', handleUpdate);
+      }
+    };
+  }, [user.organizationId]);
+
   const allowedPermissions = user.permissions || [];
   const entitlements = user.subscription?.entitlements || [];
 
@@ -68,11 +87,17 @@ export default function Sidebar({ activeView, setActiveView, onNewAppointment, o
     <aside className="w-64 flex flex-col bg-white border-r border-outline-variant/20 z-50 min-h-screen">
       <div className="p-6 flex flex-col gap-1">
         <div className="flex items-center gap-4 px-6 mb-10">
-          <div className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center font-bold text-xl shadow-lg shadow-primary/30 shrink-0">
-            AG
-          </div>
+          {clinicSettings?.logo_url ? (
+            <div className="w-12 h-12 rounded-2xl border border-outline-variant/20 bg-white flex items-center justify-center p-1 shadow-md shrink-0 overflow-hidden">
+              <img src={clinicSettings.logo_url} alt={clinicSettings.name} className="w-full h-full object-contain" />
+            </div>
+          ) : (
+            <div className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center font-bold text-xl shadow-lg shadow-primary/30 shrink-0">
+              {getInitials(clinicSettings?.name || 'Axis GC')}
+            </div>
+          )}
           <div className="overflow-hidden transition-all duration-300 whitespace-nowrap">
-            <h1 className="text-xl font-extrabold text-primary font-headline leading-none">Axis GC</h1>
+            <h1 className="text-lg font-extrabold text-primary font-headline leading-none truncate">{clinicSettings?.name || 'Axis GC'}</h1>
             <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest mt-1">Gestão de Clínica</p>
           </div>
         </div>

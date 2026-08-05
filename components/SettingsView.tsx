@@ -49,6 +49,7 @@ import { getWhatsAppSettings, saveWhatsAppSettings, WhatsAppSettings, DEFAULT_WH
 import { EvaluationTemplate, TemplateStep, TemplateField, DEFAULT_SYSTEM_TEMPLATES } from '@/types/evaluationTemplate';
 import { getEvaluationTemplates, saveEvaluationTemplates, deleteEvaluationTemplate } from '@/lib/evaluationTemplateService';
 import { logAction } from '@/lib/auditLogService';
+import { getClinicSettings, saveClinicSettings, ClinicSettings, DEFAULT_CLINIC_SETTINGS } from '@/lib/clinicService';
 
 interface Profile {
   name: string;
@@ -60,8 +61,10 @@ interface Profile {
 
 interface Clinic {
   name: string;
+  subtitle?: string;
   address: string;
   phone: string;
+  logo_url?: string;
 }
 
 interface ConsultationType {
@@ -181,32 +184,11 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
     }
   };
 
-  // Carrega dados da clínica do Supabase se o usuário possuir organização vinculada
+  // Carrega dados da clínica usando clinicService
   useEffect(() => {
     async function loadClinicFromDatabase() {
-      if (!supabase || !user.organizationId) return;
-      try {
-        const { data } = await supabase
-          .from('organizations')
-          .select('name, metadata')
-          .eq('id', user.organizationId)
-          .single();
-
-        if (data) {
-          const meta = (data.metadata as any) || {};
-          const loadedClinic: Clinic = {
-            name: data.name || clinic.name,
-            address: meta.address || clinic.address,
-            phone: meta.phone || clinic.phone
-          };
-          setClinic(loadedClinic);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('auriculocare_clinic', JSON.stringify(loadedClinic));
-          }
-        }
-      } catch (err) {
-        console.warn('Aviso ao carregar dados da clínica do Supabase:', err);
-      }
+      const data = await getClinicSettings(user.organizationId);
+      setClinic(data);
     }
     loadClinicFromDatabase();
   }, [user.organizationId]);
@@ -216,42 +198,25 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
     setClinicFeedback(null);
 
     try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('auriculocare_clinic', JSON.stringify(clinic));
+      const res = await saveClinicSettings(clinic, user.organizationId);
+      
+      if (res.success) {
+        logAction({
+          action: 'UPDATE',
+          entityType: 'CLINIC',
+          entityId: user.organizationId || 'local',
+          details: clinic
+        }).catch(() => {});
+
+        setClinicFeedback({ type: 'success', message: 'Dados da clínica e LOGO salvos com sucesso!' });
+
+        setTimeout(() => {
+          setIsClinicModalOpen(false);
+          setClinicFeedback(null);
+        }, 1200);
+      } else {
+        setClinicFeedback({ type: 'error', message: res.message || 'Erro ao salvar dados.' });
       }
-
-      if (supabase && user.organizationId) {
-        const { error } = await supabase
-          .from('organizations')
-          .update({
-            name: clinic.name,
-            metadata: {
-              address: clinic.address,
-              phone: clinic.phone
-            },
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.organizationId);
-
-        if (error) {
-          console.warn('Aviso ao atualizar organização no Supabase:', error);
-        }
-      }
-
-      logAction({
-        action: 'UPDATE',
-        entityType: 'CLINIC',
-        entityId: user.organizationId || 'local',
-        details: clinic
-      }).catch(() => {});
-
-      setClinicFeedback({ type: 'success', message: 'Dados da clínica salvos com sucesso!' });
-
-      setTimeout(() => {
-        setIsClinicModalOpen(false);
-        setClinicFeedback(null);
-      }, 1200);
-
     } catch (err: any) {
       console.error('Erro ao salvar dados da clínica:', err);
       setClinicFeedback({ type: 'error', message: err.message || 'Erro ao salvar dados.' });
@@ -1003,7 +968,7 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                   <X size={24} />
                 </button>
               </div>
-              <div className="p-8 space-y-6">
+              <div className="p-8 space-y-6 max-h-[80vh] overflow-y-auto">
                 {clinicFeedback && (
                   <div className={`p-4 rounded-xl text-sm font-medium flex items-center gap-2 ${
                     clinicFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'
@@ -1012,33 +977,115 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                     {clinicFeedback.message}
                   </div>
                 )}
+
+                {/* Logo da Clínica */}
+                <div className="space-y-3 p-4 bg-surface-container-low/60 rounded-2xl border border-outline-variant/10">
+                  <label className="text-xs font-bold text-outline uppercase tracking-widest block">Logo da Clínica</label>
+                  
+                  <div className="flex items-center gap-4">
+                    {clinic.logo_url ? (
+                      <div className="w-16 h-16 rounded-2xl border border-outline-variant/30 bg-white flex items-center justify-center p-1 relative overflow-hidden shadow-sm shrink-0">
+                        <img src={clinic.logo_url} alt="Logo da Clínica" className="w-full h-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-outline-variant/30 bg-surface-container-high flex flex-col items-center justify-center text-outline shrink-0">
+                        <Building2 size={24} />
+                      </div>
+                    )}
+
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <label className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1.5 border border-primary/20">
+                          <Upload size={14} />
+                          <span>Fazer Upload da Logo</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  if (reader.result) {
+                                    setClinic({ ...clinic, logo_url: reader.result as string });
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                        {clinic.logo_url && (
+                          <button 
+                            type="button" 
+                            onClick={() => setClinic({ ...clinic, logo_url: '' })}
+                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl text-xs font-bold transition-all"
+                            title="Remover Logo"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-on-surface-variant font-medium">Recomendado: PNG ou JPG com fundo transparente (máx. 2MB).</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <input 
+                      type="url" 
+                      placeholder="Ou cole a URL da imagem de logo (https://...)" 
+                      value={clinic.logo_url || ''}
+                      onChange={e => setClinic({ ...clinic, logo_url: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-white rounded-xl border border-outline-variant/20 focus:ring-2 focus:ring-primary/20 outline-none font-medium text-xs"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-outline uppercase tracking-widest">Nome da Clínica</label>
                   <input 
                     type="text" 
+                    placeholder="Ex: Clínica Axis GC"
                     value={clinic.name}
                     onChange={e => setClinic({...clinic, name: e.target.value})}
                     className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium"
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Subtítulo / Descrição da Clínica</label>
+                  <input 
+                    type="text" 
+                    placeholder="Ex: Pré-Agendamento de Consultas"
+                    value={clinic.subtitle || ''}
+                    onChange={e => setClinic({...clinic, subtitle: e.target.value})}
+                    className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium"
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-outline uppercase tracking-widest">Endereço</label>
                   <input 
                     type="text" 
+                    placeholder="Ex: Av. Paulista, 1000 - São Paulo, SP"
                     value={clinic.address}
                     onChange={e => setClinic({...clinic, address: e.target.value})}
                     className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium"
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Telefone Comercial</label>
+                  <label className="text-xs font-bold text-outline uppercase tracking-widest">Telefone Comercial / WhatsApp</label>
                   <input 
                     type="text" 
+                    placeholder="Ex: (11) 3222-4444"
                     value={clinic.phone}
                     onChange={e => setClinic({...clinic, phone: e.target.value})}
                     className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium"
                   />
                 </div>
+
                 <button 
                   onClick={handleSaveClinic}
                   disabled={isSavingClinic}

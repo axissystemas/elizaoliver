@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { fetchPreBookingRequests } from '@/lib/preBookingService';
+import { getClinicSettings, ClinicSettings } from '@/lib/clinicService';
 
 interface TopBarProps {
   user?: User | null;
@@ -30,6 +31,23 @@ export default function TopBar({
   const [profileName, setProfileName] = useState(user?.name || 'Dr. Elena Wu');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [preBookingNotifications, setPreBookingNotifications] = useState<any[]>([]);
+  const [clinicSettings, setClinicSettings] = useState<ClinicSettings | null>(null);
+
+  useEffect(() => {
+    getClinicSettings(user?.organizationId).then(setClinicSettings);
+
+    const handleUpdate = (e: any) => {
+      if (e.detail) setClinicSettings(e.detail);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('clinic_settings_updated', handleUpdate);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('clinic_settings_updated', handleUpdate);
+      }
+    };
+  }, [user?.organizationId]);
 
   useEffect(() => {
     if (user?.name) {
@@ -63,7 +81,14 @@ export default function TopBar({
   return (
     <header className="h-20 flex items-center justify-between px-8 bg-white border-b border-outline-variant/10 z-40">
       <div className="flex items-center gap-8 w-1/2">
-        <span className="text-lg font-bold text-primary font-headline">Axis GC</span>
+        <div className="flex items-center gap-2.5">
+          {clinicSettings?.logo_url ? (
+            <img src={clinicSettings.logo_url} alt={clinicSettings.name} className="h-8 w-auto max-w-[120px] object-contain shrink-0" />
+          ) : null}
+          <span className="text-lg font-bold text-primary font-headline">
+            {clinicSettings?.name || 'Axis GC'}
+          </span>
+        </div>
         <div className="relative w-full max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-outline" size={18} />
           <input 
