@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import PatientsView from '@/components/PatientsView';
-import PatientModal from '@/components/PatientModal';
+import PatientModal, { calculateAge } from '@/components/PatientModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -48,18 +48,25 @@ export default function PatientsPage() {
       }
       
       if (data) {
-        setPatients(data.map(p => ({
-          ...p,
-          maritalStatus: p.marital_status || 'Solteiro(a)',
-          avatar: p.avatar_url || '',
-          lastVisit: p.last_visit || 'N/A',
-          birthDate: p.birth_date || '',
-          hasActivePackage: Array.isArray(p.patient_packages) && (p as any).patient_packages.some((pkg: any) => pkg.status === 'active'),
-          // Map insurance data back to the format the modal expects
-          insurancePlanId: (p as any).insurance?.plan_id || '',
-          insuranceCardNumber: (p as any).insurance?.card_number || '',
-          insuranceValidity: (p as any).insurance?.validity_date || ''
-        })));
+        setPatients(data.map(p => {
+          const bDate = p.birth_date || p.birthDate || '';
+          let computedAge = p.age;
+          if ((!computedAge || isNaN(computedAge) || computedAge <= 0) && bDate) {
+            computedAge = parseInt(calculateAge(bDate)) || 0;
+          }
+          return {
+            ...p,
+            age: computedAge || 0,
+            birthDate: bDate,
+            maritalStatus: p.marital_status || 'Solteiro(a)',
+            avatar: p.avatar_url || '',
+            lastVisit: p.last_visit || 'N/A',
+            hasActivePackage: Array.isArray(p.patient_packages) && (p as any).patient_packages.some((pkg: any) => pkg.status === 'active'),
+            insurancePlanId: (p as any).insurance?.plan_id || '',
+            insuranceCardNumber: (p as any).insurance?.card_number || '',
+            insuranceValidity: (p as any).insurance?.validity_date || ''
+          };
+        }));
       }
     } catch (error: any) {
       console.error('Erro crítico ao buscar pacientes:', error);

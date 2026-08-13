@@ -182,31 +182,36 @@ export default function DashboardView({
               appointments
                 .filter(app => app.date === todayStr)
                 .sort((a, b) => a.time.localeCompare(b.time))
-                .map((item, i) => (
-                  <motion.div 
-                    key={item.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    className="group bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] flex items-center gap-4 md:gap-10 border border-transparent hover:border-primary/10 transition-all shadow-sm md:shadow-none hover:shadow-[0_20px_50px_rgba(0,0,0,0.04)]"
-                  >
-                    <div className="flex flex-col items-center min-w-[70px]">
-                      <span className="text-xl font-headline font-extrabold text-on-surface">{item.time}</span>
-                      <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">
-                        {parseInt(item.time.split(':')[0]) < 12 ? 'AM' : 'PM'}
-                      </span>
-                    </div>
-                    <div className={`w-1.5 h-14 ${
-                      item.type === 'initial' ? 'bg-blue-500' : 
-                      item.type === 'emergency' ? 'bg-rose-500' : 
-                      'bg-secondary'
-                    } rounded-full`}></div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-headline font-bold text-lg md:text-xl text-on-surface truncate">{item.patientName}</h4>
-                      <p className="text-xs md:text-sm text-on-surface-variant mt-1 truncate">
-                        {item.type === 'initial' ? 'Primeira Consulta' : item.type === 'emergency' ? 'Emergência' : 'Retorno'} • {item.duration} min
-                      </p>
-                    </div>
+                .map((item, i) => {
+                  const t = (item.type || '').toLowerCase().replace(/[\s-_/]/g, '').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                  const isInitial = t === 'initial' || t === 'primeiraconsulta';
+                  const isEmergency = t === 'emergency' || t === 'emergencia' || t === 'urgencia';
+
+                  return (
+                    <motion.div 
+                      key={item.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="group bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] flex items-center gap-4 md:gap-10 border border-transparent hover:border-primary/10 transition-all shadow-sm md:shadow-none hover:shadow-[0_20px_50px_rgba(0,0,0,0.04)]"
+                    >
+                      <div className="flex flex-col items-center min-w-[70px]">
+                        <span className="text-xl font-headline font-extrabold text-on-surface">{item.time}</span>
+                        <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">
+                          {parseInt(item.time.split(':')[0]) < 12 ? 'AM' : 'PM'}
+                        </span>
+                      </div>
+                      <div className={`w-1.5 h-14 ${
+                        isInitial ? 'bg-emerald-500' : 
+                        isEmergency ? 'bg-rose-500' : 
+                        'bg-amber-500'
+                      } rounded-full`}></div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-headline font-bold text-lg md:text-xl text-on-surface truncate">{item.patientName}</h4>
+                        <p className="text-xs md:text-sm text-on-surface-variant mt-1 truncate">
+                          {isInitial ? 'Primeira Consulta' : isEmergency ? 'Emergência' : 'Retorno'} • {item.duration} min
+                        </p>
+                      </div>
                     {item.paymentStatus === 'pago' ? (
                       <span className="px-4 py-1.5 bg-primary-fixed/30 text-primary text-[10px] font-bold rounded-full tracking-widest uppercase">PAGO</span>
                     ) : (
@@ -219,7 +224,8 @@ export default function DashboardView({
                       <ChevronRight size={20} />
                     </button>
                   </motion.div>
-                ))
+                );
+              })
             ) : (
               <div className="bg-white p-10 rounded-[2.5rem] border border-dashed border-outline-variant/20 flex flex-col items-center justify-center text-outline opacity-50 italic">
                 <p>Nenhum agendamento para hoje</p>

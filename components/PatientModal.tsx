@@ -39,6 +39,59 @@ interface PatientModalProps {
   editingPatient: Patient | null;
 }
 
+export function calculateAge(birthDate?: string | null): string {
+  if (!birthDate) return '';
+  
+  let year: number, month: number, day: number;
+
+  if (birthDate.includes('-')) {
+    const parts = birthDate.split('T')[0].split('-');
+    if (parts.length < 3) return '';
+    year = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10) - 1;
+    day = parseInt(parts[2], 10);
+  } else if (birthDate.includes('/')) {
+    const parts = birthDate.split('/');
+    if (parts.length < 3) return '';
+    day = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10) - 1;
+    year = parseInt(parts[2], 10);
+  } else {
+    const d = new Date(birthDate);
+    if (isNaN(d.getTime())) return '';
+    year = d.getFullYear();
+    month = d.getMonth();
+    day = d.getDate();
+  }
+
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return '';
+
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const monthDiff = today.getMonth() - month;
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < day)) {
+    age--;
+  }
+
+  return age >= 0 ? age.toString() : '';
+}
+
+export function formatDateForInput(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
+  if (dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      const day = parts[0].padStart(2, '0');
+      const month = parts[1].padStart(2, '0');
+      const year = parts[2];
+      return `${year}-${month}-${day}`;
+    }
+  }
+  return dateStr;
+}
+
 export default function PatientModal({ isOpen, onClose, onSave, editingPatient }: PatientModalProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [insurers, setInsurers] = useState<Insurer[]>([]);
@@ -80,9 +133,19 @@ export default function PatientModal({ isOpen, onClose, onSave, editingPatient }
 
     if (isOpen) {
       fetchInsurers();
+      const rawBirthDate = (editingPatient as any)?.birth_date || editingPatient?.birthDate || (editingPatient as any)?.birthDate || '';
+      const formattedBirthDate = formatDateForInput(rawBirthDate);
+      
+      let initialAge = '';
+      if (editingPatient?.age && !isNaN(Number(editingPatient.age)) && Number(editingPatient.age) > 0) {
+        initialAge = editingPatient.age.toString();
+      } else if (formattedBirthDate || rawBirthDate) {
+        initialAge = calculateAge(formattedBirthDate || rawBirthDate);
+      }
+
       setFormData({
         name: editingPatient?.name || '',
-        age: editingPatient?.age?.toString() || '',
+        age: initialAge,
         gender: editingPatient?.gender || 'Feminino',
         phone: editingPatient?.phone || '',
         email: editingPatient?.email || '',
@@ -92,7 +155,7 @@ export default function PatientModal({ isOpen, onClose, onSave, editingPatient }
         status: editingPatient?.status || 'Ativo' as 'Ativo' | 'Inativo',
         avatar: editingPatient?.avatar || '',
         cpf: editingPatient?.cpf || '',
-        birthDate: (editingPatient as any)?.birth_date || editingPatient?.birth_date || '',
+        birthDate: formattedBirthDate,
         insurerId: editingPatient?.insurerId || '',
         insurancePlanName: editingPatient?.insurancePlanName || '',
         insuranceSubplan: editingPatient?.insuranceSubplan || '',
@@ -139,19 +202,6 @@ export default function PatientModal({ isOpen, onClose, onSave, editingPatient }
     }
   };
 
-  const calculateAge = (birthDate: string) => {
-    if (!birthDate) return '';
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age.toString();
-  };
-
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -166,10 +216,12 @@ export default function PatientModal({ isOpen, onClose, onSave, editingPatient }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const age = parseInt(formData.age);
+    let age = parseInt(formData.age);
+    if ((isNaN(age) || age <= 0) && formData.birthDate) {
+      age = parseInt(calculateAge(formData.birthDate)) || 0;
+    }
     if (isNaN(age)) {
-      alert('Por favor, insira uma idade válida.');
-      return;
+      age = 0;
     }
 
     setIsSaving(true);

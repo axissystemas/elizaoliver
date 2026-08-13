@@ -162,15 +162,23 @@ export default function CalendarView({
     }
   };
 
+  const normalizeType = (type?: string): 'initial' | 'followup' | 'emergency' => {
+    const t = (type || '').toLowerCase().replace(/[\s-_/]/g, '').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (t === 'initial' || t === 'primeiraconsulta') return 'initial';
+    if (t === 'emergency' || t === 'emergencia' || t === 'urgencia') return 'emergency';
+    return 'followup';
+  };
+
   const getPriceByType = (type: string) => {
-    const found = consultationTypes.find(t => t.id === type || t.name === type);
-    return found ? found.price : 150;
+    const norm = normalizeType(type);
+    const found = consultationTypes.find(t => t.id === norm || t.id === type || t.name === type);
+    return found ? found.price : (norm === 'initial' ? 250 : norm === 'emergency' ? 300 : 150);
   };
 
   const getAppointmentColor = (type: string) => {
-    const t = (type || '').toLowerCase().replace(/-/g, '');
-    if (t === 'initial' || t === 'primeiraconsulta') return 'bg-emerald-50 border-emerald-500 text-emerald-700';
-    if (t === 'emergency' || t === 'emergencia' || t === 'urgencia') return 'bg-rose-50 border-rose-500 text-rose-700';
+    const norm = normalizeType(type);
+    if (norm === 'initial') return 'bg-emerald-50 border-emerald-500 text-emerald-700';
+    if (norm === 'emergency') return 'bg-rose-50 border-rose-500 text-rose-700';
     // followup / follow-up / retorno / outros
     return 'bg-amber-50 border-amber-500 text-amber-700';
   };

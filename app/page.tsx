@@ -21,7 +21,7 @@ import BottomNav from '@/components/BottomNav';
 import ReportsView from '@/components/ReportsView';
 import BillingView from '@/components/BillingView';
 import { AnimatePresence, motion } from 'motion/react';
-import PatientModal from '@/components/PatientModal';
+import PatientModal, { calculateAge } from '@/components/PatientModal';
 import ConsultationModal from '@/components/ConsultationModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { User, ROLE_PERMISSIONS, ADMIN_PERMISSIONS } from '@/types/auth';
@@ -291,16 +291,25 @@ export default function Home() {
       ]);
 
       if (patientsData) {
-        setPatients((patientsData as any[]).map(p => ({
-          ...p,
-          maritalStatus: p.marital_status || 'Solteiro(a)',
-          avatar: p.avatar_url || '',
-          lastVisit: p.last_visit || 'N/A',
-          hasActivePackage: Array.isArray(p.patient_packages) && p.patient_packages.some((pkg: any) => pkg.status === 'active'),
-          insurancePlanId: p.insurance?.plan_id || '',
-          insuranceCardNumber: p.insurance?.card_number || '',
-          insuranceValidity: p.insurance?.validity_date || ''
-        })));
+        setPatients((patientsData as any[]).map(p => {
+          const bDate = p.birth_date || p.birthDate || '';
+          let computedAge = p.age;
+          if ((!computedAge || isNaN(computedAge) || computedAge <= 0) && bDate) {
+            computedAge = parseInt(calculateAge(bDate)) || 0;
+          }
+          return {
+            ...p,
+            age: computedAge || 0,
+            birthDate: bDate,
+            maritalStatus: p.marital_status || 'Solteiro(a)',
+            avatar: p.avatar_url || '',
+            lastVisit: p.last_visit || 'N/A',
+            hasActivePackage: Array.isArray(p.patient_packages) && p.patient_packages.some((pkg: any) => pkg.status === 'active'),
+            insurancePlanId: p.insurance?.plan_id || '',
+            insuranceCardNumber: p.insurance?.card_number || '',
+            insuranceValidity: p.insurance?.validity_date || ''
+          };
+        }));
       }
       if (appointmentsData) {
         setAppointments((appointmentsData as any[]).map(a => {
