@@ -184,9 +184,9 @@ export default function ProtocolsView({
             {canCreate && (
               <button 
                 onClick={() => handleOpenModal()}
-                className="px-8 py-4 rounded-2xl text-sm font-bold bg-primary text-white shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-primary text-white shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-1.5"
               >
-                <Plus size={20} /> Criar Novo Protocolo
+                <Plus size={15} /> Criar Novo Protocolo
               </button>
             )}
           </section>

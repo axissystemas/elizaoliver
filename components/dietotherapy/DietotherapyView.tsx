@@ -218,14 +218,14 @@ export default function DietotherapyView({ user }: DietotherapyViewProps) {
             Explore propriedades energéticas, classificações por autor, sabores, naturezas térmicas e canais de penetração para orientar a alimentação de pacientes.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2.5 flex-wrap">
           <button 
             onClick={() => {
               setIsBuilderOpen(true);
             }}
-            className="px-6 py-3.5 rounded-xl text-xs font-bold bg-white text-primary border border-outline-variant/15 hover:bg-surface-container-low transition-all flex items-center gap-2 shadow-sm"
+            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-white text-primary border border-outline-variant/15 hover:bg-surface-container-low transition-all flex items-center gap-1.5 shadow-sm"
           >
-            <Sparkles size={16} /> Criar Orientação Dietética
+            <Sparkles size={15} /> Criar Orientação Dietética
           </button>
           {canCreate && (
             <div className="flex gap-2">
@@ -234,17 +234,17 @@ export default function DietotherapyView({ user }: DietotherapyViewProps) {
                   setEditingFood(null);
                   setIsFormOpen(true);
                 }}
-                className="px-6 py-3.5 rounded-xl text-xs font-bold bg-primary text-white hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 shadow-md shadow-primary/20"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-primary text-white hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-1.5 shadow-md shadow-primary/20"
               >
-                <Plus size={16} /> Cadastrar Alimento
+                <Plus size={15} /> Cadastrar Alimento
               </button>
               <button 
                 onClick={() => {
                   setIsImportModalOpen(true);
                 }}
-                className="px-6 py-3.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 shadow-md shadow-emerald-600/20"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
               >
-                <Upload size={16} /> Importar Lote
+                <Upload size={15} /> Importar Lote
               </button>
               <button 
                 onClick={handleForceSync}

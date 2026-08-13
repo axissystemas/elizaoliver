@@ -358,18 +358,18 @@ export default function FinancialView({
           <p className="text-on-surface-variant/80 font-medium text-lg mt-1">Controle de receitas, despesas e saldo.</p>
         </div>
         {canCreate && (
-          <div className="flex gap-3">
+          <div className="flex gap-2.5">
             <button
               onClick={() => openModal('INCOME')}
-              className="px-5 py-3 rounded-2xl bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-1.5"
             >
-              <ArrowUpRight size={18} /> Receita
+              <ArrowUpRight size={15} /> Receita
             </button>
             <button
               onClick={() => openModal('EXPENSE')}
-              className="px-5 py-3 rounded-2xl bg-rose-500 text-white font-bold text-sm shadow-lg shadow-rose-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl bg-rose-500 text-white font-bold text-xs shadow-md shadow-rose-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-1.5"
             >
-              <ArrowDownLeft size={18} /> Despesa
+              <ArrowDownLeft size={15} /> Despesa
             </button>
           </div>
         )}

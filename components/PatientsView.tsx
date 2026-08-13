@@ -106,19 +106,19 @@ export default function PatientsView({
           <h2 className="text-4xl font-bold font-headline text-on-surface">Gestão de Pacientes</h2>
           <p className="text-on-surface-variant text-lg mt-2 font-medium">Visualize e gerencie o histórico clínico de seus pacientes.</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-2.5">
           <button 
             onClick={onNewAppointment}
-            className="px-8 py-4 rounded-2xl text-sm font-bold bg-secondary-container text-on-secondary-container shadow-sm hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3"
+            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-secondary-container text-on-secondary-container shadow-sm hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-1.5"
           >
-            <Calendar size={20} /> Agendar Consulta
+            <Calendar size={15} /> Agendar Consulta
           </button>
           {canCreate && (
             <button 
               onClick={() => handleOpenModal()}
-              className="px-8 py-4 rounded-2xl text-sm font-bold bg-primary text-white shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-primary text-white shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-1.5"
             >
-              <UserPlus size={20} /> Cadastrar Paciente
+              <UserPlus size={15} /> Cadastrar Paciente
             </button>
           )}
         </div>

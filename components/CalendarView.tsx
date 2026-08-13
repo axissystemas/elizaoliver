@@ -457,9 +457,9 @@ export default function CalendarView({
                     resetForm();
                     setIsModalOpen(true);
                   }}
-                  className="bg-primary text-white px-6 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 hover:brightness-110 transition-all shadow-xl shadow-primary/20"
+                  className="bg-primary text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 hover:brightness-110 transition-all shadow-md shadow-primary/20"
                 >
-                  <Plus size={18} /> Novo Atendimento
+                  <Plus size={15} /> Novo Atendimento
                 </button>
               )}
             </div>
