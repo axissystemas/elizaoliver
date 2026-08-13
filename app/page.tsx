@@ -314,8 +314,10 @@ export default function Home() {
       if (appointmentsData) {
         setAppointments((appointmentsData as any[]).map(a => {
           const patient = (patientsData || []).find((p: any) => p.id === a.patient_id);
+          const isInitial = a.type && (a.type.toLowerCase().includes('primeira') || a.type.toLowerCase() === 'initial');
           return {
             ...a,
+            duration: (isInitial && (!a.duration || a.duration === 45)) ? 60 : (a.duration || 45),
             patientId: a.patient_id,
             patientName: a.patient_name,
             paymentStatus: a.payment_status,

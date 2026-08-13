@@ -162,13 +162,13 @@ export async function getAvailableSlots(dateStr: string): Promise<string[]> {
   try {
     const { data: existingAppts } = await supabase
       .from('appointments')
-      .select('time, status')
+      .select('time, duration, type, status')
       .eq('date', dateStr)
       .neq('status', 'cancelled');
 
     const { data: existingPreBookings } = await (supabase as any)
       .from('pre_booking_requests')
-      .select('requested_time, status')
+      .select('requested_time, duration, service_type, status')
       .eq('requested_date', dateStr)
       .eq('status', 'PENDENTE');
 
@@ -176,13 +176,47 @@ export async function getAvailableSlots(dateStr: string): Promise<string[]> {
 
     if (existingAppts) {
       existingAppts.forEach((app: any) => {
-        if (app.time) busyTimes.add(app.time.slice(0, 5));
+        if (app.time) {
+          const timeStr = app.time.slice(0, 5);
+          busyTimes.add(timeStr);
+          const isInitial = app.type && (app.type.toLowerCase().includes('primeira') || app.type.toLowerCase() === 'initial');
+          const dur = (isInitial && (!app.duration || app.duration === 45)) ? 60 : (app.duration || 45);
+          if (dur >= 60) {
+            const [h, m] = timeStr.split(':').map(Number);
+            const startMin = h * 60 + m;
+            const endMin = startMin + dur;
+            DEFAULT_SLOTS.forEach(slot => {
+              const [sh, sm] = slot.split(':').map(Number);
+              const sMin = sh * 60 + sm;
+              if (sMin >= startMin && sMin < endMin) {
+                busyTimes.add(slot);
+              }
+            });
+          }
+        }
       });
     }
 
     if (existingPreBookings) {
       existingPreBookings.forEach((req: any) => {
-        if (req.requested_time) busyTimes.add(req.requested_time.slice(0, 5));
+        if (req.requested_time) {
+          const timeStr = req.requested_time.slice(0, 5);
+          busyTimes.add(timeStr);
+          const isInitial = req.service_type && (req.service_type.toLowerCase().includes('primeira') || req.service_type.toLowerCase() === 'initial');
+          const dur = (isInitial && (!req.duration || req.duration === 45)) ? 60 : (req.duration || 45);
+          if (dur >= 60) {
+            const [h, m] = timeStr.split(':').map(Number);
+            const startMin = h * 60 + m;
+            const endMin = startMin + dur;
+            DEFAULT_SLOTS.forEach(slot => {
+              const [sh, sm] = slot.split(':').map(Number);
+              const sMin = sh * 60 + sm;
+              if (sMin >= startMin && sMin < endMin) {
+                busyTimes.add(slot);
+              }
+            });
+          }
+        }
       });
     }
 
@@ -235,7 +269,7 @@ export async function createPreBookingRequest(
       birth_date: data.birth_date || null,
       requested_date: data.requested_date,
       requested_time: data.requested_time,
-      duration: 45,
+      duration: (data.service_type && (data.service_type.toLowerCase().includes('primeira') || data.service_type.toLowerCase() === 'initial')) ? 60 : 45,
       service_type: data.service_type || 'Primeira Consulta',
       notes: data.notes ? data.notes.trim() : null,
       status: 'PENDENTE',
@@ -432,13 +466,17 @@ export async function approvePreBookingRequest(
 
     // 4. Inserir o agendamento na Agenda (apenas se ainda não existir)
     if (!apptId) {
+      const serviceType = request.service_type || 'Primeira Consulta';
+      const isInitialService = serviceType.toLowerCase().includes('primeira') || serviceType.toLowerCase() === 'initial';
+      const durationVal = (isInitialService && (!request.duration || request.duration === 45)) ? 60 : (request.duration || 45);
+
       const appointmentPayload: any = {
         patient_id: isUuid(patientId) ? patientId : null,
         patient_name: request.patient_name,
         date: request.proposed_date || request.requested_date,
         time: request.proposed_time || request.requested_time,
-        duration: request.duration || 45,
-        type: request.service_type || 'Primeira Consulta',
+        duration: durationVal,
+        type: serviceType,
         status: 'scheduled',
         payment_status: 'pendente',
         notes: `[Pré-Agendamento Protocolo: ${request.protocol}] ${request.notes || ''}`

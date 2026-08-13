@@ -109,8 +109,8 @@ export default function CalendarView({
   const [newAppointment, setNewAppointment] = useState<Partial<Appointment>>({
     date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`,
     time: '09:00',
-    duration: 45,
-    type: 'follow-up',
+    duration: 60,
+    type: 'initial',
     status: 'scheduled',
     patientId: '',
     notes: ''
@@ -121,8 +121,8 @@ export default function CalendarView({
     setNewAppointment({
       date: date || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`,
       time: '09:00',
-      duration: 45,
-      type: 'follow-up',
+      duration: 60,
+      type: 'initial',
       status: 'scheduled',
       patientId: '',
       notes: ''
@@ -344,7 +344,9 @@ export default function CalendarView({
                   )}
                 </div>
                 <p className="text-xs font-bold truncate">{app.patientName}</p>
-                <p className="text-[10px] opacity-70 truncate">{app.duration} min</p>
+                <p className="text-[10px] opacity-70 truncate">
+                  {normalizeType(app.type) === 'initial' && (!app.duration || app.duration === 45) ? 60 : (app.duration || 45)} min
+                </p>
               </div>
             ))}
             {canCreate && (
@@ -662,7 +664,15 @@ export default function CalendarView({
                     <label className="text-xs font-bold text-outline uppercase tracking-widest">Tipo de Consulta</label>
                     <select 
                       value={newAppointment.type}
-                      onChange={e => setNewAppointment({...newAppointment, type: e.target.value as any})}
+                      onChange={e => {
+                        const selectedType = e.target.value;
+                        const isInitial = normalizeType(selectedType) === 'initial';
+                        setNewAppointment({
+                          ...newAppointment, 
+                          type: selectedType as any,
+                          duration: isInitial ? 60 : (newAppointment.duration === 60 ? 45 : (newAppointment.duration || 45))
+                        });
+                      }}
                       className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium appearance-none"
                     >
                       {consultationTypes.map(type => (
