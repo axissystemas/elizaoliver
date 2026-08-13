@@ -109,13 +109,13 @@ export default function PreAgendamentoPage() {
   const [submitError, setSubmitError] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
 
-  // Busca horários ao mudar a data
+  // Busca horários ao mudar a data ou o serviço selecionado
   useEffect(() => {
     if (!selectedDate) return;
     async function loadSlots() {
       setLoadingSlots(true);
       setSelectedTime('');
-      const res = await fetchAvailableSlotsAction(selectedDate);
+      const res = await fetchAvailableSlotsAction(selectedDate, selectedService);
       if (res.success && res.slots) {
         setAvailableSlots(res.slots);
         if (res.slots.length > 0) {
@@ -127,7 +127,7 @@ export default function PreAgendamentoPage() {
       setLoadingSlots(false);
     }
     loadSlots();
-  }, [selectedDate]);
+  }, [selectedDate, selectedService]);
 
   const handleNextStep = () => {
     if (currentStep === 1 && !selectedService) return;

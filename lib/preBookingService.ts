@@ -2,9 +2,14 @@ import { supabase } from '@/lib/supabase';
 import { CreatePreBookingDTO, PreBookingRequest, PublicProtocolStatus } from '@/types/preBooking';
 import { logAction } from '@/lib/auditLogService';
 
-const DEFAULT_SLOTS = [
+const DEFAULT_SLOTS_45 = [
   '08:00', '08:45', '09:30', '10:15', '11:00',
   '13:30', '14:15', '15:00', '15:45', '16:30', '17:15'
+];
+
+const DEFAULT_SLOTS_60 = [
+  '08:00', '09:00', '10:00', '11:00',
+  '13:30', '14:30', '15:30', '16:30'
 ];
 
 const isUuid = (str?: string | null) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}$/i.test(str);
@@ -156,8 +161,12 @@ export async function cleanupDuplicatePreBookingAppointments(protocol?: string):
   }
 }
 
-export async function getAvailableSlots(dateStr: string): Promise<string[]> {
-  if (!supabase) return DEFAULT_SLOTS;
+export async function getAvailableSlots(dateStr: string, serviceType?: string): Promise<string[]> {
+  const isInitialService = !serviceType || serviceType.toLowerCase().includes('primeira') || serviceType.toLowerCase() === 'initial';
+  const candidateSlots = isInitialService ? DEFAULT_SLOTS_60 : DEFAULT_SLOTS_45;
+  const candidateDur = isInitialService ? 60 : 45;
+
+  if (!supabase) return candidateSlots;
 
   try {
     const { data: existingAppts } = await supabase
@@ -174,25 +183,29 @@ export async function getAvailableSlots(dateStr: string): Promise<string[]> {
 
     const busyTimes = new Set<string>();
 
+    const checkOverlap = (timeStr: string, dur: number) => {
+      const [h, m] = timeStr.split(':').map(Number);
+      const appStartMin = h * 60 + m;
+      const appEndMin = appStartMin + dur;
+
+      candidateSlots.forEach(slot => {
+        const [sh, sm] = slot.split(':').map(Number);
+        const slotStartMin = sh * 60 + sm;
+        const slotEndMin = slotStartMin + candidateDur;
+
+        // Overlap if candidate slot starts before existing appointment ends AND candidate slot ends after existing appointment starts
+        if (slotStartMin < appEndMin && slotEndMin > appStartMin) {
+          busyTimes.add(slot);
+        }
+      });
+    };
+
     if (existingAppts) {
       existingAppts.forEach((app: any) => {
         if (app.time) {
-          const timeStr = app.time.slice(0, 5);
-          busyTimes.add(timeStr);
           const isInitial = app.type && (app.type.toLowerCase().includes('primeira') || app.type.toLowerCase() === 'initial');
           const dur = (isInitial && (!app.duration || app.duration === 45)) ? 60 : (app.duration || 45);
-          if (dur >= 60) {
-            const [h, m] = timeStr.split(':').map(Number);
-            const startMin = h * 60 + m;
-            const endMin = startMin + dur;
-            DEFAULT_SLOTS.forEach(slot => {
-              const [sh, sm] = slot.split(':').map(Number);
-              const sMin = sh * 60 + sm;
-              if (sMin >= startMin && sMin < endMin) {
-                busyTimes.add(slot);
-              }
-            });
-          }
+          checkOverlap(app.time.slice(0, 5), dur);
         }
       });
     }
@@ -200,31 +213,18 @@ export async function getAvailableSlots(dateStr: string): Promise<string[]> {
     if (existingPreBookings) {
       existingPreBookings.forEach((req: any) => {
         if (req.requested_time) {
-          const timeStr = req.requested_time.slice(0, 5);
-          busyTimes.add(timeStr);
           const isInitial = req.service_type && (req.service_type.toLowerCase().includes('primeira') || req.service_type.toLowerCase() === 'initial');
           const dur = (isInitial && (!req.duration || req.duration === 45)) ? 60 : (req.duration || 45);
-          if (dur >= 60) {
-            const [h, m] = timeStr.split(':').map(Number);
-            const startMin = h * 60 + m;
-            const endMin = startMin + dur;
-            DEFAULT_SLOTS.forEach(slot => {
-              const [sh, sm] = slot.split(':').map(Number);
-              const sMin = sh * 60 + sm;
-              if (sMin >= startMin && sMin < endMin) {
-                busyTimes.add(slot);
-              }
-            });
-          }
+          checkOverlap(req.requested_time.slice(0, 5), dur);
         }
       });
     }
 
-    const freeSlots = DEFAULT_SLOTS.filter(slot => !busyTimes.has(slot));
+    const freeSlots = candidateSlots.filter(slot => !busyTimes.has(slot));
     return freeSlots;
   } catch (err) {
     console.error('Erro ao calcular horários livres:', err);
-    return DEFAULT_SLOTS;
+    return candidateSlots;
   }
 }
 

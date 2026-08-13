@@ -8,9 +8,9 @@ import {
 } from '@/lib/preBookingService';
 import { CreatePreBookingDTO } from '@/types/preBooking';
 
-export async function fetchAvailableSlotsAction(dateStr: string) {
+export async function fetchAvailableSlotsAction(dateStr: string, serviceType?: string) {
   try {
-    const slots = await getAvailableSlots(dateStr);
+    const slots = await getAvailableSlots(dateStr, serviceType);
     return { success: true, slots };
   } catch (err: any) {
     return { success: false, slots: [], error: err.message };
