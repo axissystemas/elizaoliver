@@ -422,26 +422,26 @@ export default function PatientDetailView({
             </div>
           </div>
         </div>
-        <div className="flex gap-4 no-print flex-wrap">
+        <div className="flex gap-2.5 no-print flex-wrap">
           {patient.phone && (
             <button 
               onClick={() => openWhatsApp(patient.phone, WhatsAppTemplates.welcome(patient.name))} 
-              className="px-6 py-3.5 rounded-2xl text-sm font-bold bg-emerald-600 text-white shadow-xl shadow-emerald-600/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-md shadow-emerald-600/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-1.5"
             >
-              <MessageSquare size={18} /> WhatsApp
+              <MessageSquare size={15} /> WhatsApp
             </button>
           )}
-          <button onClick={handleGenerateReport} disabled={isGeneratingReport} className="px-8 py-3.5 rounded-2xl text-sm font-bold bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-all flex items-center gap-2 disabled:opacity-50">
-            {isGeneratingReport ? <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <FileText size={18} />} Exportar
+          <button onClick={handleGenerateReport} disabled={isGeneratingReport} className="px-4 py-2.5 rounded-xl text-xs font-bold bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-all flex items-center gap-1.5 disabled:opacity-50">
+            {isGeneratingReport ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <FileText size={15} />} Exportar
           </button>
           {canEditPatient && (
-            <button onClick={() => onEditPersonal(patient)} className="px-8 py-3.5 rounded-2xl text-sm font-bold bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-all flex items-center gap-2">
-              <Edit3 size={18} /> Editar
+            <button onClick={() => onEditPersonal(patient)} className="px-4 py-2.5 rounded-xl text-xs font-bold bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-all flex items-center gap-1.5">
+              <Edit3 size={15} /> Editar
             </button>
           )}
           {canCreateConsultation && (
-            <button onClick={onStartConsultation} className="px-8 py-3.5 rounded-2xl text-sm font-bold bg-primary text-white shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2">
-              <Plus size={18} /> Iniciar Consulta
+            <button onClick={onStartConsultation} className="px-4 py-2.5 rounded-xl text-xs font-bold bg-primary text-white shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-1.5">
+              <Plus size={15} /> Iniciar Consulta
             </button>
           )}
         </div>
