@@ -1057,7 +1057,7 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                   <label className="text-xs font-bold text-outline uppercase tracking-widest">Subtítulo / Descrição da Clínica</label>
                   <input 
                     type="text" 
-                    placeholder="Ex: Pré-Agendamento de Consultas"
+                    placeholder="Ex: Agendamento de Consultas"
                     value={clinic.subtitle || ''}
                     onChange={e => setClinic({...clinic, subtitle: e.target.value})}
                     className="w-full px-5 py-4 bg-surface-container-low rounded-xl border border-outline-variant/10 focus:ring-2 focus:ring-primary/20 outline-none font-medium"

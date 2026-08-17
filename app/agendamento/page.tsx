@@ -230,7 +230,7 @@ export default function PreAgendamentoPage() {
             )}
             <div>
               <h1 className="font-bold text-lg leading-none tracking-tight text-slate-900">{clinicInfo.name || 'Clínica Axis GC'}</h1>
-              <p className="text-xs text-slate-500 mt-1">{clinicInfo.subtitle || 'Pré-Agendamento de Consultas'}</p>
+              <p className="text-xs text-slate-500 mt-1">{clinicInfo.subtitle || 'Agendamento de Consultas'}</p>
             </div>
           </div>
 

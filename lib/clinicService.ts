@@ -10,7 +10,7 @@ export interface ClinicSettings {
 
 export const DEFAULT_CLINIC_SETTINGS: ClinicSettings = {
   name: 'Clínica Axis GC',
-  subtitle: 'Pré-Agendamento de Consultas',
+  subtitle: 'Agendamento de Consultas',
   address: 'Av. Paulista, 1000 - São Paulo, SP',
   phone: '(11) 3222-4444',
   logo_url: ''
