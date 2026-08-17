@@ -162,6 +162,14 @@ export async function cleanupDuplicatePreBookingAppointments(protocol?: string):
 }
 
 export async function getAvailableSlots(dateStr: string, serviceType?: string): Promise<string[]> {
+  // Não há atendimento aos domingos (day 0)
+  if (dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    if (!isNaN(d.getTime()) && d.getDay() === 0) {
+      return [];
+    }
+  }
+
   const isInitialService = !serviceType || serviceType.toLowerCase().includes('primeira') || serviceType.toLowerCase() === 'initial';
   const candidateSlots = isInitialService ? DEFAULT_SLOTS_60 : DEFAULT_SLOTS_45;
   const candidateDur = isInitialService ? 60 : 45;
@@ -242,6 +250,13 @@ export async function createPreBookingRequest(
 
   if (!isValidCpf(data.patient_cpf)) {
     return { success: false, message: 'Por favor, informe um CPF válido com 11 dígitos.' };
+  }
+
+  if (data.requested_date) {
+    const reqDate = new Date(data.requested_date + 'T00:00:00');
+    if (!isNaN(reqDate.getTime()) && reqDate.getDay() === 0) {
+      return { success: false, message: 'Não realizamos atendimentos aos domingos. Por favor, escolha uma data de segunda a sábado.' };
+    }
   }
 
   if (!supabase) {

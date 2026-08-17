@@ -57,10 +57,19 @@ export default function PreAgendamentoPage() {
   const [protocolError, setProtocolError] = useState<string>('');
 
   // Form State
+  const isSunday = (dateStr: string) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr + 'T00:00:00');
+    return !isNaN(d.getTime()) && d.getDay() === 0;
+  };
+
   const [selectedService, setSelectedService] = useState<string>('Primeira Consulta');
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
+    if (tomorrow.getDay() === 0) {
+      tomorrow.setDate(tomorrow.getDate() + 1);
+    }
     return tomorrow.toISOString().split('T')[0];
   });
   const [selectedTime, setSelectedTime] = useState<string>('');
@@ -131,7 +140,13 @@ export default function PreAgendamentoPage() {
 
   const handleNextStep = () => {
     if (currentStep === 1 && !selectedService) return;
-    if (currentStep === 2 && (!selectedDate || !selectedTime)) return;
+    if (currentStep === 2) {
+      if (!selectedDate || !selectedTime) return;
+      if (isSunday(selectedDate)) {
+        alert('Não realizamos atendimentos aos domingos. Por favor, escolha uma data de segunda a sábado.');
+        return;
+      }
+    }
     if (currentStep === 3) {
       if (!patientCpf.trim()) {
         alert('Por favor, informe o seu CPF.');
@@ -480,6 +495,11 @@ export default function PreAgendamentoPage() {
                         <Loader2 className="w-6 h-6 animate-spin text-emerald-600 mx-auto mb-2" />
                         <span className="text-xs text-slate-500">Consultando agenda da clínica...</span>
                       </div>
+                    ) : isSunday(selectedDate) ? (
+                      <div className="p-6 text-center bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 font-medium flex items-center justify-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>Não realizamos atendimentos aos domingos. Por favor, selecione uma data de segunda a sábado.</span>
+                      </div>
                     ) : availableSlots.length === 0 ? (
                       <div className="p-6 text-center bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-800">
                         Não há horários disponíveis para esta data. Por favor, escolha outro dia.
@@ -515,7 +535,7 @@ export default function PreAgendamentoPage() {
                   </button>
                   <button
                     onClick={handleNextStep}
-                    disabled={!selectedTime}
+                    disabled={!selectedTime || isSunday(selectedDate)}
                     className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-semibold text-white text-sm transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/20 disabled:opacity-50"
                   >
                     <span>Próximo: Dados Pessoais</span>

@@ -193,6 +193,15 @@ export default function CalendarView({
       return;
     }
 
+    if (newAppointment.date) {
+      const selectedDay = new Date(newAppointment.date + 'T00:00:00').getDay();
+      if (selectedDay === 0) {
+        if (!confirm('A data selecionada é um domingo. A clínica não realiza atendimentos aos domingos. Deseja agendar mesmo assim?')) {
+          return;
+        }
+      }
+    }
+
     setIsSaving(true);
     try {
       const patient = patients.find(p => p.id === newAppointment.patientId);
