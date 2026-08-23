@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { getInitials } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
+import { useTheme } from '@/lib/ThemeContext';
 import { useSubscription } from '@/lib/useSubscription';
 import { 
   User as UserIcon, 
@@ -418,7 +419,14 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
     return true;
   });
   
-  const [theme, setTheme] = useState('light');
+  const { theme, setTheme } = useTheme();
+  const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark'>(theme);
+
+  useEffect(() => {
+    if (isAppearanceModalOpen) {
+      setSelectedTheme(theme);
+    }
+  }, [theme, isAppearanceModalOpen]);
   const [language, setLanguage] = useState('Português (Brasil)');
   const [currency, setCurrency] = useState('BRL (R$)');
 
@@ -1207,8 +1215,8 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <button 
-                    onClick={() => setTheme('light')}
-                    className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${theme === 'light' ? 'border-primary bg-primary/5' : 'border-outline-variant/20 hover:border-outline-variant'}`}
+                    onClick={() => setSelectedTheme('light')}
+                    className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${selectedTheme === 'light' ? 'border-primary bg-primary/5' : 'border-outline-variant/20 hover:border-outline-variant'}`}
                   >
                     <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
                       <Globe size={24} />
@@ -1216,8 +1224,8 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                     <span className="font-bold">Tema Claro</span>
                   </button>
                   <button 
-                    onClick={() => setTheme('dark')}
-                    className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${theme === 'dark' ? 'border-primary bg-primary/5' : 'border-outline-variant/20 hover:border-outline-variant'}`}
+                    onClick={() => setSelectedTheme('dark')}
+                    className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${selectedTheme === 'dark' ? 'border-primary bg-primary/5' : 'border-outline-variant/20 hover:border-outline-variant'}`}
                   >
                     <div className="w-12 h-12 rounded-full bg-slate-800 text-white flex items-center justify-center">
                       <Moon size={24} />
@@ -1226,7 +1234,10 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                   </button>
                 </div>
                 <button 
-                  onClick={() => setIsAppearanceModalOpen(false)}
+                  onClick={() => {
+                    setTheme(selectedTheme);
+                    setIsAppearanceModalOpen(false);
+                  }}
                   className="w-full py-4 rounded-2xl bg-primary text-white font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
                 >
                   Aplicar Preferências

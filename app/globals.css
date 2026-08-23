@@ -21,10 +21,91 @@
   --font-headline: var(--font-manrope);
 }
 
+html.dark {
+  --color-primary: #60a5fa;
+  --color-primary-container: #1e3a8a;
+  --color-secondary: #38bdf8;
+  --color-secondary-container: #0c4a6e;
+  --color-surface: #0b0f19;
+  --color-surface-container: #111827;
+  --color-surface-container-low: #1f2937;
+  --color-surface-container-high: #374151;
+  --color-on-surface: #f9fafb;
+  --color-on-surface-variant: #9ca3af;
+  --color-outline: #6b7280;
+  --color-outline-variant: #374151;
+  color-scheme: dark;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--color-surface);
   color: var(--color-on-surface);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html.dark body {
+  background-color: #0b0f19;
+  color: #f9fafb;
+}
+
+/* Dark mode overrides for hardcoded light classes */
+html.dark .bg-white {
+  background-color: #1f2937 !important;
+  color: #f9fafb;
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-100,
+html.dark .bg-gray-50,
+html.dark .bg-gray-100 {
+  background-color: #111827 !important;
+}
+
+html.dark .bg-surface-container-low {
+  background-color: #1f2937 !important;
+}
+
+html.dark .border-outline-variant\/10,
+html.dark .border-outline-variant\/20,
+html.dark .border-slate-200,
+html.dark .border-slate-100,
+html.dark .border-gray-200 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-700,
+html.dark .text-gray-900,
+html.dark .text-gray-800,
+html.dark .text-gray-700 {
+  color: #f3f4f6 !important;
+}
+
+html.dark .text-slate-600,
+html.dark .text-slate-500,
+html.dark .text-gray-600,
+html.dark .text-gray-500 {
+  color: #9ca3af !important;
+}
+
+html.dark input:not([type="checkbox"]):not([type="radio"]),
+html.dark select,
+html.dark textarea {
+  background-color: #111827 !important;
+  color: #f9fafb !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+html.dark aside {
+  background-color: #111827 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark header {
+  background-color: #111827 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -35,6 +116,10 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+html.dark .glass-panel {
+  background: rgba(17, 24, 39, 0.85);
 }
 
 @media print {

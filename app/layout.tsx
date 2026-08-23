@@ -22,14 +22,35 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from '@/lib/AuthContext';
+import { ThemeProvider } from '@/lib/ThemeContext';
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="pt-BR" suppressHydrationWarning className={`${inter.variable} ${manrope.variable}`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var saved = localStorage.getItem('axis_theme');
+                  if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body suppressHydrationWarning className="antialiased">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

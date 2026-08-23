@@ -1,10 +1,11 @@
 'use client';
 
-import { Search, Bell, HelpCircle, User as UserIcon, LogOut, Check, AlertCircle, X, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Search, Bell, HelpCircle, User as UserIcon, LogOut, Check, AlertCircle, X, Wifi, WifiOff, RefreshCw, Sun, Moon } from 'lucide-react';
 import { User, ROLE_LABELS } from '@/types/auth';
 import { getInitials } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTheme } from '@/lib/ThemeContext';
 
 import { fetchPreBookingRequests } from '@/lib/preBookingService';
 import { getClinicSettings, ClinicSettings } from '@/lib/clinicService';
@@ -28,6 +29,7 @@ export default function TopBar({
   connectionStatus = 'online',
   onRefreshConnection
 }: TopBarProps) {
+  const { theme, toggleTheme } = useTheme();
   const [profileName, setProfileName] = useState(user?.name || 'Dr. Elena Wu');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [preBookingNotifications, setPreBookingNotifications] = useState<any[]>([]);
@@ -124,6 +126,15 @@ export default function TopBar({
             </button>
           )}
         </div>
+
+        {/* Theme Toggle Button */}
+        <button 
+          onClick={toggleTheme}
+          className="p-2.5 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors"
+          title={theme === 'dark' ? 'Alternar para Tema Claro' : 'Alternar para Tema Escuro'}
+        >
+          {theme === 'dark' ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} />}
+        </button>
 
         <div className="relative">
           <button 
