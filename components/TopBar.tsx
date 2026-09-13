@@ -32,6 +32,7 @@ export default function TopBar({
   const { theme, toggleTheme } = useTheme();
   const [profileName, setProfileName] = useState(user?.name || 'Dr. Elena Wu');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [preBookingNotifications, setPreBookingNotifications] = useState<any[]>([]);
   const [clinicSettings, setClinicSettings] = useState<ClinicSettings | null>(null);
 
@@ -81,7 +82,7 @@ export default function TopBar({
   const unreadCount = allNotifications.filter(n => !n.read).length;
 
   return (
-    <header className="h-20 flex items-center justify-between px-8 bg-white border-b border-outline-variant/10 z-40">
+    <header className="relative h-20 flex items-center justify-between px-8 bg-white border-b border-outline-variant/10 z-40">
       <div className="flex items-center gap-8 w-1/2">
         <div className="flex items-center gap-2.5">
           {clinicSettings?.logo_url ? (
@@ -138,7 +139,10 @@ export default function TopBar({
 
         <div className="relative">
           <button 
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            onClick={() => {
+              setIsNotificationsOpen(!isNotificationsOpen);
+              setIsUserMenuOpen(false);
+            }}
             className="p-2.5 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors relative"
           >
             <Bell size={20} />
@@ -238,25 +242,62 @@ export default function TopBar({
           <HelpCircle size={20} />
         </button>
         <div className="h-8 w-[1px] bg-outline-variant/30 mx-2"></div>
-        <div className="flex items-center gap-3 pl-2 group relative">
-          <div className="text-right hidden md:block">
-            <p className="text-xs font-bold text-on-surface">{profileName}</p>
-            <p className="text-[10px] text-on-surface-variant font-medium">{user ? ROLE_LABELS[user.role] : 'Profissional'}</p>
-          </div>
-          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/10 text-primary font-bold text-sm border border-primary/20 overflow-hidden relative">
-            {getInitials(profileName)}
-          </div>
+        <div className="relative">
+          <button 
+            type="button"
+            onClick={() => {
+              setIsUserMenuOpen(!isUserMenuOpen);
+              setIsNotificationsOpen(false);
+            }}
+            className="flex items-center gap-3 pl-2 p-1.5 rounded-2xl hover:bg-surface-container transition-colors cursor-pointer text-left focus:outline-none"
+            aria-expanded={isUserMenuOpen}
+            aria-label="Menu do usuário"
+          >
+            <div className="text-right hidden md:block">
+              <p className="text-xs font-bold text-on-surface">{profileName}</p>
+              <p className="text-[10px] text-on-surface-variant font-medium">{user ? ROLE_LABELS[user.role] : 'Profissional'}</p>
+            </div>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/10 text-primary font-bold text-sm border border-primary/20 overflow-hidden relative">
+              {getInitials(profileName)}
+            </div>
+          </button>
           
-          {/* Logout Dropdown */}
-          <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-outline-variant/10 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all p-2">
-            <p className="px-4 py-2 text-[10px] text-outline uppercase tracking-widest font-bold border-b border-outline-variant/5 mb-1">{user?.email}</p>
-            <button 
-              onClick={onLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all"
-            >
-              <LogOut size={18} /> Sair do Sistema
-            </button>
-          </div>
+          <AnimatePresence>
+            {isUserMenuOpen && (
+              <>
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="fixed inset-0 z-40"
+                />
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-outline-variant/10 z-50 overflow-hidden p-2"
+                >
+                  <div className="px-3 py-2 border-b border-outline-variant/5 mb-1">
+                    <p className="text-xs font-bold text-on-surface truncate">{profileName}</p>
+                    <p className="text-[10px] text-outline uppercase tracking-wider font-semibold truncate mt-0.5" title={user?.email}>
+                      {user?.email}
+                    </p>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onLogout?.();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all cursor-pointer text-left"
+                  >
+                    <LogOut size={18} /> Sair do Sistema
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </header>

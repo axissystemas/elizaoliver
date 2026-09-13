@@ -1547,7 +1547,7 @@ export default function Home() {
       </div>
       
       <main className="flex-1 flex flex-col h-screen overflow-hidden print:h-auto print:overflow-visible">
-        <div className="no-print">
+        <div className="no-print relative z-40">
           <TopBar 
             user={user} 
             onLogout={handleLogout}
