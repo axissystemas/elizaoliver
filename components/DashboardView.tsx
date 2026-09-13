@@ -81,26 +81,26 @@ export default function DashboardView({
   return (
     <div className="p-6 md:p-10 space-y-8 md:space-y-10 max-w-full overflow-hidden">
       {/* Hero Section */}
-      <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <div className="col-span-1 xl:col-span-7 bg-primary rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 text-white relative overflow-hidden flex flex-col justify-between min-h-[250px] md:min-h-[300px]">
+      <section className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <div className="col-span-1 xl:col-span-7 bg-primary rounded-2xl md:rounded-3xl p-6 md:p-7 text-white relative overflow-hidden flex flex-col justify-between min-h-[200px] md:min-h-[230px]">
           <div className="relative z-10">
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="font-headline text-4xl font-light"
+              className="font-headline text-2xl md:text-3xl font-light"
             >
               Bom dia, <span className="font-bold">{profileName}</span>
             </motion.h2>
-            <p className="text-white/70 mt-3 max-w-md leading-relaxed text-lg">
+            <p className="text-white/80 mt-2 max-w-md leading-relaxed text-sm">
               Você tem 8 pacientes agendados para hoje. Sua primeira consulta começa em 45 minutos.
             </p>
           </div>
           
-          <div className="flex flex-wrap gap-4 mt-8 relative z-10">
+          <div className="flex flex-wrap gap-3 mt-6 relative z-10">
             {canCreateAppointment && (
               <button 
                 onClick={onNewAppointment}
-                className="bg-white text-primary px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center gap-2 hover:bg-white/90 transition-all shadow-xl shadow-black/10"
+                className="bg-white text-primary px-6 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-white/90 transition-all shadow-md shadow-black/10"
               >
                 Nova Consulta
               </button>
@@ -108,7 +108,7 @@ export default function DashboardView({
             {canViewCalendar && (
               <button 
                 onClick={onOpenAgenda}
-                className="bg-white/10 backdrop-blur-md border border-white/20 px-8 py-3.5 rounded-2xl font-bold text-sm hover:bg-white/20 transition-all"
+                className="bg-white/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-xl font-bold text-xs hover:bg-white/20 transition-all"
               >
                 Ver Agenda
               </button>
@@ -120,40 +120,40 @@ export default function DashboardView({
           <div className="absolute bottom-0 right-10 w-64 h-64 bg-secondary/20 rounded-full blur-[60px]"></div>
         </div>
 
-        <div className="col-span-1 xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-          <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] flex flex-col justify-between border border-outline-variant/10 shadow-sm">
-            <div className="w-12 h-12 bg-secondary-container/30 text-secondary rounded-2xl flex items-center justify-center">
-              <Users size={24} />
+        <div className="col-span-1 xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl flex flex-col justify-between border border-outline-variant/10 shadow-sm">
+            <div className="w-10 h-10 bg-secondary-container/30 text-secondary rounded-xl flex items-center justify-center">
+              <Users size={20} />
             </div>
-            <div>
-              <p className="text-4xl font-headline font-bold text-on-surface">142</p>
-              <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wider mt-1">Sessões (Mês)</p>
-              <div className="mt-4 flex items-center gap-1 text-[10px] text-primary font-bold">
+            <div className="mt-3">
+              <p className="text-2xl font-headline font-bold text-on-surface">142</p>
+              <p className="text-[11px] text-on-surface-variant font-bold uppercase tracking-wider mt-0.5">Sessões (Mês)</p>
+              <div className="mt-3 flex items-center gap-1 text-[10px] text-primary font-bold">
                 <CheckCircle2 size={12} /> Meta: 100
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] flex flex-col justify-between border border-outline-variant/10 shadow-sm">
-            <div className="w-12 h-12 bg-primary-container/10 text-primary rounded-2xl flex items-center justify-center">
-              <TrendingUp size={24} />
+          <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl flex flex-col justify-between border border-outline-variant/10 shadow-sm">
+            <div className="w-10 h-10 bg-primary-container/10 text-primary rounded-xl flex items-center justify-center">
+              <TrendingUp size={20} />
             </div>
-            <div>
-              <p className="text-4xl font-headline font-bold text-on-surface">84%</p>
-              <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wider mt-1">Taxa de Sucesso</p>
-              <div className="mt-4 flex items-center gap-1 text-[10px] text-primary font-bold">
+            <div className="mt-3">
+              <p className="text-2xl font-headline font-bold text-on-surface">84%</p>
+              <p className="text-[11px] text-on-surface-variant font-bold uppercase tracking-wider mt-0.5">Taxa de Sucesso</p>
+              <div className="mt-3 flex items-center gap-1 text-[10px] text-primary font-bold">
                 <ArrowUpRight size={12} /> +12% vs mês ant.
               </div>
             </div>
           </div>
 
-          <div className="sm:col-span-2 bg-secondary-container/20 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] flex flex-col sm:flex-row sm:items-center justify-between overflow-hidden relative border border-secondary-container/30 gap-6 sm:gap-0">
+          <div className="sm:col-span-2 bg-secondary-container/20 p-5 md:p-6 rounded-2xl md:rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between overflow-hidden relative border border-secondary-container/30 gap-4 sm:gap-0">
             <div className="relative z-10">
-              <p className="text-on-secondary-container text-xs font-bold uppercase tracking-widest">Eficiência Clínica</p>
-              <p className="text-2xl font-headline font-bold text-on-secondary-container mt-1">94% Taxa de Recuperação</p>
+              <p className="text-on-secondary-container text-[11px] font-bold uppercase tracking-widest">Eficiência Clínica</p>
+              <p className="text-lg font-headline font-bold text-on-secondary-container mt-0.5">94% Taxa de Recuperação</p>
             </div>
-            <div className="relative z-10 w-20 h-20">
-              <svg className="w-full h-full transform -rotate-90">
+            <div className="relative z-10 w-14 h-14">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
                 <circle className="text-on-secondary-container/10" cx="40" cy="40" r="35" fill="transparent" stroke="currentColor" strokeWidth="8" />
                 <circle className="text-on-secondary-container" cx="40" cy="40" r="35" fill="transparent" stroke="currentColor" strokeWidth="8" strokeDasharray="219.9" strokeDashoffset="21.9" strokeLinecap="round" />
               </svg>
