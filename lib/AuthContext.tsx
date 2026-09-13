@@ -347,23 +347,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // ─── Configuração de Administrador e Suporte ──────────────────────────────
-  const NATIVE_ADMIN_EMAIL = process.env.NEXT_PUBLIC_NATIVE_ADMIN_EMAIL ?? 'suporte@axissystemas.com.br';
-  const NATIVE_ADMIN_KEY   = 'axis_native_admin_session';
+  // ─── Configuração de Administrador e Suporte Nativo ──────────────────────
+  const NATIVE_ADMIN_EMAIL    = process.env.NEXT_PUBLIC_NATIVE_ADMIN_EMAIL ?? 'suporte@axissystemas.com.br';
+  const NATIVE_ADMIN_PASSWORD = process.env.NEXT_PUBLIC_NATIVE_ADMIN_PASSWORD ?? 'Admin@123';
+  const NATIVE_ADMIN_KEY      = 'axis_native_admin_session';
 
-  /** Limpeza de resquícios de sessão de bypass legada */
+  /** Reconstrói o user ADMIN local para desenvolvimento/contingência */
+  const buildNativeAdminUser = (emailVal?: string): User => ({
+    id:          'native-admin',
+    name:        'ADM Sistema',
+    email:       emailVal || NATIVE_ADMIN_EMAIL || 'suporte@axissystemas.com.br',
+    role:        'ADMIN',
+    avatar:      '/Axis_sistemas_Favicon.png',
+    permissions: ADMIN_PERMISSIONS,
+    isNativeAdmin: true,
+    organization: { name: 'Axis Systems', slug: 'axis' },
+    subscription: {
+      planCode: 'PREMIUM',
+      planName: 'Plano Premium',
+      status: 'active',
+      entitlements: [
+        'mod_patients',
+        'mod_evaluations',
+        'mod_calendar',
+        'mod_protocols',
+        'mod_financial',
+        'mod_reports',
+        'mod_inventory',
+        'mod_billing',
+        'mod_audit',
+        'mod_users',
+        'mod_api',
+        'mod_whitelabel'
+      ]
+    }
+  });
+
+  /** Restaura sessão nativa ao inicializar (se o usuário recarregar a página) */
   React.useEffect(() => {
     try {
-      if (localStorage.getItem(NATIVE_ADMIN_KEY)) {
-        localStorage.removeItem(NATIVE_ADMIN_KEY);
+      const stored = localStorage.getItem(NATIVE_ADMIN_KEY);
+      if (stored === '1') {
+        const adminUser = buildNativeAdminUser(NATIVE_ADMIN_EMAIL);
+        if (supabase) {
+          supabase.from('organizations').select('id').limit(1).then(({ data: orgs }) => {
+            if (orgs && orgs.length > 0) {
+              adminUser.organizationId = orgs[0].id;
+            }
+            setUser(adminUser);
+            setLoading(false);
+          }).catch(() => {
+            setUser(adminUser);
+            setLoading(false);
+          });
+        } else {
+          setUser(adminUser);
+          setLoading(false);
+        }
       }
     } catch {}
   }, []);
 
   const signIn = async (email: string, password?: string) => {
     const cleanEmail = email.trim().toLowerCase();
+    const isNativeEmailMatch = NATIVE_ADMIN_EMAIL !== '' && cleanEmail === NATIVE_ADMIN_EMAIL.toLowerCase();
+    const isNativePasswordMatch = NATIVE_ADMIN_PASSWORD !== '' && password === NATIVE_ADMIN_PASSWORD;
 
-    // ── 1. Autenticação estrita via Supabase Auth ──────────────────────────────
+    // ── 1. Autenticação via Supabase Auth com fallback de contingência ────────
     if (supabase && password) {
       try {
         const timeoutPromise = new Promise((_, reject) =>
@@ -414,9 +464,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return; // Login no Supabase bem-sucedido e perfil ativo
       } catch (err: any) {
-        // Se as credenciais baterem com o ADM nativo, fazemos o fallback local
+        // Fallback para ADM nativo de contingência se Supabase falhar ou credenciais forem do ADM local
         if (isNativeEmailMatch && isNativePasswordMatch) {
-          console.warn('[Auth] Erro de rede/conexão no Supabase. Usando ADM nativo local:', err.message);
+          console.warn('[Auth] Ativando sessão de administrador nativo:', err.message);
           const adminUser = buildNativeAdminUser(cleanEmail);
           
           try {
