@@ -50,15 +50,18 @@ export function isValidCpf(val?: string | null): boolean {
   return true;
 }
 
+export function maskPatientName(fullName?: string | null): string {
+  if (!fullName) return '';
+  const parts = fullName.trim().split(/\s+/);
+  return parts.map((part, idx) => {
+    if (idx === 0) return part;
+    return part.charAt(0) + '***';
+  }).join(' ');
+}
+
 export async function lookupPatientByCpf(cpf: string): Promise<{
   found: boolean;
-  patient?: {
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
-    birth_date?: string;
-  };
+  maskedName?: string;
   message?: string;
 }> {
   if (!supabase || !cpf) return { found: false, message: 'CPF não informado' };
@@ -73,7 +76,7 @@ export async function lookupPatientByCpf(cpf: string): Promise<{
   try {
     const { data, error } = await supabase
       .from('patients')
-      .select('id, name, email, phone, birth_date, cpf')
+      .select('id, name')
       .or(`cpf.eq.${rawDigits},cpf.eq.${formatted}`)
       .maybeSingle();
 
@@ -85,13 +88,8 @@ export async function lookupPatientByCpf(cpf: string): Promise<{
     if (data) {
       return {
         found: true,
-        patient: {
-          id: data.id,
-          name: data.name || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          birth_date: data.birth_date || ''
-        }
+        maskedName: maskPatientName(data.name),
+        message: 'Paciente localizado na base de dados.'
       };
     }
 

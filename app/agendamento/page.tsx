@@ -100,12 +100,8 @@ export default function PreAgendamentoPage() {
       const res = await lookupPatientByCpfAction(digits);
       setIsSearchingCpf(false);
 
-      if (res.found && res.patient) {
-        if (res.patient.name) setPatientName(res.patient.name);
-        if (res.patient.email) setPatientEmail(res.patient.email);
-        if (res.patient.phone) setPatientPhone(res.patient.phone);
-        if (res.patient.birth_date) setBirthDate(res.patient.birth_date);
-        setCpfMatchStatus({ found: true, name: res.patient.name });
+      if (res.found) {
+        setCpfMatchStatus({ found: true, name: res.maskedName || 'Paciente Cadastrado' });
       } else {
         setCpfMatchStatus({ found: false });
       }
@@ -585,11 +581,11 @@ export default function PreAgendamentoPage() {
                       )}
                     </div>
 
-                    {/* Feedback visual de auto-preenchimento por CPF */}
+                    {/* Feedback visual de confirmação por CPF */}
                     {cpfMatchStatus?.found && (
                       <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-800 flex items-center gap-2 font-medium">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>Cadastro localizado na clínica! Seus dados foram preenchidos automaticamente.</span>
+                        <span>Cadastro localizado ({cpfMatchStatus.name})! Por segurança, confirme seus dados de contato abaixo.</span>
                       </div>
                     )}
 

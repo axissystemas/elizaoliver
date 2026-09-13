@@ -347,67 +347,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // ─── Credenciais de ADM nativo (bypass Supabase) ─────────────────────────
-  const NATIVE_ADMIN_EMAIL    = process.env.NEXT_PUBLIC_NATIVE_ADMIN_EMAIL ?? '';
-  const NATIVE_ADMIN_PASSWORD = process.env.NEXT_PUBLIC_NATIVE_ADMIN_PASSWORD ?? '';
-  const NATIVE_ADMIN_KEY      = 'axis_native_admin_session';
+  // ─── Configuração de Administrador e Suporte ──────────────────────────────
+  const NATIVE_ADMIN_EMAIL = process.env.NEXT_PUBLIC_NATIVE_ADMIN_EMAIL ?? 'suporte@axissystemas.com.br';
+  const NATIVE_ADMIN_KEY   = 'axis_native_admin_session';
 
-  /** Reconstrói o user ADMIN local sem bater no banco */
-  const buildNativeAdminUser = (emailVal?: string): User => ({
-    id:          'native-admin',
-    name:        'ADM Sistema',
-    email:       emailVal || NATIVE_ADMIN_EMAIL || 'suporte@axissystemas.com.br',
-    role:        'ADMIN',
-    avatar:      '/Axis_sistemas_Favicon.png',
-    permissions: ADMIN_PERMISSIONS,
-    isNativeAdmin: true,
-    organization: { name: 'Axis Systems', slug: 'axis' },
-    subscription: {
-      planCode: 'PREMIUM',
-      planName: 'Plano Premium (Bypass)',
-      status: 'active',
-      entitlements: [
-        'mod_patients',
-        'mod_evaluations',
-        'mod_calendar',
-        'mod_protocols',
-        'mod_financial',
-        'mod_reports',
-        'mod_inventory',
-        'mod_billing',
-        'mod_audit',
-        'mod_users',
-        'mod_api',
-        'mod_whitelabel'
-      ]
-    }
-  });
-
-  /** Restaura sessão nativa ao inicializar (se o usuário recarregar a página) */
+  /** Limpeza de resquícios de sessão de bypass legada */
   React.useEffect(() => {
     try {
-      const stored = localStorage.getItem(NATIVE_ADMIN_KEY);
-      if (stored === '1') {
-        console.log('[Auth] Sessão ADM nativa restaurada.');
-        const adminUser = buildNativeAdminUser('suporte@axissystemas.com.br');
-        
-        // Tenta buscar a primeira organização cadastrada para o ADM nativo herdar
-
-
-        setUser(adminUser);
-        setLoading(false);
+      if (localStorage.getItem(NATIVE_ADMIN_KEY)) {
+        localStorage.removeItem(NATIVE_ADMIN_KEY);
       }
     } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const signIn = async (email: string, password?: string) => {
     const cleanEmail = email.trim().toLowerCase();
-    
-    const isNativeEmailMatch = NATIVE_ADMIN_EMAIL !== '' && cleanEmail === NATIVE_ADMIN_EMAIL.toLowerCase();
-    const isNativePasswordMatch = NATIVE_ADMIN_PASSWORD !== '' && password === NATIVE_ADMIN_PASSWORD;
 
-    // ── 1. Tenta login normal via Supabase Auth primeiro ──────────────────────
+    // ── 1. Autenticação estrita via Supabase Auth ──────────────────────────────
     if (supabase && password) {
       try {
         const timeoutPromise = new Promise((_, reject) =>
@@ -418,35 +374,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data, error } = (await Promise.race([loginPromise, timeoutPromise])) as any;
 
         if (error) {
-          // Se as credenciais forem do ADM nativo e ocorreu um erro de credenciais inválidas ou de conexão,
-          // usamos o fallback do ADM nativo local (bypass)
-          const isCredentialError = error.message.toLowerCase().includes('invalid login credentials') || 
-                                     error.message.toLowerCase().includes('invalid_credentials') ||
-                                     error.status === 400;
-          const isNetworkError = error.message.toLowerCase().includes('fetch') || 
-                                 error.message.toLowerCase().includes('network') || 
-                                 error.message.toLowerCase().includes('database error') ||
-                                 error.message.toLowerCase().includes('tempo limite');
-          
-          if (isNativeEmailMatch && isNativePasswordMatch && (isCredentialError || isNetworkError)) {
-            console.log('[Auth] Login Supabase falhou ou banco offline. Ativando ADM nativo local.');
-            const adminUser = buildNativeAdminUser(cleanEmail);
-            
-            // Busca a primeira organização para vincular ao ADM nativo
-            try {
-              const { data: orgs } = await supabase.from('organizations').select('id').limit(1);
-              if (orgs && orgs.length > 0) {
-                adminUser.organizationId = orgs[0].id;
-                console.log('[Auth] ADM nativo fallback logado com org ID:', orgs[0].id);
-              }
-            } catch (e) {
-              console.warn('[Auth] Erro ao buscar org ID no fallback do login nativo:', e);
-            }
-
-            setUser(adminUser);
-            try { localStorage.setItem(NATIVE_ADMIN_KEY, '1'); } catch {}
-            return;
-          }
           throw error;
         }
 

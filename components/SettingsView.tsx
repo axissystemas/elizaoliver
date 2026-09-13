@@ -1441,9 +1441,15 @@ export default function SettingsView({ user, onLogout }: SettingsViewProps) {
                               
                               try {
                                 setIsLoadingPlans(true);
+                                const { data: sessionData } = await supabase.auth.getSession();
+                                const token = sessionData?.session?.access_token || '';
+
                                 const response = await fetch('/api/mercadopago/cancel', {
                                   method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
+                                  headers: { 
+                                    'Content-Type': 'application/json',
+                                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                                  },
                                   body: JSON.stringify({
                                     organizationId: user.organizationId,
                                     subscriptionId: user.subscription.externalId

@@ -10,10 +10,34 @@ export async function POST(request: Request) {
   );
 
   try {
+    // 0. Autenticação obrigatória do usuário chamador
+    const authHeader = request.headers.get('authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+    if (!token) {
+      return NextResponse.json({ error: 'Não autorizado. Token de sessão ausente.' }, { status: 401 });
+    }
+
+    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !authUser) {
+      return NextResponse.json({ error: 'Sessão inválida ou expirada.' }, { status: 401 });
+    }
+
     const { organizationId, subscriptionId } = await request.json();
 
     if (!organizationId || !subscriptionId) {
       return NextResponse.json({ error: 'Faltando organizationId ou subscriptionId' }, { status: 400 });
+    }
+
+    // Valida se o usuário pertence à organização ou é Administrador
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('organization_id, role')
+      .eq('id', authUser.id)
+      .single();
+
+    if (!profile || (profile.organization_id !== organizationId && profile.role !== 'ADMIN')) {
+      return NextResponse.json({ error: 'Acesso negado para esta organização.' }, { status: 403 });
     }
 
     // 1. Verifica a propriedade no banco de dados (Segurança)
